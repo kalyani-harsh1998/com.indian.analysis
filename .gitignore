@@ -216,3 +216,24 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project-local data, generated artifacts, and credentials
+.DS_Store
+data/raw/**
+!data/raw/.gitkeep
+data/interim/**
+!data/interim/.gitkeep
+data/processed/**
+!data/processed/.gitkeep
+outputs/**
+!outputs/.gitkeep
+*.duckdb
+*.duckdb.wal
+*.db
+*.sqlite
+*.sqlite3
+*.pptx
+*.key
+*.pem
+credentials*.json
+secrets*.json

@@ -2,7 +2,7 @@
 
 **Status:** Initial source and licensing hypothesis for discussion  
 **Last updated:** 23 August 2026  
-**Related documents:** [PROJECT_RESEARCH_BLUEPRINT.md](PROJECT_RESEARCH_BLUEPRINT.md) and [PRESENTATION_OUTPUT_SPEC.md](PRESENTATION_OUTPUT_SPEC.md)
+**Related documents:** [PROJECT_RESEARCH_BLUEPRINT.md](../plans/PROJECT_RESEARCH_BLUEPRINT.md) and [PRESENTATION_OUTPUT_SPEC.md](../plans/PRESENTATION_OUTPUT_SPEC.md)
 
 ## 1. Objective
 

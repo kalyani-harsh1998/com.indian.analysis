@@ -1,2 +1,66 @@
-# com.indian.analysis
-Project for analyzing indian companies for different scenarios and case studies
+# Indian Listed-Company Analysis
+
+A local-first, source-aware foundation for an agentic research platform covering Indian listed companies. The intended product combines accounting-quality review, performance diagnosis, strategic analysis, value-creation hypotheses, and investor/credit analysis while preserving evidence and uncertainty.
+
+## Current status
+
+This repository is an early proof of concept. The implemented vertical slice only loads a clearly labelled synthetic IT-services dataset, validates it, calculates three deterministic metrics, and writes a structured analysis manifest. It does **not** scrape live sources, call an LLM, forecast, value securities, make recommendations, or generate presentations.
+
+## Architecture
+
+The package separates typed domain objects, replaceable source adapters, deterministic financial calculations, framework-neutral contracts, controlled workflows, and outputs. Numerical truth belongs in deterministic code; future agents may select and explain capabilities but must not become the source of financial calculations.
+
+See [project context](docs/PROJECT_CONTEXT.md), [POC architecture](docs/architecture/POC_ARCHITECTURE.md), and the [development roadmap](plans/DEVELOPMENT_ROADMAP.md).
+
+## Repository structure
+
+```text
+plans/       Product plans, output specification, roadmap, and open decisions
+research/    Source, licensing, and data-strategy research
+docs/        Persistent project context and architecture
+src/         Python package using a src layout
+data/        Local data zones and synthetic demo fixtures
+tests/       Unit and integration tests
+outputs/     Generated local results (ignored except .gitkeep)
+scripts/     Development helper scripts
+```
+
+## Requirements and installation
+
+Python 3.12 is required. Both `uv` and a standard virtual environment are supported.
+
+With `uv`:
+
+```bash
+uv sync --extra dev
+uv run python -m indian_company_analysis demo
+```
+
+With `venv` and `pip`:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e '.[dev]'
+python -m indian_company_analysis demo
+```
+
+The demo writes `outputs/demo_analysis.json`. Override the paths with `--fixture` and `--output`.
+
+## Validation
+
+```bash
+pytest
+ruff check .
+ruff format --check .
+mypy src tests
+```
+
+## Data and licensing warning
+
+Raw source documents are local, immutable evidence and are excluded from Git. Public availability does not imply permission to automate collection, retain, transform, train on, display, or redistribute data. Confirm source-specific terms before use. Never commit credentials, licensed documents, or confidential company information.
+
+## Disclaimer
+
+This project is for decision support, research, and education. Its outputs are not investment, audit, tax, legal, or other regulated financial advice. Synthetic demo results are fictional and must not be interpreted as facts about any real company.
