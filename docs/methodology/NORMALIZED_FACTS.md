@@ -6,7 +6,7 @@ Phase 2B converts a verified, row-oriented CSV into canonical `MetricObservation
 
 The parser never guesses a metric, period, unit, sign, company, or accounting basis. A label must match a versioned mapping exactly after case and whitespace normalization. Rows that are invalid, unmapped, assigned to another company, or duplicates become explicit issues, and the batch is marked not ready for analysis.
 
-For this slice, the ingested CSV itself is the checksummed source being normalized. Page and table coordinates must be supplied during controlled preparation and reviewed against the original document. Direct PDF-to-table extraction and a cryptographic link between a PDF and a derived extraction are still future work; therefore, this slice must not be described as automatic filing parsing.
+Phase 2B can still normalize a CSV directly as its own checksummed source. Phase 2C additionally supports linked normalization where an original PDF remains the cited evidence and the derived CSV has its own checksum in an extraction reference. Linked results remain blocked until their benchmark passes and a human accepts the extraction. See [PDF extraction lineage and review](PDF_EXTRACTION_LINEAGE.md).
 
 ## Required CSV columns
 
@@ -53,6 +53,8 @@ A separate JSON mapping set is scoped to one source organization and document ty
 
 `sign_multiplier` may only be `1` or `-1`. The raw value remains unchanged in lineage while the normalized observation receives the explicit sign transformation. Mapping confidence is not the same as source reliability or audit assurance.
 
+In a future Phase 2 slice, an LLM may generate a candidate mapping set and candidate aggregation rules for unfamiliar terminology. The candidate must use the same strict schema and retain its model/prompt provenance. It is not an approved mapping merely because the model reports high confidence. Deterministic checks must confirm that every input row exists at the cited locator, periods/units/bases agree, no source row is consumed twice, and applicable statement reconciliations pass. The configured review policy then records acceptance, rejection, or required human review and issues a new approved mapping version.
+
 ## Workflow
 
 First ingest the permitted CSV using the Phase 2A `intake` command. Then normalize it using the generated local manifest and a reviewed mapping file:
@@ -73,4 +75,4 @@ Raw documents, manifests, and normalized outputs are local and ignored by Git. I
 
 ## Lineage retained for every fact
 
-Each normalized fact carries the raw document checksum, document and source IDs, original reported label and value, page/table/row/column locator, canonical metric, reporting period and basis, parser version, mapping version, mapping method, mapping confidence, and source reference. The batch also retains every rejected row as a structured issue.
+Each normalized fact carries the source-document checksum, document and source IDs, original reported label and value, page/table/row/column locator, canonical metric, reporting period and basis, parser version, mapping version, mapping method, mapping confidence, and source reference. Linked facts additionally carry the extraction ID, derived CSV document ID, and derived CSV checksum. The batch retains every rejected row as a structured issue and every review or benchmark restriction as an analysis blocker.

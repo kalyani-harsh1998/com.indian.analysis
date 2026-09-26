@@ -26,7 +26,7 @@ LocalFileDataSource -> Pydantic validation -> provenance/revision gate
 Phase 2A adds a separate evidence-intake path; it does not yet feed the financial engine:
 
 ```text
-manually supplied local document
+manually supplied source PDF
         |
         v
 SHA-256 + copy-only content-addressed raw store
@@ -38,11 +38,40 @@ immutable raw copy + append-only local manifest catalog
 independent checksum verification
         |
         v
+explicit ruled or aligned-coordinate extraction profile
+        |
+        v
+derived CSV checksum + benchmark + human review
+        |
+        v
+cryptographic PDF-to-CSV extraction link
+        |
+        v
 controlled CSV parser + versioned exact-label mapping
         |
         v
 normalized observations + field lineage + explicit issues
 ```
+
+The planned Phase 2D onboarding path adds a replaceable model adapter beside, not inside, the deterministic pipeline:
+
+```text
+PDF text/layout evidence -> LLM candidate profile/mappings/aggregations
+                                      |
+                                      v
+                        strict versioned proposal schema
+                                      |
+                                      v
+source locators -> deterministic extraction/parsing/reconciliation
+                                      |
+                                      v
+                         review policy or human review
+                                      |
+                                      v
+                       approved reusable configuration
+```
+
+The model reduces discovery and mapping effort for a new layout. Approved numbers still originate from source locations and deterministic transformations, never from model-generated arithmetic or unsupported narrative.
 
 ## Boundaries and dependency direction
 
@@ -69,7 +98,7 @@ Protocols are intentionally narrow and framework-neutral. Additional methods sho
 
 Each input observation has one or more source-reference IDs. The workflow rejects missing references and unknown IDs before calculation. Calculation and reconciliation results retain the input observation IDs and the union of their source references. Superseded observations remain stored but are excluded from current-period calculations.
 
-The fixture source is explicitly `synthetic`; its fictional values are not representations of Infosys or its peers. Phase 2A manifests retain checksums, publication/retrieval timestamps, document locators, parser version where relevant, and licensing classification. Phase 2B normalized facts additionally retain the original label/value, field locator, parser and mapping versions, mapping rationale/confidence, and the engine-compatible observation. A checksum proves byte identity, not accounting correctness, completeness, or rights to use a source.
+The fixture source is explicitly `synthetic`; its fictional values are not representations of Infosys or its peers. Phase 2A manifests retain checksums, publication/retrieval timestamps, document locators, parser version where relevant, and licensing classification. Phase 2B normalized facts retain the original label/value, field locator, parser and mapping versions, mapping rationale/confidence, and the engine-compatible observation. Phase 2C keeps original PDF evidence and its derived CSV as different immutable artifacts and records both checksums, extraction tool/profile, benchmark, pages, and human-review state. A checksum proves byte identity, not accounting correctness, completeness, or rights to use a source.
 
 ## Deterministic metric semantics
 
@@ -82,7 +111,7 @@ All values use `Decimal`. Missing, zero-denominator, or incomparable cases produ
 
 ## Deliberate omissions
 
-Role-specific agent implementations, live NSE/BSE adapters, PDF/HTML/OCR/XBRL extraction, automated normalization, databases, LLMs, forecasts, valuation, recommendations, charts, PowerPoint, API, and web UI are deferred. The controlled CSV bridge is not represented as automatic filing parsing. Adapter filenames are not created as empty promises. Banks, NBFCs, and insurers require separate future sector modules.
+Role-specific agent implementations, live NSE/BSE adapters, general PDF/HTML/OCR/XBRL extraction, automated profile selection, databases, runtime LLM integration, forecasts, valuation, recommendations, charts, PowerPoint, API, and web UI are deferred. The ruled and explicitly configured aligned profiles are not represented as general filing parsing. A future LLM may suggest document classes, profiles, semantic mappings, and aggregation rules, but deterministic extraction, normalization, reconciliation, provenance, and review gates remain authoritative. Adapter filenames are not created as empty promises. Banks, NBFCs, and insurers require separate future sector modules.
 
 The research blueprint's possible IT-services-plus-cement MVP is broader than this assignment. This slice uses only fictional IT-services-shaped records; cement becomes useful after ingestion and financial-statement foundations are proven.
 

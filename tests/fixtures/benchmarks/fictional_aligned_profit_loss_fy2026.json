@@ -1,0 +1,26 @@
+{
+  "benchmark_version": "fictional-aligned-fy2026-v1",
+  "required_match_rate": "1",
+  "expected_rows": [
+    {
+      "row_number": 1,
+      "reported_label": "Revenue from operations",
+      "raw_value": "1200"
+    },
+    {
+      "row_number": 2,
+      "reported_label": "Profit before tax",
+      "raw_value": "220"
+    },
+    {
+      "row_number": 3,
+      "reported_label": "Tax expense",
+      "raw_value": "55"
+    },
+    {
+      "row_number": 4,
+      "reported_label": "Profit for the year",
+      "raw_value": "165"
+    }
+  ]
+}

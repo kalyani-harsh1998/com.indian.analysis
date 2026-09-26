@@ -79,3 +79,59 @@ Automatic PDF or OCR extraction would combine several uncertain problems: docume
 - A human still prepares and reviews the controlled CSV and mapping configuration.
 - The CSV checksum identifies the normalized input; cryptographic PDF-to-extraction linkage remains future work.
 - Real-company mappings require CA review and benchmark comparison before analytical use.
+
+## ADR-004 — Separate source PDFs from benchmarked derived extractions
+
+**Status:** Accepted for the POC
+**Date:** 26 September 2026
+
+### Context
+
+A derived table is not the same evidence object as its source filing. Treating an extracted CSV as the source would hide parser risk and make it difficult to prove which PDF bytes, tool version, pages, and transformation produced a normalized fact.
+
+### Decision
+
+- Keep the original PDF and derived controlled CSV as separate immutable raw artifacts with separate manifests and SHA-256 checksums.
+- Bind them through a strict `DocumentExtractionLink` carrying tool/version, extraction-profile version, source pages, extraction time, benchmark, and review state.
+- Begin with text-based ruled-table and explicitly configured aligned-column profiles implemented with `pdfplumber`.
+- Benchmark exact label/value pairs against independently prepared golden rows.
+- Preserve unreviewed, rejected, and failed results, but block them from analysis readiness.
+- Require an accepted human review in addition to a passing benchmark.
+- Cite the original PDF source reference in normalized observations while retaining the derived CSV identity as adjacent extraction lineage.
+
+### Consequences
+
+- A normalized fact can be traced to both original evidence bytes and derived extraction bytes.
+- Parser upgrades or extraction-profile changes produce distinguishable, reproducible lineage.
+- The committed synthetic fixture proves the contract but says nothing about real-report accuracy.
+- Real annual reports require permitted benchmark corpora and independent accounting review.
+- General layouts, OCR, XBRL, multiple tables, and automated review remain future work.
+
+## ADR-005 — Hybrid interpretation with deterministic numerical authority
+
+**Status:** Accepted as the target architecture
+**Date:** 27 September 2026
+
+### Context
+
+Listed-company filings vary by format, layout, terminology, period presentation, and accounting detail. A single rigid parser will not generalize, while allowing a language model to directly create trusted numbers would introduce nondeterminism and unsupported values.
+
+### Decision
+
+- Route documents among replaceable deterministic extraction profiles rather than require one universal layout.
+- Treat extracted labels, values, units, periods, and coordinates as candidates until validation and review complete.
+- Use a future provider-neutral LLM adapter during first-time document onboarding to reduce manual configuration work.
+- Permit the adapter to suggest document classification, relevant pages, extraction profile/coordinates, table semantics, periods/units/basis, canonical metric mappings, and component aggregation rules.
+- Never allow an LLM suggestion to become numerical evidence without a source locator, deterministic parsing, validation, and the required review gate.
+- Keep number parsing, unit transformations, duplicate handling, period/basis checks, accounting reconciliation, and acceptance status in deterministic Python.
+- Preserve model/provider, model version, prompt/schema version, source evidence/locators, suggestion, rationale, confidence, validation results, and review decision when LLM assistance is introduced.
+- Persist accepted suggestions as versioned reusable configurations so compatible later filings can run deterministically; do not require repeated model interpretation when an approved profile applies.
+- Add no LLM or OpenAI runtime dependency during the current POC.
+
+### Consequences
+
+- Input handling can evolve across company layouts while canonical output remains strict.
+- First-time onboarding effort can fall substantially while ambiguous cases remain visible to a reviewer.
+- High-confidence structured filings may eventually pass automatically; ambiguous PDF/OCR cases remain reviewable candidates.
+- Model changes cannot silently change accepted historical facts.
+- Profile routing, LLM evaluation, privacy, cost, and provider selection remain future tested slices.
