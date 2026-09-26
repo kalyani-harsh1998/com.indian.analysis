@@ -4,13 +4,13 @@ A local-first, source-aware foundation for an agentic research platform covering
 
 ## Current status
 
-This repository is an early proof of concept. The implemented vertical slice only loads a clearly labelled synthetic IT-services dataset, validates it, calculates three deterministic metrics, and writes a structured analysis manifest. It does **not** scrape live sources, call an LLM, forecast, value securities, make recommendations, or generate presentations.
+This repository is an early proof of concept. The Phase 1 engine loads five years of clearly labelled synthetic IT-services statements, validates provenance and revisions, reconciles core statement equations, calculates documented historical metrics, and writes structured results with explicit failure states. It does **not** scrape live sources, call an LLM, forecast, value securities, make recommendations, or generate presentations.
 
 ## Architecture
 
 The package separates typed domain objects, replaceable source adapters, deterministic financial calculations, framework-neutral contracts, controlled workflows, and outputs. Numerical truth belongs in deterministic code; future agents may select and explain capabilities but must not become the source of financial calculations.
 
-See [project context](docs/PROJECT_CONTEXT.md), [POC architecture](docs/architecture/POC_ARCHITECTURE.md), and the [development roadmap](plans/DEVELOPMENT_ROADMAP.md).
+See [project context](docs/PROJECT_CONTEXT.md), [financial methodology](docs/methodology/FINANCIAL_METRICS.md), [POC architecture](docs/architecture/POC_ARCHITECTURE.md), and the [development roadmap](plans/DEVELOPMENT_ROADMAP.md).
 
 ## Repository structure
 
@@ -46,7 +46,7 @@ python -m pip install -e '.[dev]'
 python -m indian_company_analysis demo
 ```
 
-The demo writes `outputs/demo_analysis.json`. Override the paths with `--fixture` and `--output`.
+The demo writes `outputs/demo_analysis.json`. It includes reported and superseded observations, adjustments, calculation results, reconciliation results, and the run manifest. Override the paths with `--fixture` and `--output`.
 
 ## Validation
 

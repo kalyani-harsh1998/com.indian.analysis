@@ -8,16 +8,16 @@ Establish the smallest end-to-end path that proves typed, source-aware, determin
 synthetic JSON fixture
         |
         v
-LocalFileDataSource -> Pydantic validation -> provenance gate
+LocalFileDataSource -> Pydantic validation -> provenance/revision gate
         |                                      |
         +--------------------+-----------------+
                              v
                  CompanyAnalysisWorkflow
                              |
-                deterministic ratio functions
+       reconciliation + deterministic financial engine
                              |
                              v
-         AnalysisRunManifest + metric observations
+   manifest + calculations + reconciliation results
                              |
                              v
                     structured JSON output
@@ -46,17 +46,18 @@ Protocols are intentionally narrow and framework-neutral. Additional methods sho
 
 ## Provenance model
 
-Each input observation has one or more source-reference IDs. The workflow rejects missing references and unknown IDs before calculation. Derived observations retain the union of their input reference IDs, use `calculated` value classification, and preserve the synthetic source status in the manifest.
+Each input observation has one or more source-reference IDs. The workflow rejects missing references and unknown IDs before calculation. Calculation and reconciliation results retain the input observation IDs and the union of their source references. Superseded observations remain stored but are excluded from current-period calculations.
 
 The fixture source is explicitly `synthetic`; its fictional values are not representations of Infosys or its peers. Future raw sources should also include checksums, publication/retrieval timestamps, document locators, parser version, and licensing classification as those capabilities are implemented.
 
 ## Deterministic metric semantics
 
-- Revenue growth = `(current revenue / prior revenue) - 1`.
-- Operating margin = `operating profit / revenue`.
-- CFO-to-PAT conversion = `cash flow from operations / profit after tax`.
+- Canonical definitions and sign conventions are versioned in `domain/metrics.py`.
+- Formula policy is documented in `docs/methodology/FINANCIAL_METRICS.md`.
+- Calculations expose success, missing-input, zero-denominator, incomparable-input, and not-applicable states.
+- Statement checks expose differences and tolerance without changing source facts.
 
-All values use `Decimal`. A missing operand or zero denominator returns `None`; it is never converted to zero or infinity. The workflow omits an unavailable calculated observation rather than fabricating a value.
+All values use `Decimal`. Missing, zero-denominator, or incomparable cases produce explicit result records; they are never converted to zero, infinity, or fabricated values.
 
 ## Deliberate omissions
 

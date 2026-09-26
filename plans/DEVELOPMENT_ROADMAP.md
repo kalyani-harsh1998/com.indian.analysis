@@ -13,6 +13,8 @@ Each phase ends at a validation gate. Later phases may be replanned as open deci
 
 ## Phase 1 — Local deterministic financial-analysis engine
 
+**Implementation status:** Engineering baseline implemented on synthetic data; independent CA review and real-company mapping validation remain open.
+
 - **Objectives:** define canonical non-financial metrics and reconciled historical calculations.
 - **Deliverables:** statement/metric dictionaries, period and basis handling, ratio and cash-flow modules, adjustment records, and formula documentation.
 - **Validation criteria:** CA-reviewed formulas; golden datasets; statement reconciliation; edge-case and restatement tests.
