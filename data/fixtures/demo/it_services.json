@@ -1,0 +1,188 @@
+{
+  "dataset_name": "Fictional Indian IT-services peer demo",
+  "dataset_version": "1.0.0",
+  "analysis_as_of_date": "2026-04-30",
+  "primary_company_id": "demo_info",
+  "peer_company_ids": ["demo_alpha", "demo_beta", "demo_gamma", "demo_delta"],
+  "companies": [
+    {"company_id": "demo_info", "legal_name": "Demo Infotech Limited", "nse_symbol": "DEMOINFO"},
+    {"company_id": "demo_alpha", "legal_name": "Demo Alpha Services Limited", "nse_symbol": "DEMOALPHA"},
+    {"company_id": "demo_beta", "legal_name": "Demo Beta Technologies Limited", "nse_symbol": "DEMOBETA"},
+    {"company_id": "demo_gamma", "legal_name": "Demo Gamma Systems Limited", "nse_symbol": "DEMOGAMMA"},
+    {"company_id": "demo_delta", "legal_name": "Demo Delta Digital Limited", "nse_symbol": "DEMODELTA"}
+  ],
+  "source_references": [
+    {
+      "source_id": "synthetic_demo_fixture",
+      "source_kind": "synthetic",
+      "source_organization": "Indian Company Analysis POC",
+      "source_document": "Fictional IT-services demonstration fixture",
+      "locator": "data/fixtures/demo/it_services.json",
+      "retrieval_timestamp": "2026-04-30T12:00:00Z",
+      "publication_date": "2026-04-30",
+      "parser_version": "local-json-v1",
+      "is_synthetic": true
+    }
+  ],
+  "observations": [
+    {
+      "observation_id": "demo_info:revenue:fy2025",
+      "company_id": "demo_info", "metric_id": "revenue", "value": "1000", "unit": "INR million",
+      "period": {"label": "FY2025", "period_type": "annual", "start_date": "2024-04-01", "end_date": "2025-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported",
+      "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_info:revenue:fy2026",
+      "company_id": "demo_info", "metric_id": "revenue", "value": "1120", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported",
+      "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_info:operating_profit:fy2026",
+      "company_id": "demo_info", "metric_id": "operating_profit", "value": "240", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported",
+      "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_info:cfo:fy2026",
+      "company_id": "demo_info", "metric_id": "cash_flow_from_operations", "value": "180", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported",
+      "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_info:pat:fy2026",
+      "company_id": "demo_info", "metric_id": "profit_after_tax", "value": "150", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported",
+      "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+
+    {
+      "observation_id": "demo_alpha:revenue:fy2025",
+      "company_id": "demo_alpha", "metric_id": "revenue", "value": "1800", "unit": "INR million",
+      "period": {"label": "FY2025", "period_type": "annual", "start_date": "2024-04-01", "end_date": "2025-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_alpha:revenue:fy2026",
+      "company_id": "demo_alpha", "metric_id": "revenue", "value": "1944", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_alpha:operating_profit:fy2026",
+      "company_id": "demo_alpha", "metric_id": "operating_profit", "value": "486", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_alpha:cfo:fy2026",
+      "company_id": "demo_alpha", "metric_id": "cash_flow_from_operations", "value": "390", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_alpha:pat:fy2026",
+      "company_id": "demo_alpha", "metric_id": "profit_after_tax", "value": "360", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+
+    {
+      "observation_id": "demo_beta:revenue:fy2025",
+      "company_id": "demo_beta", "metric_id": "revenue", "value": "900", "unit": "INR million",
+      "period": {"label": "FY2025", "period_type": "annual", "start_date": "2024-04-01", "end_date": "2025-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_beta:revenue:fy2026",
+      "company_id": "demo_beta", "metric_id": "revenue", "value": "990", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_beta:operating_profit:fy2026",
+      "company_id": "demo_beta", "metric_id": "operating_profit", "value": "198", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_beta:cfo:fy2026",
+      "company_id": "demo_beta", "metric_id": "cash_flow_from_operations", "value": "122", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_beta:pat:fy2026",
+      "company_id": "demo_beta", "metric_id": "profit_after_tax", "value": "110", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+
+    {
+      "observation_id": "demo_gamma:revenue:fy2025",
+      "company_id": "demo_gamma", "metric_id": "revenue", "value": "750", "unit": "INR million",
+      "period": {"label": "FY2025", "period_type": "annual", "start_date": "2024-04-01", "end_date": "2025-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_gamma:revenue:fy2026",
+      "company_id": "demo_gamma", "metric_id": "revenue", "value": "780", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_gamma:operating_profit:fy2026",
+      "company_id": "demo_gamma", "metric_id": "operating_profit", "value": "125", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_gamma:cfo:fy2026",
+      "company_id": "demo_gamma", "metric_id": "cash_flow_from_operations", "value": "84", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_gamma:pat:fy2026",
+      "company_id": "demo_gamma", "metric_id": "profit_after_tax", "value": "90", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+
+    {
+      "observation_id": "demo_delta:revenue:fy2025",
+      "company_id": "demo_delta", "metric_id": "revenue", "value": "600", "unit": "INR million",
+      "period": {"label": "FY2025", "period_type": "annual", "start_date": "2024-04-01", "end_date": "2025-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_delta:revenue:fy2026",
+      "company_id": "demo_delta", "metric_id": "revenue", "value": "690", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_delta:operating_profit:fy2026",
+      "company_id": "demo_delta", "metric_id": "operating_profit", "value": "117.3", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_delta:cfo:fy2026",
+      "company_id": "demo_delta", "metric_id": "cash_flow_from_operations", "value": "99", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    },
+    {
+      "observation_id": "demo_delta:pat:fy2026",
+      "company_id": "demo_delta", "metric_id": "profit_after_tax", "value": "90", "unit": "INR million",
+      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+    }
+  ]
+}
