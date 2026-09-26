@@ -57,16 +57,20 @@ Before human review, the validator rejects proposals that:
 
 Model confidence never bypasses these checks and never counts as approval.
 
-## Human approval and current aggregation limit
+## Human approval and deterministic aggregation
 
 `approve_onboarding_proposal` reruns deterministic validation before creating a reviewed configuration. The configuration preserves the model run, reviewer, review timestamp, approval-policy version, direct mapping set, exclusions, and approved aggregation semantics.
 
-Direct one-to-one mappings can feed the existing controlled normalization pipeline. Approved many-to-one aggregation rules are deliberately retained with the blocker `deterministic aggregation execution is not implemented`. This prevents a reviewed semantic suggestion from being mistaken for an executable or analysis-ready calculation.
+Direct one-to-one mappings can feed the existing controlled normalization pipeline. Approved many-to-one rules can now be executed by `execute_approved_aggregations` when every component shares the approved request's company, source document, unit, period, and reporting basis.
+
+The first aggregation contract is deliberately narrow: two or more approved component rows are combined with coefficients restricted to `1` or `-1`. Each result preserves the raw and parsed component values, coefficient, contribution, page/table/row/column locator, rule and configuration versions, source checksum/reference, model proposal, and human-review metadata. The output observation is classified as `calculated`, not `reported`, because deterministic code constructed it from reported components.
+
+Execution fails explicitly when a component is missing, its approved evidence snapshot has changed, its number is invalid or ambiguous, a row is reused, a canonical target is duplicated, or the request's document/company/source/unit/period/basis differs from the approved configuration. The resulting observation can enter the existing statement reconciliation checks; the synthetic tax example verifies that profit before tax less aggregated tax expense equals profit after tax.
 
 ## Deferred work
 
-- deterministic aggregation execution with component-level calculation lineage;
-- accounting reconciliation of aggregated results;
+- integration of approved direct mappings and aggregated facts into one persisted normalization batch;
+- additional aggregation operators only when a reviewed accounting use case requires them;
 - CLI persistence, review queue, rejection records, and configuration catalog;
 - real provider selection and adapter implementation;
 - structured-output retries and provider error handling;

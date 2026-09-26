@@ -14,6 +14,8 @@ def build_onboarding_request(
     extraction: PdfTableExtractionResult,
     *,
     request_id: str,
+    company_id: str,
+    source_reference_id: str,
     source_organization: str,
     document_type: DocumentType,
 ) -> DocumentOnboardingRequest:
@@ -26,6 +28,8 @@ def build_onboarding_request(
     return DocumentOnboardingRequest(
         request_id=request_id,
         document_id=extraction.source_document_id,
+        company_id=company_id,
+        source_reference_id=source_reference_id,
         source_checksum_sha256=extraction.source_checksum_sha256,
         source_organization=source_organization,
         document_type=document_type,

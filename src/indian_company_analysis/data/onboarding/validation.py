@@ -171,6 +171,12 @@ def _validate_identity(
     identity_fields = (
         ("request_id", request.request_id, proposal.request_id),
         ("document_id", request.document_id, proposal.document_id),
+        ("company_id", request.company_id, proposal.company_id),
+        (
+            "source_reference_id",
+            request.source_reference_id,
+            proposal.source_reference_id,
+        ),
         (
             "source_checksum_sha256",
             request.source_checksum_sha256,

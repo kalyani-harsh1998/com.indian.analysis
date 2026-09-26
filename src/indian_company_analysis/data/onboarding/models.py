@@ -34,6 +34,8 @@ class DocumentOnboardingRequest(DomainModel):
 
     request_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
     document_id: str = Field(min_length=1)
+    company_id: str = Field(min_length=1)
+    source_reference_id: str = Field(min_length=1)
     source_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_organization: str = Field(min_length=1)
     document_type: DocumentType
@@ -140,6 +142,8 @@ class DocumentOnboardingProposal(DomainModel):
     proposal_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
     request_id: str = Field(min_length=1)
     document_id: str = Field(min_length=1)
+    company_id: str = Field(min_length=1)
+    source_reference_id: str = Field(min_length=1)
     source_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_organization: str = Field(min_length=1)
     document_type: DocumentType
@@ -187,13 +191,63 @@ class ProposalValidationResult(DomainModel):
         return self
 
 
+class ApprovedDirectMapping(DomainModel):
+    """Human-approved direct mapping with its exact evidence snapshot."""
+
+    candidate_id: str = Field(min_length=1)
+    evidence_id: str = Field(min_length=1)
+    source_locator: SourceFactLocator
+    reported_label: str = Field(min_length=1)
+    raw_value: str = Field(min_length=1)
+    metric_id: MetricId
+    sign_multiplier: Decimal
+    confidence: ConfidenceLevel
+    rationale: str = Field(min_length=1)
+    source_proposal_id: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def multiplier_is_sign_only(self) -> ApprovedDirectMapping:
+        if self.sign_multiplier not in (Decimal("-1"), Decimal("1")):
+            raise ValueError("sign_multiplier must be either -1 or 1")
+        return self
+
+
+class ApprovedAggregationComponent(DomainModel):
+    """Approved aggregation input with a frozen copy of its source evidence."""
+
+    evidence_id: str = Field(min_length=1)
+    source_locator: SourceFactLocator
+    reported_label: str = Field(min_length=1)
+    raw_value: str = Field(min_length=1)
+    coefficient: Decimal
+
+    @model_validator(mode="after")
+    def coefficient_is_sign_only(self) -> ApprovedAggregationComponent:
+        if self.coefficient not in (Decimal("-1"), Decimal("1")):
+            raise ValueError("aggregation coefficient must be either -1 or 1")
+        return self
+
+
 class ApprovedAggregationRule(DomainModel):
-    """Human-approved aggregation semantics awaiting deterministic execution."""
+    """Human-approved aggregation semantics and source-row evidence."""
 
     rule_id: str = Field(min_length=1)
     rule_version: str = Field(min_length=1)
     metric_id: MetricId
-    components: tuple[MetricAggregationComponent, ...] = Field(min_length=2)
+    components: tuple[ApprovedAggregationComponent, ...] = Field(min_length=2)
+    confidence: ConfidenceLevel
+    rationale: str = Field(min_length=1)
+    source_proposal_id: str = Field(min_length=1)
+
+
+class ApprovedExclusion(DomainModel):
+    """Human-approved decision not to map one source row."""
+
+    evidence_id: str = Field(min_length=1)
+    source_locator: SourceFactLocator
+    reported_label: str = Field(min_length=1)
+    raw_value: str = Field(min_length=1)
+    confidence: ConfidenceLevel
     rationale: str = Field(min_length=1)
     source_proposal_id: str = Field(min_length=1)
 
@@ -205,11 +259,19 @@ class ApprovedOnboardingConfiguration(DomainModel):
     request_id: str = Field(min_length=1)
     proposal_id: str = Field(min_length=1)
     document_id: str = Field(min_length=1)
+    company_id: str = Field(min_length=1)
+    source_reference_id: str = Field(min_length=1)
     source_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    source_organization: str = Field(min_length=1)
+    document_type: DocumentType
+    unit: str = Field(min_length=1)
+    period: ReportingPeriod
+    reporting_basis: ReportingBasis
     model_run: ModelRunProvenance
     mapping_set: MetricMappingSet | None
+    direct_mappings: tuple[ApprovedDirectMapping, ...]
     aggregation_rules: tuple[ApprovedAggregationRule, ...]
-    excluded_evidence_ids: tuple[str, ...]
+    exclusions: tuple[ApprovedExclusion, ...]
     reviewed_by: str = Field(min_length=1)
     reviewed_at: datetime
     approval_policy_version: str = Field(min_length=1)
@@ -222,4 +284,51 @@ class ApprovedOnboardingConfiguration(DomainModel):
             raise ValueError("review timestamp must include a timezone")
         if self.ready_for_normalization != (not self.normalization_blockers):
             raise ValueError("ready_for_normalization requires no normalization blockers")
+        if (self.mapping_set is None) != (not self.direct_mappings):
+            raise ValueError("mapping_set must exist exactly when direct mappings exist")
+        if self.mapping_set is not None:
+            if self.mapping_set.source_organization != self.source_organization:
+                raise ValueError("mapping set source organization must match the configuration")
+            if self.mapping_set.document_type is not self.document_type:
+                raise ValueError("mapping set document type must match the configuration")
+            if len(self.mapping_set.mappings) != len(self.direct_mappings):
+                raise ValueError("mapping set must retain every approved direct mapping")
+            for mapping, approved in zip(
+                self.mapping_set.mappings, self.direct_mappings, strict=True
+            ):
+                if (
+                    mapping.reported_label != approved.reported_label
+                    or mapping.metric_id is not approved.metric_id
+                    or mapping.sign_multiplier != approved.sign_multiplier
+                    or mapping.confidence is not approved.confidence
+                    or mapping.rationale != approved.rationale
+                ):
+                    raise ValueError("mapping set differs from approved direct mapping evidence")
+
+        evidence_ids = [mapping.evidence_id for mapping in self.direct_mappings]
+        for rule in self.aggregation_rules:
+            evidence_ids.extend(component.evidence_id for component in rule.components)
+        evidence_ids.extend(exclusion.evidence_id for exclusion in self.exclusions)
+        if len(evidence_ids) != len(set(evidence_ids)):
+            raise ValueError("approved configuration reuses source evidence")
+
+        metric_ids = [mapping.metric_id for mapping in self.direct_mappings]
+        metric_ids.extend(rule.metric_id for rule in self.aggregation_rules)
+        if len(metric_ids) != len(set(metric_ids)):
+            raise ValueError("approved configuration contains duplicate canonical metrics")
+        if not metric_ids:
+            raise ValueError("approved configuration requires a mapping or aggregation rule")
+
+        decision_ids = [mapping.candidate_id for mapping in self.direct_mappings]
+        decision_ids.extend(rule.rule_id for rule in self.aggregation_rules)
+        if len(decision_ids) != len(set(decision_ids)):
+            raise ValueError("approved configuration contains duplicate decision IDs")
+
+        proposal_ids = {
+            *(mapping.source_proposal_id for mapping in self.direct_mappings),
+            *(rule.source_proposal_id for rule in self.aggregation_rules),
+            *(exclusion.source_proposal_id for exclusion in self.exclusions),
+        }
+        if proposal_ids != {self.proposal_id}:
+            raise ValueError("all approved decisions must reference the configuration proposal")
         return self

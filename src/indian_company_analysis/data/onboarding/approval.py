@@ -9,7 +9,10 @@ from indian_company_analysis.data.normalization.models import (
     MetricMappingSet,
 )
 from indian_company_analysis.data.onboarding.models import (
+    ApprovedAggregationComponent,
     ApprovedAggregationRule,
+    ApprovedDirectMapping,
+    ApprovedExclusion,
     ApprovedOnboardingConfiguration,
     DocumentOnboardingProposal,
     DocumentOnboardingRequest,
@@ -34,6 +37,7 @@ def approve_onboarding_proposal(
         codes = ", ".join(issue.code for issue in validation.issues)
         raise ValueError(f"onboarding proposal is not ready for review: {codes}")
 
+    evidence_by_id = {row.evidence_id: row for row in request.evidence_rows}
     mapping_set = None
     if proposal.mappings:
         mapping_set = MetricMappingSet(
@@ -52,36 +56,76 @@ def approve_onboarding_proposal(
             ),
         )
 
+    direct_mappings = tuple(
+        ApprovedDirectMapping(
+            candidate_id=candidate.candidate_id,
+            evidence_id=candidate.evidence_id,
+            source_locator=evidence_by_id[candidate.evidence_id].source_locator,
+            reported_label=evidence_by_id[candidate.evidence_id].reported_label,
+            raw_value=evidence_by_id[candidate.evidence_id].raw_value,
+            metric_id=candidate.metric_id,
+            sign_multiplier=candidate.sign_multiplier,
+            confidence=candidate.confidence,
+            rationale=candidate.rationale,
+            source_proposal_id=proposal.proposal_id,
+        )
+        for candidate in proposal.mappings
+    )
     aggregation_rules = tuple(
         ApprovedAggregationRule(
             rule_id=candidate.candidate_id,
             rule_version=aggregation_rule_version,
             metric_id=candidate.metric_id,
-            components=candidate.components,
+            components=tuple(
+                ApprovedAggregationComponent(
+                    evidence_id=component.evidence_id,
+                    source_locator=evidence_by_id[component.evidence_id].source_locator,
+                    reported_label=evidence_by_id[component.evidence_id].reported_label,
+                    raw_value=evidence_by_id[component.evidence_id].raw_value,
+                    coefficient=component.coefficient,
+                )
+                for component in candidate.components
+            ),
+            confidence=candidate.confidence,
             rationale=candidate.rationale,
             source_proposal_id=proposal.proposal_id,
         )
         for candidate in proposal.aggregations
     )
-    blockers: list[str] = []
-    if mapping_set is None:
-        blockers.append("current normalization requires at least one direct mapping")
-    if aggregation_rules:
-        blockers.append("deterministic aggregation execution is not implemented")
+    exclusions = tuple(
+        ApprovedExclusion(
+            evidence_id=candidate.evidence_id,
+            source_locator=evidence_by_id[candidate.evidence_id].source_locator,
+            reported_label=evidence_by_id[candidate.evidence_id].reported_label,
+            raw_value=evidence_by_id[candidate.evidence_id].raw_value,
+            confidence=candidate.confidence,
+            rationale=candidate.rationale,
+            source_proposal_id=proposal.proposal_id,
+        )
+        for candidate in proposal.exclusions
+    )
 
     return ApprovedOnboardingConfiguration(
         configuration_version=configuration_version,
         request_id=request.request_id,
         proposal_id=proposal.proposal_id,
         document_id=request.document_id,
+        company_id=request.company_id,
+        source_reference_id=request.source_reference_id,
         source_checksum_sha256=request.source_checksum_sha256,
+        source_organization=request.source_organization,
+        document_type=request.document_type,
+        unit=request.unit,
+        period=request.period,
+        reporting_basis=request.reporting_basis,
         model_run=proposal.model_run,
         mapping_set=mapping_set,
+        direct_mappings=direct_mappings,
         aggregation_rules=aggregation_rules,
-        excluded_evidence_ids=tuple(exclusion.evidence_id for exclusion in proposal.exclusions),
+        exclusions=exclusions,
         reviewed_by=reviewed_by,
         reviewed_at=reviewed_at,
         approval_policy_version=approval_policy_version,
-        normalization_blockers=tuple(blockers),
-        ready_for_normalization=not blockers,
+        normalization_blockers=(),
+        ready_for_normalization=True,
     )

@@ -58,6 +58,8 @@ def _request() -> DocumentOnboardingRequest:
     return DocumentOnboardingRequest(
         request_id="fictionalco-fy2026-onboarding-v1",
         document_id="fictionalco-fy2026-annual-report",
+        company_id="fictionalco",
+        source_reference_id="source-fictionalco-fy2026",
         source_checksum_sha256="a" * 64,
         source_organization="Fictional Co Limited",
         document_type=DocumentType.ANNUAL_REPORT,
@@ -94,6 +96,8 @@ def _proposal() -> DocumentOnboardingProposal:
         proposal_id="fictionalco-fy2026-proposal-v1",
         request_id="fictionalco-fy2026-onboarding-v1",
         document_id="fictionalco-fy2026-annual-report",
+        company_id="fictionalco",
+        source_reference_id="source-fictionalco-fy2026",
         source_checksum_sha256="a" * 64,
         source_organization="Fictional Co Limited",
         document_type=DocumentType.ANNUAL_REPORT,
@@ -177,11 +181,15 @@ def test_request_builder_preserves_extraction_identity_and_locator() -> None:
     request = build_onboarding_request(
         extraction,
         request_id="fictionalco-fy2026-onboarding-v1",
+        company_id="fictionalco",
+        source_reference_id="source-fictionalco-fy2026",
         source_organization="Fictional Co Limited",
         document_type=DocumentType.ANNUAL_REPORT,
     )
 
     assert request.source_checksum_sha256 == extraction.source_checksum_sha256
+    assert request.company_id == "fictionalco"
+    assert request.source_reference_id == "source-fictionalco-fy2026"
     assert request.evidence_rows[0].evidence_id == "row-287-1"
     assert request.evidence_rows[0].source_locator.page_number == 287
     assert request.evidence_rows[0].raw_value == "1,78,650"
@@ -197,7 +205,7 @@ def test_valid_proposal_accounts_for_every_source_row() -> None:
     assert not result.issues
 
 
-def test_review_preserves_model_lineage_but_blocks_unimplemented_aggregation() -> None:
+def test_review_preserves_model_and_source_evidence_lineage() -> None:
     configuration = approve_onboarding_proposal(
         _request(),
         _proposal(),
@@ -210,12 +218,14 @@ def test_review_preserves_model_lineage_but_blocks_unimplemented_aggregation() -
 
     assert configuration.mapping_set is not None
     assert configuration.mapping_set.mappings[0].metric_id is MetricId.REVENUE
+    assert configuration.direct_mappings[0].evidence_id == "row-1"
+    assert configuration.direct_mappings[0].raw_value == "1,78,650"
     assert configuration.model_run.prompt_version == "onboarding-prompt-v1"
     assert configuration.aggregation_rules[0].metric_id is MetricId.TAX_EXPENSE
-    assert configuration.ready_for_normalization is False
-    assert configuration.normalization_blockers == (
-        "deterministic aggregation execution is not implemented",
-    )
+    assert configuration.aggregation_rules[0].components[0].reported_label == "Current tax"
+    assert configuration.exclusions[0].evidence_id == "row-4"
+    assert configuration.ready_for_normalization is True
+    assert not configuration.normalization_blockers
 
 
 def test_direct_mapping_only_configuration_can_enter_current_normalization() -> None:

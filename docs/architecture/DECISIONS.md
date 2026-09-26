@@ -162,3 +162,31 @@ The hybrid target needs a concrete boundary before any live model is connected. 
 - High model confidence cannot bypass evidence validation or human approval.
 - Every extracted row receives an explicit disposition, making omissions and double counting visible.
 - The current slice does not discover statement pages or coordinates, call an LLM, execute aggregations, persist configurations, or automate approval.
+- ADR-007 subsequently adds deterministic execution for the reviewed signed-sum aggregation subset.
+
+## ADR-007 — Execute approved component aggregations as calculated facts
+
+**Status:** Accepted for the POC
+**Date:** 27 September 2026
+
+### Context
+
+Real statements may present one canonical metric as several rows. Treating only one component as the metric would be incomplete, while embedding issuer labels or arithmetic in Python would not generalize. A reviewed semantic rule needs deterministic execution without converting model output into numerical evidence.
+
+### Decision
+
+- Freeze the exact locator, label, raw value, and evidence ID for every approved direct mapping, aggregation component, and exclusion.
+- Support an initial generic signed-sum rule whose component coefficients are limited to `1` and `-1`.
+- Reconfirm request, company, source reference, checksum, organization, document type, unit, period, and reporting basis before execution.
+- Parse each component with the deterministic reported-number parser and retain its parsed value, coefficient, and contribution.
+- Reject missing or changed evidence, invalid numbers, duplicate evidence use, duplicate targets, and contextual mismatches explicitly.
+- Classify aggregate observations as `calculated`, retain source/proposal/rule/configuration/reviewer lineage, and make them compatible with existing statement reconciliation.
+- Keep broader aggregation operators and the combined persisted normalization workflow out of this slice.
+
+### Consequences
+
+- Company-specific labels and component combinations remain versioned configuration rather than Python branches.
+- Reviewed aggregation semantics can now produce reproducible canonical facts without model arithmetic.
+- Component-level lineage makes signs, omissions, and double counting independently inspectable.
+- A synthetic current-tax plus deferred-tax result passes the existing PBT-to-PAT reconciliation.
+- Real-company aggregation rules and expected values still require independent accounting review.
