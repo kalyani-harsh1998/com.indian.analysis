@@ -135,3 +135,30 @@ Listed-company filings vary by format, layout, terminology, period presentation,
 - High-confidence structured filings may eventually pass automatically; ambiguous PDF/OCR cases remain reviewable candidates.
 - Model changes cannot silently change accepted historical facts.
 - Profile routing, LLM evaluation, privacy, cost, and provider selection remain future tested slices.
+
+## ADR-006 — Treat model onboarding output as a reviewed proposal artifact
+
+**Status:** Accepted for the POC foundation
+**Date:** 27 September 2026
+
+### Context
+
+The hybrid target needs a concrete boundary before any live model is connected. Model output must not bypass evidence identity, silently omit inconvenient rows, reuse a source value in multiple facts, or become an executable aggregation merely because it is expressed confidently.
+
+### Decision
+
+- Build a checksummed onboarding request only from a review-ready deterministic extraction.
+- Give every source row a stable evidence ID plus its page/table/row/column locator and raw label/value.
+- Require a provider-neutral proposal to classify every row as a direct mapping, aggregation component, or explicit exclusion.
+- Reject unknown evidence, changed labels, duplicate row use, duplicate canonical targets, unaccounted rows, source-identity mismatches, and direct mappings to derived metrics.
+- Preserve provider/model, prompt/schema, generation-time, candidate rationale/confidence, source checksum, reviewer, review time, and approval-policy versions.
+- Rerun deterministic validation inside the human-approval operation rather than trust a supplied validation result.
+- Permit reviewed direct mappings to produce the existing mapping set, but retain approved aggregation semantics behind an explicit blocker until deterministic aggregation execution exists.
+- Use a static provider for tests; add no network or model dependency in this slice.
+
+### Consequences
+
+- A future provider can reduce semantic setup work without changing the acceptance boundary.
+- High model confidence cannot bypass evidence validation or human approval.
+- Every extracted row receives an explicit disposition, making omissions and double counting visible.
+- The current slice does not discover statement pages or coordinates, call an LLM, execute aggregations, persist configurations, or automate approval.

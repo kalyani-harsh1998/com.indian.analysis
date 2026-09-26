@@ -33,17 +33,20 @@ Each phase ends at a validation gate. Later phases may be replanned as open deci
 
 **Current implementation — Phases 2A–2C:** local intake copies a manually supplied, permitted file into checksum-addressed raw storage and registers provenance and licence metadata. Controlled CSV normalization produces canonical observations through source-specific, versioned exact-label mappings. Synthetic benchmarks cover ruled and borderless aligned statements; separate PDF/CSV checksums, exact-row benchmarks, and accepted human review are required. A local Infosys FY2026 page test matched 19/19 manually checked candidates and validated Indian number parsing, but is not a general accuracy benchmark. General profile routing, semantic/aggregation review, OCR/XBRL extraction, adapter retrieval, revision handling, and conflict resolution remain later Phase 2 slices.
 
-### Planned Phase 2D — LLM-assisted document onboarding
+### Phase 2D — LLM-assisted document onboarding
+
+**Implementation status:** Provider-neutral foundation implemented; live model integration, aggregation execution, evaluation, and review tooling remain open.
 
 - **Objective:** reduce first-time setup work for new companies and filing layouts without making a model the numerical authority.
 - **LLM responsibilities:** propose document/statement classification, relevant pages, extraction profile and coordinates, period/unit/basis interpretation, canonical metric mappings, and component aggregation candidates.
 - **Deterministic responsibilities:** re-extract values from cited locations, parse numbers, apply units/signs, enforce period and basis consistency, prevent duplicate row use, execute aggregation rules, reconcile statements, and decide readiness under an explicit review policy.
 - **Provenance:** retain document checksum, evidence locators, provider/model/version, prompt and schema versions, candidate output, rationale/confidence, validation outcomes, review decision, and approved configuration version.
-- **Deliverables:** provider-neutral model protocol, strict proposal schemas, deterministic fake adapter for tests, candidate-to-approved configuration workflow, aggregation lineage, evaluation corpus, and review queue or CLI.
+- **Implemented deliverables:** provider-neutral proposal protocol, strict checksummed request/proposal schemas, deterministic static adapter, extracted-row request builder, candidate validation, explicit exclusions, human approval record, and versioned direct mapping configuration.
+- **Remaining deliverables:** deterministic aggregation execution and lineage, configuration catalog, evaluation corpus, review queue or CLI, real provider adapter, and profile-discovery proposals.
 - **Validation criteria:** benchmark mapping/profile proposal accuracy and abstention; reject malformed, unsupported, duplicated, or unreconciled candidates; replay approved configurations deterministically; measure cost and latency without weakening evidence gates.
 - **Dependencies:** approved privacy/provider policy, representative permitted filings, CA-reviewed golden mappings and aggregations, and the Phase 2C lineage contract.
 - **Risks:** hallucinated locators, semantic overconfidence, prompt injection in filings, data disclosure, model drift, cost, latency, and false automation confidence.
-- **POC sequencing:** first implement the provider-neutral schemas, fake adapter, validation, and audit trail. Connect a real LLM only after the evaluation and privacy gates are agreed; the current POC does not add an OpenAI API dependency.
+- **POC sequencing:** implement aggregation execution and the evaluation/audit workflow before connecting a live model. Connect a real LLM only after the evaluation and privacy gates are agreed; the current POC does not add an OpenAI API dependency.
 
 ## Phase 3 — Peer selection and sector rules
 

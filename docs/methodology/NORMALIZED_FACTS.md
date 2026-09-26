@@ -53,7 +53,7 @@ A separate JSON mapping set is scoped to one source organization and document ty
 
 `sign_multiplier` may only be `1` or `-1`. The raw value remains unchanged in lineage while the normalized observation receives the explicit sign transformation. Mapping confidence is not the same as source reliability or audit assurance.
 
-In a future Phase 2 slice, an LLM may generate a candidate mapping set and candidate aggregation rules for unfamiliar terminology. The candidate must use the same strict schema and retain its model/prompt provenance. It is not an approved mapping merely because the model reports high confidence. Deterministic checks must confirm that every input row exists at the cited locator, periods/units/bases agree, no source row is consumed twice, and applicable statement reconciliations pass. The configured review policy then records acceptance, rejection, or required human review and issues a new approved mapping version.
+Phase 2D now defines a provider-neutral proposal schema through which a future LLM may suggest a mapping set and aggregation rules for unfamiliar terminology. It retains model/prompt provenance, validates every evidence reference, requires every row to be mapped, aggregated, or explicitly excluded, prevents duplicate row use, and records human approval. It is not an approved mapping merely because the model reports high confidence. Direct approved mappings can produce the existing `MetricMappingSet`; aggregation proposals remain blocked until deterministic execution and reconciliation lineage are implemented. See [model-assisted document onboarding](MODEL_ASSISTED_ONBOARDING.md).
 
 ## Workflow
 

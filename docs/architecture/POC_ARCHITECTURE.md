@@ -53,7 +53,7 @@ controlled CSV parser + versioned exact-label mapping
 normalized observations + field lineage + explicit issues
 ```
 
-The planned Phase 2D onboarding path adds a replaceable model adapter beside, not inside, the deterministic pipeline:
+The Phase 2D foundation adds a replaceable proposal adapter beside, not inside, the deterministic pipeline:
 
 ```text
 PDF text/layout evidence -> LLM candidate profile/mappings/aggregations
@@ -71,7 +71,7 @@ source locators -> deterministic extraction/parsing/reconciliation
                        approved reusable configuration
 ```
 
-The model reduces discovery and mapping effort for a new layout. Approved numbers still originate from source locations and deterministic transformations, never from model-generated arithmetic or unsupported narrative.
+The current static adapter and strict schemas prove this boundary without calling a model. A future live model can reduce discovery and mapping effort for a new layout. Approved numbers still originate from source locations and deterministic transformations, never from model-generated arithmetic or unsupported narrative. Approved aggregation semantics remain blocked until deterministic execution is implemented.
 
 ## Boundaries and dependency direction
 
