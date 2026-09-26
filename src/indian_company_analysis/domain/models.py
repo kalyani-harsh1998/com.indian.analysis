@@ -9,13 +9,18 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from indian_company_analysis.domain.enums import (
     AnalysisMode,
+    CalculationStatus,
     ConfidenceLevel,
     PeriodType,
+    ReconciliationStatus,
+    ReconciliationType,
     ReportingBasis,
+    RestatementStatus,
     ScenarioName,
     SourceKind,
     ValueClassification,
 )
+from indian_company_analysis.domain.metrics import MetricId
 
 
 class DomainModel(BaseModel):
@@ -80,13 +85,79 @@ class SourceReference(DomainModel):
 class MetricObservation(DomainModel):
     observation_id: str = Field(min_length=1)
     company_id: str = Field(min_length=1)
-    metric_id: str = Field(min_length=1)
+    metric_id: MetricId
     value: Decimal
     unit: str = Field(min_length=1)
     period: ReportingPeriod
     reporting_basis: ReportingBasis
     value_classification: ValueClassification
     source_reference_ids: tuple[str, ...] = Field(min_length=1)
+    revision_number: int = Field(default=0, ge=0)
+    restatement_status: RestatementStatus = RestatementStatus.ORIGINAL
+    supersedes_observation_id: str | None = None
+
+    @model_validator(mode="after")
+    def restatement_fields_are_consistent(self) -> MetricObservation:
+        if self.restatement_status is RestatementStatus.RESTATED:
+            if self.revision_number < 1 or self.supersedes_observation_id is None:
+                raise ValueError(
+                    "restated observations require a positive revision and superseded ID"
+                )
+        elif self.supersedes_observation_id is not None:
+            raise ValueError("only restated observations may identify a superseded observation")
+        return self
+
+
+class AdjustmentRecord(DomainModel):
+    adjustment_id: str = Field(min_length=1)
+    company_id: str = Field(min_length=1)
+    metric_id: MetricId
+    period: ReportingPeriod
+    reporting_basis: ReportingBasis
+    original_observation_id: str = Field(min_length=1)
+    adjustment_amount: Decimal
+    adjusted_value: Decimal
+    rationale: str = Field(min_length=1)
+    source_reference_ids: tuple[str, ...] = Field(min_length=1)
+
+
+class CalculationResult(DomainModel):
+    calculation_id: str = Field(min_length=1)
+    company_id: str = Field(min_length=1)
+    metric_id: MetricId
+    period: ReportingPeriod
+    reporting_basis: ReportingBasis
+    status: CalculationStatus
+    value: Decimal | None = None
+    unit: str = Field(min_length=1)
+    formula: str = Field(min_length=1)
+    formula_version: str = Field(min_length=1)
+    input_observation_ids: tuple[str, ...]
+    source_reference_ids: tuple[str, ...]
+    message: str | None = None
+    value_classification: ValueClassification = ValueClassification.CALCULATED
+
+    @model_validator(mode="after")
+    def status_matches_value(self) -> CalculationResult:
+        if self.status is CalculationStatus.SUCCESS and self.value is None:
+            raise ValueError("successful calculations require a value")
+        if self.status is not CalculationStatus.SUCCESS and self.value is not None:
+            raise ValueError("unsuccessful calculations must not expose a value")
+        return self
+
+
+class ReconciliationResult(DomainModel):
+    reconciliation_id: str = Field(min_length=1)
+    company_id: str = Field(min_length=1)
+    reconciliation_type: ReconciliationType
+    period: ReportingPeriod
+    reporting_basis: ReportingBasis
+    status: ReconciliationStatus
+    difference: Decimal | None = None
+    tolerance: Decimal = Field(ge=0)
+    input_observation_ids: tuple[str, ...]
+    source_reference_ids: tuple[str, ...]
+    message: str = Field(min_length=1)
 
 
 class PeerCandidate(DomainModel):
@@ -152,7 +223,9 @@ class AnalysisRunManifest(DomainModel):
     input_data_version: str = Field(min_length=1)
     input_source_ids: tuple[str, ...] = Field(min_length=1)
     source_kinds: frozenset[SourceKind] = Field(min_length=1)
-    output_observation_count: int = Field(ge=0)
+    calculation_count: int = Field(ge=0)
+    successful_calculation_count: int = Field(ge=0)
+    reconciliation_count: int = Field(ge=0)
     data_is_synthetic: bool
     disclaimer: str = Field(min_length=1)
 
@@ -174,6 +247,7 @@ class DemoDataset(DomainModel):
     companies: tuple[CompanyIdentifier, ...] = Field(min_length=1)
     source_references: tuple[SourceReference, ...] = Field(min_length=1)
     observations: tuple[MetricObservation, ...] = Field(min_length=1)
+    adjustments: tuple[AdjustmentRecord, ...] = ()
 
     @model_validator(mode="after")
     def references_are_consistent(self) -> DemoDataset:
@@ -183,6 +257,11 @@ class DemoDataset(DomainModel):
             raise ValueError("primary company and every peer must exist in companies")
 
         source_ids = {source.source_id for source in self.source_references}
+        observations_by_id = {
+            observation.observation_id: observation for observation in self.observations
+        }
+        observation_ids = set(observations_by_id)
+        active_keys: set[tuple[str, MetricId, date, ReportingBasis]] = set()
         for observation in self.observations:
             if observation.company_id not in company_ids:
                 raise ValueError(f"unknown company_id on observation: {observation.company_id}")
@@ -190,10 +269,52 @@ class DemoDataset(DomainModel):
                 raise ValueError(
                     f"unknown source reference on observation: {observation.observation_id}"
                 )
+            if (
+                observation.supersedes_observation_id is not None
+                and observation.supersedes_observation_id not in observation_ids
+            ):
+                raise ValueError(
+                    f"unknown superseded observation: {observation.supersedes_observation_id}"
+                )
+            if observation.restatement_status is not RestatementStatus.SUPERSEDED:
+                key = (
+                    observation.company_id,
+                    observation.metric_id,
+                    observation.period.end_date,
+                    observation.reporting_basis,
+                )
+                if key in active_keys:
+                    raise ValueError(f"duplicate active observation for {key}")
+                active_keys.add(key)
+
+        for adjustment in self.adjustments:
+            if adjustment.original_observation_id not in observation_ids:
+                raise ValueError(
+                    f"unknown adjusted observation: {adjustment.original_observation_id}"
+                )
+            if not set(adjustment.source_reference_ids) <= source_ids:
+                raise ValueError(
+                    f"unknown source reference on adjustment: {adjustment.adjustment_id}"
+                )
+            original = observations_by_id[adjustment.original_observation_id]
+            if (
+                adjustment.company_id != original.company_id
+                or adjustment.metric_id is not original.metric_id
+                or adjustment.period != original.period
+                or adjustment.reporting_basis is not original.reporting_basis
+            ):
+                raise ValueError(
+                    f"adjustment context differs from observation: {adjustment.adjustment_id}"
+                )
+            if original.value + adjustment.adjustment_amount != adjustment.adjusted_value:
+                raise ValueError(f"adjusted value does not reconcile: {adjustment.adjustment_id}")
         return self
 
 
 class AnalysisResult(DomainModel):
     manifest: AnalysisRunManifest
     source_references: tuple[SourceReference, ...] = Field(min_length=1)
-    observations: tuple[MetricObservation, ...]
+    reported_observations: tuple[MetricObservation, ...]
+    calculations: tuple[CalculationResult, ...]
+    reconciliations: tuple[ReconciliationResult, ...]
+    adjustments: tuple[AdjustmentRecord, ...]

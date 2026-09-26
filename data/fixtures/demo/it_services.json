@@ -1,188 +1,2334 @@
 {
-  "dataset_name": "Fictional Indian IT-services peer demo",
-  "dataset_version": "1.0.0",
+  "dataset_name": "Fictional five-year IT-services financial statements",
+  "dataset_version": "2.0.0",
   "analysis_as_of_date": "2026-04-30",
   "primary_company_id": "demo_info",
-  "peer_company_ids": ["demo_alpha", "demo_beta", "demo_gamma", "demo_delta"],
+  "peer_company_ids": [],
   "companies": [
-    {"company_id": "demo_info", "legal_name": "Demo Infotech Limited", "nse_symbol": "DEMOINFO"},
-    {"company_id": "demo_alpha", "legal_name": "Demo Alpha Services Limited", "nse_symbol": "DEMOALPHA"},
-    {"company_id": "demo_beta", "legal_name": "Demo Beta Technologies Limited", "nse_symbol": "DEMOBETA"},
-    {"company_id": "demo_gamma", "legal_name": "Demo Gamma Systems Limited", "nse_symbol": "DEMOGAMMA"},
-    {"company_id": "demo_delta", "legal_name": "Demo Delta Digital Limited", "nse_symbol": "DEMODELTA"}
+    {
+      "company_id": "demo_info",
+      "legal_name": "Demo Infotech Limited",
+      "nse_symbol": "DEMOINFO"
+    }
   ],
   "source_references": [
     {
-      "source_id": "synthetic_demo_fixture",
+      "source_id": "synthetic_demo_v1",
       "source_kind": "synthetic",
       "source_organization": "Indian Company Analysis POC",
-      "source_document": "Fictional IT-services demonstration fixture",
-      "locator": "data/fixtures/demo/it_services.json",
+      "source_document": "Fictional five-year IT-services statements",
+      "locator": "data/fixtures/demo/it_services.json#original",
       "retrieval_timestamp": "2026-04-30T12:00:00Z",
       "publication_date": "2026-04-30",
-      "parser_version": "local-json-v1",
+      "parser_version": "local-json-v2",
+      "is_synthetic": true
+    },
+    {
+      "source_id": "synthetic_demo_restatement",
+      "source_kind": "synthetic",
+      "source_organization": "Indian Company Analysis POC",
+      "source_document": "Fictional FY2024 revenue restatement",
+      "locator": "data/fixtures/demo/it_services.json#restatement",
+      "retrieval_timestamp": "2026-05-15T12:00:00Z",
+      "publication_date": "2026-05-15",
+      "parser_version": "local-json-v2",
       "is_synthetic": true
     }
   ],
   "observations": [
     {
+      "observation_id": "demo_info:revenue:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "revenue",
+      "value": "800",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cost_of_revenue:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "cost_of_revenue",
+      "value": "480",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:ebitda:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "ebitda",
+      "value": "160",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:depreciation_amortization:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "depreciation_amortization",
+      "value": "20",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:ebit:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "ebit",
+      "value": "140",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:finance_cost:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "finance_cost",
+      "value": "5",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:profit_before_tax:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "profit_before_tax",
+      "value": "145",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:tax_expense:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "tax_expense",
+      "value": "36.25",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:profit_after_tax:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "profit_after_tax",
+      "value": "108.75",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_and_equivalents:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "cash_and_equivalents",
+      "value": "120",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:trade_receivables:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "trade_receivables",
+      "value": "150",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:inventory:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "inventory",
+      "value": "0",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:property_plant_equipment:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "property_plant_equipment",
+      "value": "100",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_assets:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "total_assets",
+      "value": "800",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:trade_payables:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "trade_payables",
+      "value": "60",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:short_term_debt:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "short_term_debt",
+      "value": "20",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:long_term_debt:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "long_term_debt",
+      "value": "80",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_equity:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "total_equity",
+      "value": "500",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_liabilities_and_equity:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "total_liabilities_and_equity",
+      "value": "800",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_operations:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_operations",
+      "value": "130",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:capital_expenditure:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "capital_expenditure",
+      "value": "70",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_investing:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_investing",
+      "value": "-80",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_financing:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_financing",
+      "value": "-30",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:opening_cash:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "opening_cash",
+      "value": "100",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:closing_cash:fy2022",
+      "company_id": "demo_info",
+      "metric_id": "closing_cash",
+      "value": "120",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2022",
+        "period_type": "annual",
+        "start_date": "2021-04-01",
+        "end_date": "2022-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:revenue:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "revenue",
+      "value": "900",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cost_of_revenue:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "cost_of_revenue",
+      "value": "535",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:ebitda:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "ebitda",
+      "value": "189",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:depreciation_amortization:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "depreciation_amortization",
+      "value": "22",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:ebit:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "ebit",
+      "value": "167",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:finance_cost:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "finance_cost",
+      "value": "5",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:profit_before_tax:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "profit_before_tax",
+      "value": "170",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:tax_expense:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "tax_expense",
+      "value": "42.5",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:profit_after_tax:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "profit_after_tax",
+      "value": "127.5",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_and_equivalents:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "cash_and_equivalents",
+      "value": "145",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:trade_receivables:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "trade_receivables",
+      "value": "165",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:inventory:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "inventory",
+      "value": "0",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:property_plant_equipment:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "property_plant_equipment",
+      "value": "125",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_assets:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "total_assets",
+      "value": "900",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:trade_payables:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "trade_payables",
+      "value": "65",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:short_term_debt:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "short_term_debt",
+      "value": "20",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:long_term_debt:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "long_term_debt",
+      "value": "70",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_equity:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "total_equity",
+      "value": "570",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_liabilities_and_equity:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "total_liabilities_and_equity",
+      "value": "900",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_operations:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_operations",
+      "value": "150",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:capital_expenditure:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "capital_expenditure",
+      "value": "75",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_investing:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_investing",
+      "value": "-90",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_financing:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_financing",
+      "value": "-35",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:opening_cash:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "opening_cash",
+      "value": "120",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:closing_cash:fy2023",
+      "company_id": "demo_info",
+      "metric_id": "closing_cash",
+      "value": "145",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2023",
+        "period_type": "annual",
+        "start_date": "2022-04-01",
+        "end_date": "2023-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:revenue:fy2024:original",
+      "company_id": "demo_info",
+      "metric_id": "revenue",
+      "value": "980",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ],
+      "revision_number": 0,
+      "restatement_status": "superseded"
+    },
+    {
+      "observation_id": "demo_info:revenue:fy2024:restated",
+      "company_id": "demo_info",
+      "metric_id": "revenue",
+      "value": "1000",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_restatement"
+      ],
+      "revision_number": 1,
+      "restatement_status": "restated",
+      "supersedes_observation_id": "demo_info:revenue:fy2024:original"
+    },
+    {
+      "observation_id": "demo_info:cost_of_revenue:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "cost_of_revenue",
+      "value": "585",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:ebitda:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "ebitda",
+      "value": "220",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:depreciation_amortization:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "depreciation_amortization",
+      "value": "25",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:ebit:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "ebit",
+      "value": "195",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:finance_cost:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "finance_cost",
+      "value": "6",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:profit_before_tax:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "profit_before_tax",
+      "value": "196",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:tax_expense:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "tax_expense",
+      "value": "49",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:profit_after_tax:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "profit_after_tax",
+      "value": "147",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_and_equivalents:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "cash_and_equivalents",
+      "value": "170",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:trade_receivables:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "trade_receivables",
+      "value": "185",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:inventory:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "inventory",
+      "value": "0",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:property_plant_equipment:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "property_plant_equipment",
+      "value": "155",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_assets:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "total_assets",
+      "value": "1000",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:trade_payables:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "trade_payables",
+      "value": "70",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:short_term_debt:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "short_term_debt",
+      "value": "20",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:long_term_debt:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "long_term_debt",
+      "value": "60",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_equity:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "total_equity",
+      "value": "660",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_liabilities_and_equity:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "total_liabilities_and_equity",
+      "value": "1000",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_operations:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_operations",
+      "value": "175",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:capital_expenditure:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "capital_expenditure",
+      "value": "90",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_investing:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_investing",
+      "value": "-105",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_financing:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_financing",
+      "value": "-45",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:opening_cash:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "opening_cash",
+      "value": "145",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:closing_cash:fy2024",
+      "company_id": "demo_info",
+      "metric_id": "closing_cash",
+      "value": "170",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2024",
+        "period_type": "annual",
+        "start_date": "2023-04-01",
+        "end_date": "2024-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
       "observation_id": "demo_info:revenue:fy2025",
-      "company_id": "demo_info", "metric_id": "revenue", "value": "1000", "unit": "INR million",
-      "period": {"label": "FY2025", "period_type": "annual", "start_date": "2024-04-01", "end_date": "2025-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported",
-      "source_reference_ids": ["synthetic_demo_fixture"]
+      "company_id": "demo_info",
+      "metric_id": "revenue",
+      "value": "1120",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cost_of_revenue:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "cost_of_revenue",
+      "value": "640",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:ebitda:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "ebitda",
+      "value": "257.6",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:depreciation_amortization:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "depreciation_amortization",
+      "value": "28",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:ebit:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "ebit",
+      "value": "229.6",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:finance_cost:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "finance_cost",
+      "value": "5.6",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:profit_before_tax:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "profit_before_tax",
+      "value": "232",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:tax_expense:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "tax_expense",
+      "value": "58",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:profit_after_tax:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "profit_after_tax",
+      "value": "174",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_and_equivalents:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "cash_and_equivalents",
+      "value": "200",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:trade_receivables:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "trade_receivables",
+      "value": "210",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:inventory:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "inventory",
+      "value": "0",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:property_plant_equipment:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "property_plant_equipment",
+      "value": "180",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_assets:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "total_assets",
+      "value": "1120",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:trade_payables:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "trade_payables",
+      "value": "75",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:short_term_debt:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "short_term_debt",
+      "value": "20",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:long_term_debt:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "long_term_debt",
+      "value": "50",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_equity:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "total_equity",
+      "value": "760",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_liabilities_and_equity:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "total_liabilities_and_equity",
+      "value": "1120",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_operations:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_operations",
+      "value": "205",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:capital_expenditure:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "capital_expenditure",
+      "value": "100",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_investing:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_investing",
+      "value": "-115",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_financing:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_financing",
+      "value": "-60",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:opening_cash:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "opening_cash",
+      "value": "170",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:closing_cash:fy2025",
+      "company_id": "demo_info",
+      "metric_id": "closing_cash",
+      "value": "200",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     },
     {
       "observation_id": "demo_info:revenue:fy2026",
-      "company_id": "demo_info", "metric_id": "revenue", "value": "1120", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported",
-      "source_reference_ids": ["synthetic_demo_fixture"]
+      "company_id": "demo_info",
+      "metric_id": "revenue",
+      "value": "1260",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     },
     {
-      "observation_id": "demo_info:operating_profit:fy2026",
-      "company_id": "demo_info", "metric_id": "operating_profit", "value": "240", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported",
-      "source_reference_ids": ["synthetic_demo_fixture"]
+      "observation_id": "demo_info:cost_of_revenue:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "cost_of_revenue",
+      "value": "705",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     },
     {
-      "observation_id": "demo_info:cfo:fy2026",
-      "company_id": "demo_info", "metric_id": "cash_flow_from_operations", "value": "180", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported",
-      "source_reference_ids": ["synthetic_demo_fixture"]
+      "observation_id": "demo_info:ebitda:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "ebitda",
+      "value": "302.4",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     },
     {
-      "observation_id": "demo_info:pat:fy2026",
-      "company_id": "demo_info", "metric_id": "profit_after_tax", "value": "150", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported",
-      "source_reference_ids": ["synthetic_demo_fixture"]
-    },
-
-    {
-      "observation_id": "demo_alpha:revenue:fy2025",
-      "company_id": "demo_alpha", "metric_id": "revenue", "value": "1800", "unit": "INR million",
-      "period": {"label": "FY2025", "period_type": "annual", "start_date": "2024-04-01", "end_date": "2025-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
-    },
-    {
-      "observation_id": "demo_alpha:revenue:fy2026",
-      "company_id": "demo_alpha", "metric_id": "revenue", "value": "1944", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+      "observation_id": "demo_info:depreciation_amortization:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "depreciation_amortization",
+      "value": "32",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     },
     {
-      "observation_id": "demo_alpha:operating_profit:fy2026",
-      "company_id": "demo_alpha", "metric_id": "operating_profit", "value": "486", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+      "observation_id": "demo_info:ebit:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "ebit",
+      "value": "270.4",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     },
     {
-      "observation_id": "demo_alpha:cfo:fy2026",
-      "company_id": "demo_alpha", "metric_id": "cash_flow_from_operations", "value": "390", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+      "observation_id": "demo_info:finance_cost:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "finance_cost",
+      "value": "4.4",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     },
     {
-      "observation_id": "demo_alpha:pat:fy2026",
-      "company_id": "demo_alpha", "metric_id": "profit_after_tax", "value": "360", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
-    },
-
-    {
-      "observation_id": "demo_beta:revenue:fy2025",
-      "company_id": "demo_beta", "metric_id": "revenue", "value": "900", "unit": "INR million",
-      "period": {"label": "FY2025", "period_type": "annual", "start_date": "2024-04-01", "end_date": "2025-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
-    },
-    {
-      "observation_id": "demo_beta:revenue:fy2026",
-      "company_id": "demo_beta", "metric_id": "revenue", "value": "990", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
-    },
-    {
-      "observation_id": "demo_beta:operating_profit:fy2026",
-      "company_id": "demo_beta", "metric_id": "operating_profit", "value": "198", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+      "observation_id": "demo_info:profit_before_tax:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "profit_before_tax",
+      "value": "276",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     },
     {
-      "observation_id": "demo_beta:cfo:fy2026",
-      "company_id": "demo_beta", "metric_id": "cash_flow_from_operations", "value": "122", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+      "observation_id": "demo_info:tax_expense:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "tax_expense",
+      "value": "69",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     },
     {
-      "observation_id": "demo_beta:pat:fy2026",
-      "company_id": "demo_beta", "metric_id": "profit_after_tax", "value": "110", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
-    },
-
-    {
-      "observation_id": "demo_gamma:revenue:fy2025",
-      "company_id": "demo_gamma", "metric_id": "revenue", "value": "750", "unit": "INR million",
-      "period": {"label": "FY2025", "period_type": "annual", "start_date": "2024-04-01", "end_date": "2025-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
-    },
-    {
-      "observation_id": "demo_gamma:revenue:fy2026",
-      "company_id": "demo_gamma", "metric_id": "revenue", "value": "780", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
-    },
-    {
-      "observation_id": "demo_gamma:operating_profit:fy2026",
-      "company_id": "demo_gamma", "metric_id": "operating_profit", "value": "125", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+      "observation_id": "demo_info:profit_after_tax:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "profit_after_tax",
+      "value": "207",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     },
     {
-      "observation_id": "demo_gamma:cfo:fy2026",
-      "company_id": "demo_gamma", "metric_id": "cash_flow_from_operations", "value": "84", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+      "observation_id": "demo_info:cash_and_equivalents:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "cash_and_equivalents",
+      "value": "245",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     },
     {
-      "observation_id": "demo_gamma:pat:fy2026",
-      "company_id": "demo_gamma", "metric_id": "profit_after_tax", "value": "90", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
-    },
-
-    {
-      "observation_id": "demo_delta:revenue:fy2025",
-      "company_id": "demo_delta", "metric_id": "revenue", "value": "600", "unit": "INR million",
-      "period": {"label": "FY2025", "period_type": "annual", "start_date": "2024-04-01", "end_date": "2025-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
-    },
-    {
-      "observation_id": "demo_delta:revenue:fy2026",
-      "company_id": "demo_delta", "metric_id": "revenue", "value": "690", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
-    },
-    {
-      "observation_id": "demo_delta:operating_profit:fy2026",
-      "company_id": "demo_delta", "metric_id": "operating_profit", "value": "117.3", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+      "observation_id": "demo_info:trade_receivables:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "trade_receivables",
+      "value": "230",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     },
     {
-      "observation_id": "demo_delta:cfo:fy2026",
-      "company_id": "demo_delta", "metric_id": "cash_flow_from_operations", "value": "99", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+      "observation_id": "demo_info:inventory:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "inventory",
+      "value": "0",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     },
     {
-      "observation_id": "demo_delta:pat:fy2026",
-      "company_id": "demo_delta", "metric_id": "profit_after_tax", "value": "90", "unit": "INR million",
-      "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
-      "reporting_basis": "consolidated", "value_classification": "reported", "source_reference_ids": ["synthetic_demo_fixture"]
+      "observation_id": "demo_info:property_plant_equipment:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "property_plant_equipment",
+      "value": "215",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_assets:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "total_assets",
+      "value": "1260",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:trade_payables:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "trade_payables",
+      "value": "82",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:short_term_debt:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "short_term_debt",
+      "value": "18",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:long_term_debt:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "long_term_debt",
+      "value": "42",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_equity:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "total_equity",
+      "value": "890",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:total_liabilities_and_equity:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "total_liabilities_and_equity",
+      "value": "1260",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_operations:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_operations",
+      "value": "250",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:capital_expenditure:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "capital_expenditure",
+      "value": "110",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_investing:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_investing",
+      "value": "-125",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:cash_flow_from_financing:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "cash_flow_from_financing",
+      "value": "-80",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:opening_cash:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "opening_cash",
+      "value": "200",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    },
+    {
+      "observation_id": "demo_info:closing_cash:fy2026",
+      "company_id": "demo_info",
+      "metric_id": "closing_cash",
+      "value": "245",
+      "unit": "INR million",
+      "period": {
+        "label": "FY2026",
+        "period_type": "annual",
+        "start_date": "2025-04-01",
+        "end_date": "2026-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "value_classification": "reported",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
+    }
+  ],
+  "adjustments": [
+    {
+      "adjustment_id": "demo_info:profit_after_tax:fy2025:non_recurring",
+      "company_id": "demo_info",
+      "metric_id": "profit_after_tax",
+      "period": {
+        "label": "FY2025",
+        "period_type": "annual",
+        "start_date": "2024-04-01",
+        "end_date": "2025-03-31"
+      },
+      "reporting_basis": "consolidated",
+      "original_observation_id": "demo_info:profit_after_tax:fy2025",
+      "adjustment_amount": "-5",
+      "adjusted_value": "169",
+      "rationale": "Synthetic illustration of a separately recorded analytical adjustment; reported PAT remains unchanged.",
+      "source_reference_ids": [
+        "synthetic_demo_v1"
+      ]
     }
   ]
 }

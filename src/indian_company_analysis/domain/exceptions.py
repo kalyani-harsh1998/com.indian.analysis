@@ -11,3 +11,7 @@ class ProvenanceError(AnalysisError):
 
 class MissingMetricError(AnalysisError):
     """Raised when a workflow's required source metric is unavailable."""
+
+
+class IncomparableObservationError(AnalysisError):
+    """Raised when observations cannot be combined without misleading users."""

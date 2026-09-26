@@ -8,15 +8,17 @@ The product is decision support and education. It must not present itself as inv
 
 ## Current phase and scope
 
-The repository is in pre-research/proof-of-concept development. The first vertical slice deliberately does only this:
+The repository is in proof-of-concept development. Phase 1 currently does only this:
 
-1. load a clearly labelled synthetic local fixture;
-2. validate company, metric, period, and source records;
-3. calculate revenue growth, operating margin, and CFO-to-PAT conversion deterministically;
-4. execute a controlled workflow;
-5. produce an `AnalysisRunManifest` and structured JSON result.
+1. load five annual periods of clearly labelled synthetic non-financial statements;
+2. validate companies, canonical metrics, periods, provenance, restatements, and adjustments;
+3. preserve superseded facts while selecting the current restated observation;
+4. reconcile EBITDA/EBIT, PAT, balance-sheet totals, and cash roll-forwards;
+5. calculate documented growth, margin, cash-flow, return, working-capital, and leverage metrics;
+6. explain missing, zero-denominator, incomparable, and not-applicable results;
+7. produce an `AnalysisRunManifest` and structured JSON result with full input lineage.
 
-It does not retrieve live data, parse filings, use an LLM, forecast, value securities, recommend investments, generate slides, or serve a UI.
+It does not retrieve live data, parse filings, map company labels, use an LLM, forecast, value securities, recommend investments, generate slides, or serve a UI. The Phase 1 formula baseline still requires independent CA review before real-company conclusions.
 
 ## Analytical model
 
@@ -78,7 +80,7 @@ Use Python 3.12 and a `src` layout. Keep the system framework-neutral:
 - workflows control order and manifests;
 - reporting renders validated structured outputs.
 
-The first package uses Pydantic for typed models and standard-library composition. Add pandas, DuckDB, HTTP clients, plotting, presentation, model, or orchestration dependencies only when an implemented vertical slice requires them.
+The package uses Pydantic for typed models and standard-library composition. Phase 1 adds no new runtime dependency. Add pandas, DuckDB, HTTP clients, plotting, presentation, model, or orchestration dependencies only when an implemented vertical slice requires them. Accounting conventions are documented in `docs/methodology/FINANCIAL_METRICS.md`.
 
 Financial institutions are explicitly out of the initial non-financial engine. Banks, NBFCs, and insurers require separate statement models, regulatory concepts, ratios, sector rules, and validation.
 
