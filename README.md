@@ -4,7 +4,7 @@ A local-first, source-aware foundation for an agentic research platform covering
 
 ## Current status
 
-This repository is an early proof of concept. The Phase 1 engine loads five years of clearly labelled synthetic IT-services statements, validates provenance and revisions, reconciles core statement equations, calculates documented historical metrics, and writes structured results with explicit failure states. It does **not** scrape live sources, call an LLM, forecast, value securities, make recommendations, or generate presentations.
+This repository is an early proof of concept. The Phase 1 engine loads five years of clearly labelled synthetic IT-services statements, validates provenance and revisions, reconciles core statement equations, calculates documented historical metrics, and writes structured results with explicit failure states. Phase 2A additionally copies a manually supplied local document into immutable checksum-addressed storage and records its provenance and licence metadata. It does **not** fetch or scrape live sources, parse filings, call an LLM, forecast, value securities, make recommendations, or generate presentations.
 
 ## Architecture
 
@@ -47,6 +47,8 @@ python -m indian_company_analysis demo
 ```
 
 The demo writes `outputs/demo_analysis.json`. It includes reported and superseded observations, adjustments, calculation results, reconciliation results, and the run manifest. Override the paths with `--fixture` and `--output`.
+
+For a manually downloaded, permitted source document, see the [local document-intake guide](docs/methodology/LOCAL_DOCUMENT_INTAKE.md). The command stores the raw copy and manifest locally; it does not parse the document or retrieve it from the internet.
 
 ## Validation
 

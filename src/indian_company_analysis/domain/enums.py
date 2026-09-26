@@ -22,6 +22,24 @@ class SourceKind(StrEnum):
     SECONDARY = "secondary"
 
 
+class DocumentType(StrEnum):
+    ANNUAL_REPORT = "annual_report"
+    FINANCIAL_RESULTS = "financial_results"
+    INVESTOR_PRESENTATION = "investor_presentation"
+    EXCHANGE_ANNOUNCEMENT = "exchange_announcement"
+    XBRL_FILING = "xbrl_filing"
+    GOVERNANCE_FILING = "governance_filing"
+    OTHER = "other"
+
+
+class LicenceCategory(StrEnum):
+    UNASSESSED = "unassessed"
+    INTERNAL_POC = "internal_poc"
+    OPEN_LICENCE = "open_licence"
+    LICENSED = "licensed"
+    RESTRICTED = "restricted"
+
+
 class ConfidenceLevel(StrEnum):
     LOW = "low"
     MEDIUM = "medium"

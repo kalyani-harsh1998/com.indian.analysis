@@ -23,6 +23,21 @@ LocalFileDataSource -> Pydantic validation -> provenance/revision gate
                     structured JSON output
 ```
 
+Phase 2A adds a separate evidence-intake path; it does not yet feed the financial engine:
+
+```text
+manually supplied local document
+        |
+        v
+SHA-256 + copy-only content-addressed raw store
+        |
+        v
+immutable raw copy + append-only local manifest catalog
+        |
+        v
+independent checksum verification
+```
+
 ## Boundaries and dependency direction
 
 Dependencies point inward toward `domain` and deterministic functions:
@@ -48,7 +63,7 @@ Protocols are intentionally narrow and framework-neutral. Additional methods sho
 
 Each input observation has one or more source-reference IDs. The workflow rejects missing references and unknown IDs before calculation. Calculation and reconciliation results retain the input observation IDs and the union of their source references. Superseded observations remain stored but are excluded from current-period calculations.
 
-The fixture source is explicitly `synthetic`; its fictional values are not representations of Infosys or its peers. Future raw sources should also include checksums, publication/retrieval timestamps, document locators, parser version, and licensing classification as those capabilities are implemented.
+The fixture source is explicitly `synthetic`; its fictional values are not representations of Infosys or its peers. Phase 2A manifests retain checksums, publication/retrieval timestamps, document locators, parser version where relevant, and licensing classification. A checksum proves byte identity, not accounting correctness, completeness, or rights to use a source.
 
 ## Deterministic metric semantics
 

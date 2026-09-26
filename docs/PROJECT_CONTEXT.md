@@ -8,7 +8,7 @@ The product is decision support and education. It must not present itself as inv
 
 ## Current phase and scope
 
-The repository is in proof-of-concept development. Phase 1 currently does only this:
+The repository is in proof-of-concept development. Phase 1 currently does this:
 
 1. load five annual periods of clearly labelled synthetic non-financial statements;
 2. validate companies, canonical metrics, periods, provenance, restatements, and adjustments;
@@ -17,6 +17,8 @@ The repository is in proof-of-concept development. Phase 1 currently does only t
 5. calculate documented growth, margin, cash-flow, return, working-capital, and leverage metrics;
 6. explain missing, zero-denominator, incomparable, and not-applicable results;
 7. produce an `AnalysisRunManifest` and structured JSON result with full input lineage.
+
+Phase 2A additionally accepts a manually supplied, permitted local document; copies it to immutable checksum-addressed raw storage; records provenance, licence classification, and a manifest; and verifies the stored bytes against that manifest. It is deliberately not yet a filing parser or normalized-fact pipeline.
 
 It does not retrieve live data, parse filings, map company labels, use an LLM, forecast, value securities, recommend investments, generate slides, or serve a UI. The Phase 1 formula baseline still requires independent CA review before real-company conclusions.
 
