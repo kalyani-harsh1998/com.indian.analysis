@@ -31,7 +31,7 @@ Each phase ends at a validation gate. Later phases may be replanned as open deci
 - **Risks:** document variation, revisions, OCR/table errors, access restrictions, and unauthorized reuse.
 - **Explicitly deferred:** broad-universe automation and unofficial scraping.
 
-**Current implementation — Phase 2A:** local intake is complete: a manually supplied, permitted file is copied into checksum-addressed raw storage and registered with provenance and licence metadata. The raw copy is verifiable and never overwritten. Parsing, page/table lineage, normalized facts, adapter retrieval, revision handling, and conflict resolution remain the next Phase 2 slices.
+**Current implementation — Phases 2A–2B:** local intake copies a manually supplied, permitted file into checksum-addressed raw storage and registers provenance and licence metadata. A controlled CSV parser now produces canonical observations through source-specific, versioned exact-label mappings while retaining raw values and page/table/row/column lineage. Invalid, unmapped, mismatched, and duplicate rows block analysis readiness. PDF/XBRL extraction, source-to-extraction linkage, adapter retrieval, revision handling, conflict resolution, and real-report accuracy benchmarks remain later Phase 2 slices.
 
 ## Phase 3 — Peer selection and sector rules
 

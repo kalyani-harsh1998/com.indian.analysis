@@ -20,7 +20,9 @@ The repository is in proof-of-concept development. Phase 1 currently does this:
 
 Phase 2A additionally accepts a manually supplied, permitted local document; copies it to immutable checksum-addressed raw storage; records provenance, licence classification, and a manifest; and verifies the stored bytes against that manifest. It is deliberately not yet a filing parser or normalized-fact pipeline.
 
-It does not retrieve live data, parse filings, map company labels, use an LLM, forecast, value securities, recommend investments, generate slides, or serve a UI. The Phase 1 formula baseline still requires independent CA review before real-company conclusions.
+Phase 2B adds a deterministic parser for verified, controlled financial-statement CSV files. It maps exact reported labels through source-specific versioned configurations, produces engine-compatible observations, retains page/table/row/column lineage and raw labels/values, and exposes invalid, unmapped, mismatched, and duplicate rows as blocking issues. It does not yet extract facts from PDF, HTML, OCR, or XBRL sources.
+
+The project does not retrieve live data, automatically parse filings, infer company labels, use an LLM, forecast, value securities, recommend investments, generate slides, or serve a UI. The Phase 1 formula baseline and every real-company mapping still require independent CA review before real-company conclusions.
 
 ## Analytical model
 

@@ -36,6 +36,12 @@ immutable raw copy + append-only local manifest catalog
         |
         v
 independent checksum verification
+        |
+        v
+controlled CSV parser + versioned exact-label mapping
+        |
+        v
+normalized observations + field lineage + explicit issues
 ```
 
 ## Boundaries and dependency direction
@@ -63,7 +69,7 @@ Protocols are intentionally narrow and framework-neutral. Additional methods sho
 
 Each input observation has one or more source-reference IDs. The workflow rejects missing references and unknown IDs before calculation. Calculation and reconciliation results retain the input observation IDs and the union of their source references. Superseded observations remain stored but are excluded from current-period calculations.
 
-The fixture source is explicitly `synthetic`; its fictional values are not representations of Infosys or its peers. Phase 2A manifests retain checksums, publication/retrieval timestamps, document locators, parser version where relevant, and licensing classification. A checksum proves byte identity, not accounting correctness, completeness, or rights to use a source.
+The fixture source is explicitly `synthetic`; its fictional values are not representations of Infosys or its peers. Phase 2A manifests retain checksums, publication/retrieval timestamps, document locators, parser version where relevant, and licensing classification. Phase 2B normalized facts additionally retain the original label/value, field locator, parser and mapping versions, mapping rationale/confidence, and the engine-compatible observation. A checksum proves byte identity, not accounting correctness, completeness, or rights to use a source.
 
 ## Deterministic metric semantics
 
@@ -76,7 +82,7 @@ All values use `Decimal`. Missing, zero-denominator, or incomparable cases produ
 
 ## Deliberate omissions
 
-Role-specific agent implementations, live NSE/BSE adapters, parsing, normalization pipelines, databases, LLMs, forecasts, valuation, recommendations, charts, PowerPoint, API, and web UI are deferred. Adapter filenames are not created as empty promises. Banks, NBFCs, and insurers require separate future sector modules.
+Role-specific agent implementations, live NSE/BSE adapters, PDF/HTML/OCR/XBRL extraction, automated normalization, databases, LLMs, forecasts, valuation, recommendations, charts, PowerPoint, API, and web UI are deferred. The controlled CSV bridge is not represented as automatic filing parsing. Adapter filenames are not created as empty promises. Banks, NBFCs, and insurers require separate future sector modules.
 
 The research blueprint's possible IT-services-plus-cement MVP is broader than this assignment. This slice uses only fictional IT-services-shaped records; cement becomes useful after ingestion and financial-statement foundations are proven.
 

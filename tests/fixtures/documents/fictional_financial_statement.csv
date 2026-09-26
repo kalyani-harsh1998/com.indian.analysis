@@ -1,0 +1,5 @@
+company_id,page_number,table_id,row_number,column_name,reported_label,value,unit,period_label,period_type,period_start_date,period_end_date,reporting_basis
+fictionalco,42,profit_and_loss,1,FY2025,Revenue from operations,1000,INR million,FY2025,annual,2024-04-01,2025-03-31,consolidated
+fictionalco,42,profit_and_loss,2,FY2025,Profit before tax,180,INR million,FY2025,annual,2024-04-01,2025-03-31,consolidated
+fictionalco,42,profit_and_loss,3,FY2025,Tax expense,45,INR million,FY2025,annual,2024-04-01,2025-03-31,consolidated
+fictionalco,42,profit_and_loss,4,FY2025,Profit for the year,135,INR million,FY2025,annual,2024-04-01,2025-03-31,consolidated

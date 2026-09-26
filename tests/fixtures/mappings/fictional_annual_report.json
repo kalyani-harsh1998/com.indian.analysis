@@ -1,0 +1,35 @@
+{
+  "mapping_version": "fictional-annual-report-v1",
+  "source_organization": "Synthetic test fixture",
+  "document_type": "annual_report",
+  "mappings": [
+    {
+      "reported_label": "Revenue from operations",
+      "metric_id": "revenue",
+      "sign_multiplier": "1",
+      "confidence": "high",
+      "rationale": "Exact synthetic label mapped to the canonical revenue definition."
+    },
+    {
+      "reported_label": "Profit before tax",
+      "metric_id": "profit_before_tax",
+      "sign_multiplier": "1",
+      "confidence": "high",
+      "rationale": "Exact synthetic label mapped to the canonical pre-tax profit definition."
+    },
+    {
+      "reported_label": "Tax expense",
+      "metric_id": "tax_expense",
+      "sign_multiplier": "1",
+      "confidence": "high",
+      "rationale": "Exact synthetic label mapped to the canonical tax-expense definition."
+    },
+    {
+      "reported_label": "Profit for the year",
+      "metric_id": "profit_after_tax",
+      "sign_multiplier": "1",
+      "confidence": "high",
+      "rationale": "Exact synthetic label mapped to the canonical post-tax profit definition."
+    }
+  ]
+}

@@ -41,4 +41,4 @@ Each manifest contains the document and company identifiers, document type, orig
 
 ## Verification
 
-The next slice will consume manifests for controlled parsing and normalized facts. Before that happens, it must run `verify_raw_document` to confirm the stored file exists and its bytes still match the recorded checksum. A valid checksum establishes byte identity only; it does not establish completeness, accounting accuracy, legal rights, or analytical suitability.
+The controlled CSV normalization slice consumes manifests only after `verify_raw_document` confirms that the stored file exists and its bytes still match the recorded checksum. A valid checksum establishes byte identity only; it does not establish completeness, accounting accuracy, legal rights, or analytical suitability. See [Controlled CSV normalization](NORMALIZED_FACTS.md) for the deliberately narrow Phase 2B contract.

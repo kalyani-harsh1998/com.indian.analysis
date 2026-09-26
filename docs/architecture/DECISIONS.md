@@ -52,3 +52,30 @@ The next vertical slice needs real-document lineage without creating an unreview
 - A checksum validates stored-byte identity, not source authority, accounting accuracy, completeness, or legal rights.
 - Users still must assess terms and manually acquire permitted documents.
 - Parsing, table/page lineage, normalized facts, revisions, and conflict resolution are later Phase 2 slices.
+
+## ADR-003 — Controlled exact-label normalization before document extraction
+
+**Status:** Accepted for the POC
+**Date:** 26 September 2026
+
+### Context
+
+Automatic PDF or OCR extraction would combine several uncertain problems: document layout, table detection, number parsing, label interpretation, and accounting mapping. The POC first needs a testable normalized-fact contract with complete field lineage and explicit failure behavior.
+
+### Decision
+
+- Accept only a verified row-oriented `text/csv` document in this slice.
+- Require company, page/table/row/column, raw label/value, unit, period, and reporting basis on every row.
+- Apply a versioned mapping set scoped to the manifest's exact source organization and document type.
+- Match labels only after deterministic case and whitespace normalization; do not use fuzzy or model-generated mapping.
+- Permit only an explicit `1` or `-1` sign transformation and retain the unmodified raw value.
+- Produce engine-compatible observations while keeping field-level lineage beside each observation.
+- Treat invalid, unmapped, company-mismatched, and duplicate rows as structured issues that make the batch unready for analysis.
+
+### Consequences
+
+- Canonical fact semantics can be tested independently of PDF and OCR tooling.
+- Mapping changes are reviewable and reproducible through mapping versions and rationales.
+- A human still prepares and reviews the controlled CSV and mapping configuration.
+- The CSV checksum identifies the normalized input; cryptographic PDF-to-extraction linkage remains future work.
+- Real-company mappings require CA review and benchmark comparison before analytical use.

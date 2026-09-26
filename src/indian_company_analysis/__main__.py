@@ -10,7 +10,12 @@ from pathlib import Path
 from indian_company_analysis.config import Settings
 from indian_company_analysis.data.ingestion.local_intake import ImmutableRawDocumentStore
 from indian_company_analysis.data.ingestion.manifest_catalog import LocalManifestCatalog
-from indian_company_analysis.data.ingestion.models import LocalDocumentIntakeRequest
+from indian_company_analysis.data.ingestion.models import (
+    LocalDocumentIntakeRequest,
+    RawDocumentManifest,
+)
+from indian_company_analysis.data.normalization.csv_parser import ControlledCsvFinancialParser
+from indian_company_analysis.data.normalization.models import MetricMappingSet
 from indian_company_analysis.data.sources.local_files import LocalFixtureDataSource
 from indian_company_analysis.domain.enums import DocumentType, LicenceCategory, SourceKind
 from indian_company_analysis.workflows.company_analysis import CompanyAnalysisWorkflow
@@ -46,6 +51,13 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
         "--licence-category", choices=list(LicenceCategory), default=LicenceCategory.UNASSESSED
     )
     intake.add_argument("--synthetic", action="store_true")
+    normalize = subparsers.add_parser(
+        "normalize-csv",
+        help="normalize a verified controlled CSV through an explicit metric mapping",
+    )
+    normalize.add_argument("--manifest", type=Path, required=True)
+    normalize.add_argument("--mapping", type=Path, required=True)
+    normalize.add_argument("--output", type=Path)
     return parser
 
 
@@ -84,6 +96,31 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"{ingestion_result.manifest.document_id}"
         )
         return 0
+    if args.command == "normalize-csv":
+        manifest = RawDocumentManifest.model_validate_json(
+            args.manifest.read_text(encoding="utf-8")
+        )
+        mapping_set = MetricMappingSet.model_validate_json(args.mapping.read_text(encoding="utf-8"))
+        batch = ControlledCsvFinancialParser().parse(
+            manifest,
+            settings.data_directory / "raw",
+            mapping_set,
+        )
+        output = args.output or (
+            settings.data_directory
+            / "processed"
+            / "normalized"
+            / manifest.document_id
+            / f"{batch.parser_version}--{batch.mapping_version}.json"
+        )
+        output.parent.mkdir(parents=True, exist_ok=True)
+        serialized = batch.model_dump_json(indent=2) + "\n"
+        if output.exists() and output.read_text(encoding="utf-8") != serialized:
+            raise ValueError(f"refusing to overwrite different normalized output: {output}")
+        output.write_text(serialized, encoding="utf-8")
+        status = "ready for analysis" if batch.ready_for_analysis else "has normalization issues"
+        print(f"Normalized {batch.total_rows} rows to {output}; result {status}")
+        return 0 if batch.ready_for_analysis else 1
     return 2
 
 
