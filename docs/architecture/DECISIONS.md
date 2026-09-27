@@ -242,4 +242,27 @@ A strict schema prevents malformed model output but does not show whether semant
 - Model and prompt versions can be compared with repeatable evidence rather than anecdotal output.
 - A syntactically valid but semantically wrong proposal fails value and reconciliation gates.
 - Missing usage metadata remains visible; it is not silently inferred.
-- Live provider, privacy, prompt-injection, abstention, and representative-corpus gates remain future work.
+- Live provider, privacy, prompt-injection, and representative-corpus gates remain future work.
+
+## ADR-010 — Require explicit abstention for unresolved onboarding evidence
+
+**Status:** Accepted for the POC
+**Date:** 27 September 2026
+
+### Context
+
+Forcing a model to choose only a mapping, aggregation, or exclusion encourages confident but unsupported handling of ambiguous labels. Treating a missing disposition as an abstention would instead hide an omission and weaken evidence coverage controls.
+
+### Decision
+
+- Add a strict `AbstentionCandidate` containing a candidate ID, exact evidence ID, confidence, and rationale.
+- Count an abstention as a visible evidence disposition for validation and golden-case evaluation.
+- Score expected abstentions using precision and recall alongside the other disposition types.
+- Allow a syntactically valid proposal with abstentions to be reviewed and evaluated, but reject it from approval until a reviewer resolves every abstention.
+- Keep abstentions out of normalized facts and approved configurations.
+
+### Consequences
+
+- A provider can safely defer ambiguous rows without fabricating an accounting classification.
+- Silent omissions remain validation errors, rather than being reclassified as abstentions.
+- Evaluation can reward appropriate uncertainty, while normalization remains fully deterministic and reviewer-approved.

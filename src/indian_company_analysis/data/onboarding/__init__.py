@@ -11,6 +11,7 @@ from indian_company_analysis.data.onboarding.approval import approve_onboarding_
 from indian_company_analysis.data.onboarding.contracts import OnboardingProposalProvider
 from indian_company_analysis.data.onboarding.evaluation import (
     EvaluationThresholds,
+    ExpectedAbstentionDecision,
     ExpectedAggregationDecision,
     ExpectedExclusionDecision,
     ExpectedMappingDecision,
@@ -25,6 +26,7 @@ from indian_company_analysis.data.onboarding.evaluation import (
     ReconciliationTerm,
 )
 from indian_company_analysis.data.onboarding.models import (
+    AbstentionCandidate,
     ApprovedAggregationComponent,
     ApprovedAggregationRule,
     ApprovedDirectMapping,
@@ -63,11 +65,13 @@ __all__ = [
     "ApprovedDirectMapping",
     "ApprovedExclusion",
     "ApprovedOnboardingConfiguration",
+    "AbstentionCandidate",
     "DocumentOnboardingProposal",
     "DocumentOnboardingRequest",
     "EvaluationThresholds",
     "ExclusionCandidate",
     "ExpectedAggregationDecision",
+    "ExpectedAbstentionDecision",
     "ExpectedExclusionDecision",
     "ExpectedMappingDecision",
     "ExpectedMetricValue",

@@ -36,6 +36,12 @@ def approve_onboarding_proposal(
     if not validation.ready_for_review:
         codes = ", ".join(issue.code for issue in validation.issues)
         raise ValueError(f"onboarding proposal is not ready for review: {codes}")
+    if proposal.abstentions:
+        evidence_ids = ", ".join(candidate.evidence_id for candidate in proposal.abstentions)
+        raise ValueError(
+            "onboarding proposal contains abstentions requiring a reviewed disposition: "
+            f"{evidence_ids}"
+        )
 
     evidence_by_id = {row.evidence_id: row for row in request.evidence_rows}
     mapping_set = None

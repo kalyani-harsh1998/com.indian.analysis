@@ -87,6 +87,19 @@ def validate_onboarding_proposal(
         else:
             evidence_users[exclusion.evidence_id].append("exclusion")
 
+    for abstention in proposal.abstentions:
+        if abstention.evidence_id not in evidence_by_id:
+            issues.append(
+                ProposalValidationIssue(
+                    code="unknown_evidence",
+                    message="abstention references evidence that is not in the onboarding request",
+                    candidate_id=abstention.candidate_id,
+                    evidence_id=abstention.evidence_id,
+                )
+            )
+        else:
+            evidence_users[abstention.evidence_id].append(abstention.candidate_id)
+
     for evidence_id, users in evidence_users.items():
         if len(users) > 1:
             issues.append(
@@ -103,7 +116,7 @@ def validate_onboarding_proposal(
                 ProposalValidationIssue(
                     code="unaccounted_evidence",
                     message=(
-                        "source evidence is neither mapped, aggregated, nor explicitly excluded"
+                        "source evidence is neither mapped, aggregated, excluded, nor abstained"
                     ),
                     evidence_id=evidence_row.evidence_id,
                 )
@@ -122,7 +135,7 @@ def validate_onboarding_proposal(
                     )
                 )
 
-    if not proposal.mappings and not proposal.aggregations:
+    if not proposal.mappings and not proposal.aggregations and not proposal.abstentions:
         issues.append(
             ProposalValidationIssue(
                 code="no_metric_candidates",
@@ -153,12 +166,19 @@ def validate_onboarding_proposal(
         for exclusion in proposal.exclusions
         if exclusion.evidence_id not in invalid_evidence_ids
     )
+    validated_abstention_ids = tuple(
+        candidate.candidate_id
+        for candidate in proposal.abstentions
+        if candidate.candidate_id not in invalid_candidate_ids
+        and candidate.evidence_id not in invalid_evidence_ids
+    )
     return ProposalValidationResult(
         request_id=request.request_id,
         proposal_id=proposal.proposal_id,
         validated_mapping_ids=validated_mapping_ids,
         validated_aggregation_ids=validated_aggregation_ids,
         validated_exclusion_evidence_ids=validated_exclusion_evidence_ids,
+        validated_abstention_ids=validated_abstention_ids,
         issues=tuple(issues),
         ready_for_review=not issues,
     )

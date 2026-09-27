@@ -145,6 +145,15 @@ class ExclusionCandidate(DomainModel):
     rationale: str = Field(min_length=1)
 
 
+class AbstentionCandidate(DomainModel):
+    """Explicit model deferral of one evidence row to a human reviewer."""
+
+    candidate_id: str = Field(pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._:-]*$")
+    evidence_id: str = Field(min_length=1)
+    confidence: ConfidenceLevel
+    rationale: str = Field(min_length=1)
+
+
 class DocumentOnboardingProposal(DomainModel):
     """A model-produced candidate configuration; never an approved fact source."""
 
@@ -162,6 +171,7 @@ class DocumentOnboardingProposal(DomainModel):
     mappings: tuple[MappingCandidate, ...] = ()
     aggregations: tuple[MetricAggregationCandidate, ...] = ()
     exclusions: tuple[ExclusionCandidate, ...] = ()
+    abstentions: tuple[AbstentionCandidate, ...] = ()
 
     @model_validator(mode="after")
     def candidate_identity_is_unique(self) -> DocumentOnboardingProposal:
@@ -172,6 +182,9 @@ class DocumentOnboardingProposal(DomainModel):
         exclusion_ids = [candidate.evidence_id for candidate in self.exclusions]
         if len(exclusion_ids) != len(set(exclusion_ids)):
             raise ValueError("onboarding proposal contains duplicate exclusion evidence IDs")
+        abstention_ids = [candidate.evidence_id for candidate in self.abstentions]
+        if len(abstention_ids) != len(set(abstention_ids)):
+            raise ValueError("onboarding proposal contains duplicate abstention evidence IDs")
         return self
 
 
@@ -192,6 +205,7 @@ class ProposalValidationResult(DomainModel):
     validated_mapping_ids: tuple[str, ...]
     validated_aggregation_ids: tuple[str, ...]
     validated_exclusion_evidence_ids: tuple[str, ...]
+    validated_abstention_ids: tuple[str, ...]
     issues: tuple[ProposalValidationIssue, ...]
     ready_for_review: bool
 

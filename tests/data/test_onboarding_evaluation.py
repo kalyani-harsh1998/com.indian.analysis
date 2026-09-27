@@ -9,6 +9,7 @@ import pytest
 
 from indian_company_analysis.__main__ import main
 from indian_company_analysis.data.onboarding import (
+    AbstentionCandidate,
     DocumentOnboardingProposal,
     ExclusionCandidate,
     MappingCandidate,
@@ -85,6 +86,15 @@ def _perfect_proposal(fixture: OnboardingEvaluationFixture) -> DocumentOnboardin
                 rationale="Synthetic golden exclusion.",
             )
             for expected in fixture.expected_exclusions
+        ),
+        abstentions=tuple(
+            AbstentionCandidate(
+                candidate_id=f"abstention-{expected.evidence_id}",
+                evidence_id=expected.evidence_id,
+                confidence=ConfidenceLevel.LOW,
+                rationale="Synthetic golden abstention.",
+            )
+            for expected in fixture.expected_abstentions
         ),
     )
 
@@ -211,3 +221,38 @@ def test_model_cost_requires_a_currency() -> None:
 
     with pytest.raises(ValueError, match="cost and currency"):
         ModelRunProvenance.model_validate(invalid_provenance)
+
+
+def test_expected_abstention_passes_but_an_unsafe_mapping_fails() -> None:
+    path = Path("tests/fixtures/evaluations/fictional_ambiguous_onboarding.json")
+    fixture = OnboardingEvaluationFixture.model_validate_json(path.read_text(encoding="utf-8"))
+    proposal = _perfect_proposal(fixture)
+
+    safe_report = OnboardingProposalEvaluator().evaluate(
+        fixture,
+        StaticProposalProvider(proposal),
+        evaluated_at=_EVALUATED_AT,
+    )
+    unsafe_mapping = MappingCandidate(
+        candidate_id="mapping-ambiguous-adjustment",
+        evidence_id="row-2",
+        reported_label="Unclassified adjustment",
+        metric_id=MetricId.EBIT,
+        confidence=ConfidenceLevel.LOW,
+        rationale="Unsafe synthetic guess for evaluation only.",
+    )
+    unsafe_proposal = proposal.model_copy(
+        update={"abstentions": (), "mappings": (*proposal.mappings, unsafe_mapping)}
+    )
+    unsafe_report = OnboardingProposalEvaluator().evaluate(
+        fixture,
+        StaticProposalProvider(unsafe_proposal),
+        evaluated_at=_EVALUATED_AT,
+    )
+
+    assert safe_report.passed is True
+    assert safe_report.validation.ready_for_review is True
+    assert str(safe_report.metrics.abstention_recall) == "1.000000"
+    assert unsafe_report.passed is False
+    assert str(unsafe_report.metrics.abstention_recall) == "0.000000"
+    assert "abstention recall 0.000000 is below required 1" in unsafe_report.failure_reasons

@@ -58,6 +58,10 @@ Before human review, the validator rejects proposals that:
 
 Model confidence never bypasses these checks and never counts as approval.
 
+## Explicit abstention
+
+When a row cannot be mapped safely, the provider must emit an `AbstentionCandidate` with its exact evidence ID and rationale. An abstention accounts for the row during validation and permits an evaluation case to reward safe deferral, but it blocks promotion to an approved configuration. A reviewer must replace it with a direct mapping, aggregation, or exclusion; it can never become a normalized fact by itself.
+
 ## Human approval and deterministic aggregation
 
 `approve_onboarding_proposal` reruns deterministic validation before creating a reviewed configuration. The configuration preserves the model run, reviewer, review timestamp, approval-policy version, direct mapping set, exclusions, and approved aggregation semantics.
@@ -94,7 +98,7 @@ uv run python -m indian_company_analysis normalize-onboarding \
 
 ## Golden-case evaluation
 
-`OnboardingProposalEvaluator` now runs any provider implementation against a versioned golden fixture. It scores direct mappings, aggregations, and exclusions; detects missing, duplicated, and hallucinated evidence use; recomputes canonical values deterministically; and runs declared accounting reconciliations. Strict thresholds determine the case result, while the persisted audit report retains the full proposal and validation outcome. The committed fixture is synthetic and proves the mechanism, not general model quality. See [onboarding proposal evaluation](ONBOARDING_EVALUATION.md).
+`OnboardingProposalEvaluator` now runs any provider implementation against a versioned golden fixture. It scores direct mappings, aggregations, exclusions, and explicit abstentions; detects missing, duplicated, and hallucinated evidence use; recomputes canonical values deterministically; and runs declared accounting reconciliations. Strict thresholds determine the case result, while the persisted audit report retains the full proposal and validation outcome. The committed fixtures are synthetic and prove the mechanism, not general model quality. See [onboarding proposal evaluation](ONBOARDING_EVALUATION.md).
 
 ## Deferred work
 

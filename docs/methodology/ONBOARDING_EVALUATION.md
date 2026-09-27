@@ -12,6 +12,7 @@ An `OnboardingEvaluationFixture` freezes:
 
 - the exact checksummed onboarding request and source-row locators;
 - expected direct mappings, signed-sum aggregations, and explicit exclusions;
+- expected abstentions for rows that should be escalated rather than guessed;
 - expected canonical metric values;
 - linear accounting reconciliation expectations and tolerances; and
 - pass/fail thresholds for each metric.
@@ -22,7 +23,7 @@ Golden decisions must account for every evidence row exactly once. Canonical tar
 
 `OnboardingProposalEvaluator` calls the same provider protocol used by future live adapters, reruns deterministic proposal validation, and records:
 
-- precision and recall for mappings, aggregations, and exclusions;
+- precision and recall for mappings, aggregations, exclusions, and abstentions;
 - evidence coverage;
 - hallucinated, duplicated, and unaccounted evidence counts;
 - exact decision-set match;
@@ -30,6 +31,8 @@ Golden decisions must account for every evidence row exactly once. Canonical tar
 - accounting reconciliation results.
 
 A case passes only when all configured thresholds and required checks pass. The report retains the complete proposal, validation issues, provider/model/version, prompt and schema versions, generation time, and optional input/output token, latency, estimated-cost, and currency metadata. Missing usage metadata stays explicit rather than being estimated silently.
+
+An abstention is an explicit, locator-backed request for a human decision. It counts as a valid evidence disposition and can therefore pass an evaluation case designed to test safe deferral. It cannot be promoted to an approved normalization configuration: the reviewer must resolve it as a mapping, aggregation, or exclusion first. This keeps “I do not know” distinct from a silent omission and from an unsupported guess.
 
 The evaluator persists immutable-style JSON: writing the identical report is idempotent, while replacing it with different content at the same path is refused.
 
@@ -49,7 +52,7 @@ The command exits with status `0` when the case passes and `1` when it fails. It
 
 ## Current limitations and next gate
 
-This slice supplies the evaluation machinery and one synthetic tax-onboarding case. It does not yet establish real-world model accuracy, abstention quality, security, privacy, or acceptable cost/latency. Before connecting a live LLM:
+This slice supplies the evaluation machinery plus synthetic tax and ambiguity/abstention cases. It does not yet establish real-world model accuracy, security, privacy, or acceptable cost/latency. Before connecting a live LLM:
 
 1. assemble a representative, permitted multi-company and multi-layout corpus;
 2. have a qualified accounting reviewer approve the golden dispositions and values;

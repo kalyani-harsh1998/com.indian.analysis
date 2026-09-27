@@ -14,6 +14,7 @@ from indian_company_analysis.data.extraction.models import (
 )
 from indian_company_analysis.data.normalization.models import SourceFactLocator
 from indian_company_analysis.data.onboarding import (
+    AbstentionCandidate,
     DocumentOnboardingProposal,
     DocumentOnboardingRequest,
     ExclusionCandidate,
@@ -209,6 +210,37 @@ def test_valid_proposal_accounts_for_every_source_row() -> None:
     assert result.validated_aggregation_ids == ("aggregate-tax",)
     assert result.validated_exclusion_evidence_ids == ("row-4",)
     assert not result.issues
+
+
+def test_explicit_abstention_is_valid_but_cannot_be_approved() -> None:
+    proposal = _proposal().model_copy(
+        update={
+            "exclusions": (),
+            "abstentions": (
+                AbstentionCandidate(
+                    candidate_id="abstain-other-income",
+                    evidence_id="row-4",
+                    confidence=ConfidenceLevel.LOW,
+                    rationale="The row may be relevant to a company-specific metric.",
+                ),
+            ),
+        }
+    )
+
+    result = validate_onboarding_proposal(_request(), proposal)
+
+    assert result.ready_for_review is True
+    assert result.validated_abstention_ids == ("abstain-other-income",)
+    with pytest.raises(ValueError, match="abstentions requiring a reviewed disposition"):
+        approve_onboarding_proposal(
+            _request(),
+            proposal,
+            configuration_version="fictionalco-fy2026-mapping-v1",
+            aggregation_rule_version="aggregation-v1",
+            reviewed_by="ca-reviewer@example.test",
+            reviewed_at=datetime(2026, 9, 27, 12, 0, tzinfo=UTC),
+            approval_policy_version="review-policy-v1",
+        )
 
 
 def test_review_preserves_model_and_source_evidence_lineage() -> None:

@@ -45,6 +45,10 @@ class ExpectedExclusionDecision(DomainModel):
     evidence_id: str = Field(min_length=1)
 
 
+class ExpectedAbstentionDecision(DomainModel):
+    evidence_id: str = Field(min_length=1)
+
+
 class ExpectedMetricValue(DomainModel):
     metric_id: MetricId
     value: Decimal
@@ -77,6 +81,8 @@ class EvaluationThresholds(DomainModel):
     minimum_aggregation_recall: Decimal = Field(default=Decimal("1"), ge=0, le=1)
     minimum_exclusion_precision: Decimal = Field(default=Decimal("1"), ge=0, le=1)
     minimum_exclusion_recall: Decimal = Field(default=Decimal("1"), ge=0, le=1)
+    minimum_abstention_precision: Decimal = Field(default=Decimal("1"), ge=0, le=1)
+    minimum_abstention_recall: Decimal = Field(default=Decimal("1"), ge=0, le=1)
     minimum_evidence_coverage: Decimal = Field(default=Decimal("1"), ge=0, le=1)
     maximum_hallucinated_evidence: int = Field(default=0, ge=0)
     require_valid_proposal: bool = True
@@ -92,6 +98,7 @@ class OnboardingEvaluationFixture(DomainModel):
     expected_mappings: tuple[ExpectedMappingDecision, ...]
     expected_aggregations: tuple[ExpectedAggregationDecision, ...]
     expected_exclusions: tuple[ExpectedExclusionDecision, ...]
+    expected_abstentions: tuple[ExpectedAbstentionDecision, ...] = ()
     expected_metric_values: tuple[ExpectedMetricValue, ...]
     reconciliation_expectations: tuple[ReconciliationExpectation, ...]
     thresholds: EvaluationThresholds = EvaluationThresholds()
@@ -102,6 +109,7 @@ class OnboardingEvaluationFixture(DomainModel):
         for aggregation in self.expected_aggregations:
             evidence_ids.extend(component.evidence_id for component in aggregation.components)
         evidence_ids.extend(exclusion.evidence_id for exclusion in self.expected_exclusions)
+        evidence_ids.extend(abstention.evidence_id for abstention in self.expected_abstentions)
         request_ids = [row.evidence_id for row in self.request.evidence_rows]
         if len(evidence_ids) != len(set(evidence_ids)) or set(evidence_ids) != set(request_ids):
             raise ValueError("golden decisions must dispose of every evidence row exactly once")
@@ -136,6 +144,11 @@ class ProposalAccuracyMetrics(DomainModel):
     exclusion_correct_count: int = Field(ge=0)
     exclusion_precision: Decimal = Field(ge=0, le=1)
     exclusion_recall: Decimal = Field(ge=0, le=1)
+    abstention_expected_count: int = Field(ge=0)
+    abstention_proposed_count: int = Field(ge=0)
+    abstention_correct_count: int = Field(ge=0)
+    abstention_precision: Decimal = Field(ge=0, le=1)
+    abstention_recall: Decimal = Field(ge=0, le=1)
     evidence_coverage: Decimal = Field(ge=0, le=1)
     hallucinated_evidence_count: int = Field(ge=0)
     duplicate_evidence_count: int = Field(ge=0)
@@ -278,11 +291,14 @@ class OnboardingProposalEvaluator:
         }
         expected_exclusions = {item.evidence_id for item in fixture.expected_exclusions}
         proposed_exclusions = {item.evidence_id for item in proposal.exclusions}
+        expected_abstentions = {item.evidence_id for item in fixture.expected_abstentions}
+        proposed_abstentions = {item.evidence_id for item in proposal.abstentions}
 
         proposed_uses = [item.evidence_id for item in proposal.mappings]
         for aggregation in proposal.aggregations:
             proposed_uses.extend(component.evidence_id for component in aggregation.components)
         proposed_uses.extend(item.evidence_id for item in proposal.exclusions)
+        proposed_uses.extend(item.evidence_id for item in proposal.abstentions)
         request_ids = {row.evidence_id for row in fixture.request.evidence_rows}
         use_counts = Counter(proposed_uses)
         known_used = request_ids & set(proposed_uses)
@@ -290,6 +306,7 @@ class OnboardingProposalEvaluator:
         mapping_correct = len(expected_mappings & proposed_mappings)
         aggregation_correct = len(expected_aggregations & proposed_aggregations)
         exclusion_correct = len(expected_exclusions & proposed_exclusions)
+        abstention_correct = len(expected_abstentions & proposed_abstentions)
 
         return ProposalAccuracyMetrics(
             evidence_row_count=len(request_ids),
@@ -320,6 +337,15 @@ class OnboardingProposalEvaluator:
             exclusion_recall=self._rate(
                 exclusion_correct, len(expected_exclusions), len(expected_exclusions)
             ),
+            abstention_expected_count=len(expected_abstentions),
+            abstention_proposed_count=len(proposed_abstentions),
+            abstention_correct_count=abstention_correct,
+            abstention_precision=self._rate(
+                abstention_correct, len(proposed_abstentions), len(expected_abstentions)
+            ),
+            abstention_recall=self._rate(
+                abstention_correct, len(expected_abstentions), len(expected_abstentions)
+            ),
             evidence_coverage=(Decimal(len(known_used)) / Decimal(len(request_ids))).quantize(
                 _RATE_QUANTUM
             ),
@@ -330,6 +356,7 @@ class OnboardingProposalEvaluator:
                 expected_mappings == proposed_mappings
                 and expected_aggregations == proposed_aggregations
                 and expected_exclusions == proposed_exclusions
+                and expected_abstentions == proposed_abstentions
             ),
         )
 
@@ -452,6 +479,16 @@ class OnboardingProposalEvaluator:
                 metrics.exclusion_recall,
                 thresholds.minimum_exclusion_recall,
                 "exclusion recall",
+            ),
+            (
+                metrics.abstention_precision,
+                thresholds.minimum_abstention_precision,
+                "abstention precision",
+            ),
+            (
+                metrics.abstention_recall,
+                thresholds.minimum_abstention_recall,
+                "abstention recall",
             ),
             (
                 metrics.evidence_coverage,

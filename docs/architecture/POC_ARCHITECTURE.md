@@ -78,6 +78,8 @@ The current static adapter and strict schemas prove this boundary without callin
 
 Before a live adapter is connected, the same provider protocol can be routed through a golden-case evaluator. Versioned fixtures define expected evidence dispositions, canonical values, reconciliations, and thresholds. Persisted reports retain the proposal, deterministic validation, accuracy/coverage results, model and prompt identity, and optional usage/cost metadata. This is a quality gate around the adapter; it does not replace review or enter the financial calculation path.
 
+An explicit abstention is a fourth evidence disposition alongside mapping, aggregation, and exclusion. It carries the source row and rationale into validation and evaluation, allowing a provider to safely defer an ambiguous row. Approval rejects any proposal containing an abstention, so a reviewer must resolve it before a configuration enters deterministic normalization.
+
 ## Boundaries and dependency direction
 
 Dependencies point inward toward `domain` and deterministic functions:
