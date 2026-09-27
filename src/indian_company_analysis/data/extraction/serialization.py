@@ -5,7 +5,7 @@ import io
 
 from indian_company_analysis.data.extraction.models import PdfTableExtractionResult
 
-_CONTROLLED_CSV_COLUMNS = (
+CONTROLLED_CSV_COLUMNS = (
     "company_id",
     "page_number",
     "table_id",
@@ -32,7 +32,7 @@ def extraction_to_controlled_csv(
     if not result.ready_for_review:
         raise ValueError("cannot serialize an extraction result that is not ready for review")
     output = io.StringIO(newline="")
-    writer = csv.DictWriter(output, fieldnames=_CONTROLLED_CSV_COLUMNS, lineterminator="\n")
+    writer = csv.DictWriter(output, fieldnames=CONTROLLED_CSV_COLUMNS, lineterminator="\n")
     writer.writeheader()
     spec = result.spec
     for row in result.rows:

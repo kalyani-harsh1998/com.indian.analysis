@@ -3,6 +3,7 @@
 from collections import defaultdict
 
 from indian_company_analysis.data.onboarding.models import (
+    ApprovedOnboardingConfiguration,
     DocumentOnboardingProposal,
     DocumentOnboardingRequest,
     ProposalValidationIssue,
@@ -163,6 +164,49 @@ def validate_onboarding_proposal(
     )
 
 
+def validate_configuration_identity(
+    request: DocumentOnboardingRequest,
+    configuration: ApprovedOnboardingConfiguration,
+) -> None:
+    """Reject use of an approved configuration with different source context."""
+
+    identity_fields = (
+        ("request_id", request.request_id, configuration.request_id),
+        ("document_id", request.document_id, configuration.document_id),
+        ("extraction_id", request.extraction_id, configuration.extraction_id),
+        (
+            "extraction_profile_version",
+            request.extraction_profile_version,
+            configuration.extraction_profile_version,
+        ),
+        ("company_id", request.company_id, configuration.company_id),
+        (
+            "source_reference_id",
+            request.source_reference_id,
+            configuration.source_reference_id,
+        ),
+        (
+            "source_checksum_sha256",
+            request.source_checksum_sha256,
+            configuration.source_checksum_sha256,
+        ),
+        (
+            "source_organization",
+            request.source_organization,
+            configuration.source_organization,
+        ),
+        ("document_type", request.document_type, configuration.document_type),
+        ("unit", request.unit, configuration.unit),
+        ("period", request.period, configuration.period),
+        ("reporting_basis", request.reporting_basis, configuration.reporting_basis),
+    )
+    for field_name, request_value, configuration_value in identity_fields:
+        if request_value != configuration_value:
+            raise ValueError(
+                f"onboarding request {field_name} does not match approved configuration"
+            )
+
+
 def _validate_identity(
     request: DocumentOnboardingRequest,
     proposal: DocumentOnboardingProposal,
@@ -171,6 +215,12 @@ def _validate_identity(
     identity_fields = (
         ("request_id", request.request_id, proposal.request_id),
         ("document_id", request.document_id, proposal.document_id),
+        ("extraction_id", request.extraction_id, proposal.extraction_id),
+        (
+            "extraction_profile_version",
+            request.extraction_profile_version,
+            proposal.extraction_profile_version,
+        ),
         ("company_id", request.company_id, proposal.company_id),
         (
             "source_reference_id",

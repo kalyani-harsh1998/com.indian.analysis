@@ -8,6 +8,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from indian_company_analysis.config import Settings
+from indian_company_analysis.data.extraction.models import DocumentExtractionLink
 from indian_company_analysis.data.ingestion.local_intake import ImmutableRawDocumentStore
 from indian_company_analysis.data.ingestion.manifest_catalog import LocalManifestCatalog
 from indian_company_analysis.data.ingestion.models import (
@@ -16,6 +17,13 @@ from indian_company_analysis.data.ingestion.models import (
 )
 from indian_company_analysis.data.normalization.csv_parser import ControlledCsvFinancialParser
 from indian_company_analysis.data.normalization.models import MetricMappingSet
+from indian_company_analysis.data.onboarding.models import (
+    ApprovedOnboardingConfiguration,
+    DocumentOnboardingRequest,
+)
+from indian_company_analysis.data.onboarding.normalization_workflow import (
+    OnboardingNormalizationWorkflow,
+)
 from indian_company_analysis.data.sources.local_files import LocalFixtureDataSource
 from indian_company_analysis.domain.enums import DocumentType, LicenceCategory, SourceKind
 from indian_company_analysis.workflows.company_analysis import CompanyAnalysisWorkflow
@@ -58,6 +66,16 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     normalize.add_argument("--manifest", type=Path, required=True)
     normalize.add_argument("--mapping", type=Path, required=True)
     normalize.add_argument("--output", type=Path)
+    onboarding = subparsers.add_parser(
+        "normalize-onboarding",
+        help="persist reviewed direct mappings and aggregations as one normalized batch",
+    )
+    onboarding.add_argument("--source-manifest", type=Path, required=True)
+    onboarding.add_argument("--extraction-manifest", type=Path, required=True)
+    onboarding.add_argument("--extraction-link", type=Path, required=True)
+    onboarding.add_argument("--request", type=Path, required=True)
+    onboarding.add_argument("--configuration", type=Path, required=True)
+    onboarding.add_argument("--output", type=Path)
     return parser
 
 
@@ -121,6 +139,49 @@ def main(argv: Sequence[str] | None = None) -> int:
         status = "ready for analysis" if batch.ready_for_analysis else "has normalization issues"
         print(f"Normalized {batch.total_rows} rows to {output}; result {status}")
         return 0 if batch.ready_for_analysis else 1
+    if args.command == "normalize-onboarding":
+        source_manifest = RawDocumentManifest.model_validate_json(
+            args.source_manifest.read_text(encoding="utf-8")
+        )
+        extraction_manifest = RawDocumentManifest.model_validate_json(
+            args.extraction_manifest.read_text(encoding="utf-8")
+        )
+        extraction_link = DocumentExtractionLink.model_validate_json(
+            args.extraction_link.read_text(encoding="utf-8")
+        )
+        onboarding_request = DocumentOnboardingRequest.model_validate_json(
+            args.request.read_text(encoding="utf-8")
+        )
+        configuration = ApprovedOnboardingConfiguration.model_validate_json(
+            args.configuration.read_text(encoding="utf-8")
+        )
+        workflow = OnboardingNormalizationWorkflow()
+        onboarding_batch = workflow.normalize(
+            source_manifest=source_manifest,
+            extraction_manifest=extraction_manifest,
+            extraction_link=extraction_link,
+            request=onboarding_request,
+            configuration=configuration,
+            raw_root=settings.data_directory / "raw",
+        )
+        output = args.output or (
+            settings.data_directory
+            / "processed"
+            / "normalized"
+            / onboarding_request.document_id
+            / f"{workflow.parser_version}--{configuration.configuration_version}.json"
+        )
+        workflow.persist(onboarding_batch, output)
+        status = (
+            "ready for analysis"
+            if onboarding_batch.ready_for_analysis
+            else "has blockers or issues"
+        )
+        print(
+            f"Normalized {onboarding_batch.total_evidence_rows} onboarding rows to {output}; "
+            f"result {status}"
+        )
+        return 0 if onboarding_batch.ready_for_analysis else 1
     return 2
 
 

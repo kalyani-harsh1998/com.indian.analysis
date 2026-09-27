@@ -69,9 +69,12 @@ source locators -> deterministic extraction/parsing/aggregation/reconciliation
                                       |
                                       v
                        approved reusable configuration
+                                      |
+                                      v
+              verified combined normalization batch
 ```
 
-The current static adapter and strict schemas prove this boundary without calling a model. A future live model can reduce discovery and mapping effort for a new layout. Approved numbers still originate from source locations and deterministic transformations, never from model-generated arithmetic or unsupported narrative. The initial signed-sum executor freezes each approved component row, parses and combines it with `Decimal`, classifies the output as calculated, and carries it into existing statement reconciliation.
+The current static adapter and strict schemas prove this boundary without calling a model. A future live model can reduce discovery and mapping effort for a new layout. Approved numbers still originate from source locations and deterministic transformations, never from model-generated arithmetic or unsupported narrative. The signed-sum executor freezes each approved component row, parses and combines it with `Decimal`, classifies the output as calculated, and carries it into existing statement reconciliation. The combined workflow re-verifies the source/derived artifact link and exact CSV rows before persisting direct facts, aggregate facts, exclusions, issues, and blockers together.
 
 ## Boundaries and dependency direction
 

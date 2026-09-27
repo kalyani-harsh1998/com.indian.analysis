@@ -35,18 +35,18 @@ Each phase ends at a validation gate. Later phases may be replanned as open deci
 
 ### Phase 2D — LLM-assisted document onboarding
 
-**Implementation status:** Provider-neutral foundation and reviewed signed-sum aggregation execution implemented; live model integration, persisted combined normalization, evaluation, and review tooling remain open.
+**Implementation status:** Provider-neutral foundation, reviewed signed-sum aggregation, and combined verified normalization/persistence implemented; live model integration, evaluation, proposal/approval tooling, and review operations remain open.
 
 - **Objective:** reduce first-time setup work for new companies and filing layouts without making a model the numerical authority.
 - **LLM responsibilities:** propose document/statement classification, relevant pages, extraction profile and coordinates, period/unit/basis interpretation, canonical metric mappings, and component aggregation candidates.
 - **Deterministic responsibilities:** re-extract values from cited locations, parse numbers, apply units/signs, enforce period and basis consistency, prevent duplicate row use, execute aggregation rules, reconcile statements, and decide readiness under an explicit review policy.
 - **Provenance:** retain document checksum, evidence locators, provider/model/version, prompt and schema versions, candidate output, rationale/confidence, validation outcomes, review decision, and approved configuration version.
-- **Implemented deliverables:** provider-neutral proposal protocol, strict checksummed request/proposal schemas, deterministic static adapter, extracted-row request builder, candidate validation, explicit exclusions, human approval record, versioned direct mapping configuration, frozen approved evidence snapshots, and signed-sum aggregation with component-level calculation lineage and statement-reconciliation coverage.
-- **Remaining deliverables:** combined mapping/aggregation persistence workflow, configuration catalog, evaluation corpus, review queue or CLI, real provider adapter, and profile-discovery proposals.
+- **Implemented deliverables:** provider-neutral proposal protocol, strict checksummed request/proposal schemas, deterministic static adapter, extracted-row request builder, candidate validation, explicit exclusions, human approval record, versioned direct mapping configuration, frozen approved evidence snapshots, signed-sum aggregation with reconciliation coverage, reviewed PDF/CSV re-verification, combined normalization batch, non-overwriting persistence, and `normalize-onboarding` CLI.
+- **Remaining deliverables:** proposal/approval CLI, configuration catalog, evaluation corpus, review queue, real provider adapter, and profile-discovery proposals.
 - **Validation criteria:** benchmark mapping/profile proposal accuracy and abstention; reject malformed, unsupported, duplicated, or unreconciled candidates; replay approved configurations deterministically; measure cost and latency without weakening evidence gates.
 - **Dependencies:** approved privacy/provider policy, representative permitted filings, CA-reviewed golden mappings and aggregations, and the Phase 2C lineage contract.
 - **Risks:** hallucinated locators, semantic overconfidence, prompt injection in filings, data disclosure, model drift, cost, latency, and false automation confidence.
-- **POC sequencing:** implement the combined persistence and evaluation/audit workflow before connecting a live model. Connect a real LLM only after the evaluation and privacy gates are agreed; the current POC does not add an OpenAI API dependency.
+- **POC sequencing:** implement the evaluation/audit fixtures and review workflow before connecting a live model. Connect a real LLM only after the evaluation and privacy gates are agreed; the current POC does not add an OpenAI API dependency.
 
 ## Phase 3 — Peer selection and sector rules
 

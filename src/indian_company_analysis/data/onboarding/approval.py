@@ -110,6 +110,8 @@ def approve_onboarding_proposal(
         request_id=request.request_id,
         proposal_id=proposal.proposal_id,
         document_id=request.document_id,
+        extraction_id=request.extraction_id,
+        extraction_profile_version=request.extraction_profile_version,
         company_id=request.company_id,
         source_reference_id=request.source_reference_id,
         source_checksum_sha256=request.source_checksum_sha256,

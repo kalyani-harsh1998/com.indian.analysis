@@ -60,6 +60,8 @@ def _request(*, deferred_tax: str = "(1,246)") -> DocumentOnboardingRequest:
     return DocumentOnboardingRequest(
         request_id="fictionalco-fy2026-onboarding-v1",
         document_id="fictionalco-fy2026-annual-report",
+        extraction_id="fictional-profit-loss-v1",
+        extraction_profile_version="aligned-single-period-v1",
         company_id="fictionalco",
         source_reference_id="source-fictionalco-fy2026",
         source_checksum_sha256="a" * 64,
@@ -87,6 +89,8 @@ def _proposal() -> DocumentOnboardingProposal:
         proposal_id="fictionalco-fy2026-proposal-v1",
         request_id="fictionalco-fy2026-onboarding-v1",
         document_id="fictionalco-fy2026-annual-report",
+        extraction_id="fictional-profit-loss-v1",
+        extraction_profile_version="aligned-single-period-v1",
         company_id="fictionalco",
         source_reference_id="source-fictionalco-fy2026",
         source_checksum_sha256="a" * 64,

@@ -190,3 +190,30 @@ Real statements may present one canonical metric as several rows. Treating only 
 - Component-level lineage makes signs, omissions, and double counting independently inspectable.
 - A synthetic current-tax plus deferred-tax result passes the existing PBT-to-PAT reconciliation.
 - Real-company aggregation rules and expected values still require independent accounting review.
+
+## ADR-008 — Persist direct and aggregated onboarding outcomes together
+
+**Status:** Accepted for the POC
+**Date:** 27 September 2026
+
+### Context
+
+Direct mappings and deterministic aggregations were independently valid but did not yet form one durable normalization result. Persisting them without rechecking the Phase 2C link could allow an approved configuration to be paired with different PDF, CSV, extraction-profile, or row bytes.
+
+### Decision
+
+- Require the source manifest, extraction manifest, extraction link, onboarding request, and approved configuration for combined normalization.
+- Re-verify both immutable artifacts and their extraction-link identities before producing facts.
+- Bind onboarding requests and configurations to the extraction ID and profile version in addition to document and checksum identity.
+- Compare every controlled-CSV field and row with the approved onboarding evidence.
+- Require every evidence row to appear exactly once as a direct mapping, aggregation component, or exclusion.
+- Persist reported direct facts, calculated aggregate facts, exclusions, issues, analysis blockers, extraction link, and approved configuration in one strict batch.
+- Preserve failed benchmark or missing extraction review as blockers, and refuse to overwrite a different batch at the same output path.
+- Provide a local `normalize-onboarding` CLI; proposal generation and approval remain separate reviewed steps.
+
+### Consequences
+
+- Consumers receive one auditable Phase 2D normalization artifact without losing the distinction between reported and calculated values.
+- Approved configurations cannot silently move across extraction profiles or changed derived rows.
+- The workflow remains local and provider-neutral with no model or network dependency.
+- Automatic creation of proposals/configurations, evaluation, review operations, and handoff to the full analysis workflow remain future work.

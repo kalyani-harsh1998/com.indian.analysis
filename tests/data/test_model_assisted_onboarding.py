@@ -58,6 +58,8 @@ def _request() -> DocumentOnboardingRequest:
     return DocumentOnboardingRequest(
         request_id="fictionalco-fy2026-onboarding-v1",
         document_id="fictionalco-fy2026-annual-report",
+        extraction_id="fictional-profit-loss-v1",
+        extraction_profile_version="aligned-single-period-v1",
         company_id="fictionalco",
         source_reference_id="source-fictionalco-fy2026",
         source_checksum_sha256="a" * 64,
@@ -96,6 +98,8 @@ def _proposal() -> DocumentOnboardingProposal:
         proposal_id="fictionalco-fy2026-proposal-v1",
         request_id="fictionalco-fy2026-onboarding-v1",
         document_id="fictionalco-fy2026-annual-report",
+        extraction_id="fictional-profit-loss-v1",
+        extraction_profile_version="aligned-single-period-v1",
         company_id="fictionalco",
         source_reference_id="source-fictionalco-fy2026",
         source_checksum_sha256="a" * 64,
@@ -188,6 +192,8 @@ def test_request_builder_preserves_extraction_identity_and_locator() -> None:
     )
 
     assert request.source_checksum_sha256 == extraction.source_checksum_sha256
+    assert request.extraction_id == extraction.extraction_id
+    assert request.extraction_profile_version == extraction.profile_version
     assert request.company_id == "fictionalco"
     assert request.source_reference_id == "source-fictionalco-fy2026"
     assert request.evidence_rows[0].evidence_id == "row-287-1"

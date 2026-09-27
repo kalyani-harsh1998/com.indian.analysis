@@ -15,6 +15,7 @@ from indian_company_analysis.data.onboarding.models import (
     DocumentOnboardingRequest,
     OnboardingEvidenceRow,
 )
+from indian_company_analysis.data.onboarding.validation import validate_configuration_identity
 from indian_company_analysis.domain.enums import ValueClassification
 from indian_company_analysis.domain.metrics import MetricId
 from indian_company_analysis.domain.models import DomainModel, MetricObservation
@@ -114,7 +115,7 @@ def execute_approved_aggregations(
 ) -> AggregationExecutionResult:
     """Execute reviewed signed-sum rules without model arithmetic or inference."""
 
-    _validate_execution_identity(request, configuration)
+    validate_configuration_identity(request, configuration)
     if not configuration.aggregation_rules:
         raise ValueError("approved configuration contains no aggregation rules")
     if configuration.normalization_blockers:
@@ -251,38 +252,3 @@ def _execute_rule(
         reviewed_at=configuration.reviewed_at,
         approval_policy_version=configuration.approval_policy_version,
     )
-
-
-def _validate_execution_identity(
-    request: DocumentOnboardingRequest,
-    configuration: ApprovedOnboardingConfiguration,
-) -> None:
-    identity_fields = (
-        ("request_id", request.request_id, configuration.request_id),
-        ("document_id", request.document_id, configuration.document_id),
-        ("company_id", request.company_id, configuration.company_id),
-        (
-            "source_reference_id",
-            request.source_reference_id,
-            configuration.source_reference_id,
-        ),
-        (
-            "source_checksum_sha256",
-            request.source_checksum_sha256,
-            configuration.source_checksum_sha256,
-        ),
-        (
-            "source_organization",
-            request.source_organization,
-            configuration.source_organization,
-        ),
-        ("document_type", request.document_type, configuration.document_type),
-        ("unit", request.unit, configuration.unit),
-        ("period", request.period, configuration.period),
-        ("reporting_basis", request.reporting_basis, configuration.reporting_basis),
-    )
-    for field_name, request_value, configuration_value in identity_fields:
-        if request_value != configuration_value:
-            raise ValueError(
-                f"onboarding request {field_name} does not match approved configuration"
-            )

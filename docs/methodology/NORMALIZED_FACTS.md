@@ -53,7 +53,7 @@ A separate JSON mapping set is scoped to one source organization and document ty
 
 `sign_multiplier` may only be `1` or `-1`. The raw value remains unchanged in lineage while the normalized observation receives the explicit sign transformation. Mapping confidence is not the same as source reliability or audit assurance.
 
-Phase 2D now defines a provider-neutral proposal schema through which a future LLM may suggest a mapping set and aggregation rules for unfamiliar terminology. It retains model/prompt provenance, validates every evidence reference, requires every row to be mapped, aggregated, or explicitly excluded, prevents duplicate row use, and records human approval. It is not an approved mapping merely because the model reports high confidence. Direct approved mappings can produce the existing `MetricMappingSet`. Approved signed-sum aggregations now produce separately typed calculated observations with raw/parsed component values, coefficients, contributions, locators, source identity, rule version, and review lineage. A combined persisted normalization batch remains future work. See [model-assisted document onboarding](MODEL_ASSISTED_ONBOARDING.md).
+Phase 2D now defines a provider-neutral proposal schema through which a future LLM may suggest a mapping set and aggregation rules for unfamiliar terminology. It retains model/prompt provenance, validates every evidence reference, requires every row to be mapped, aggregated, or explicitly excluded, prevents duplicate row use, and records human approval. It is not an approved mapping merely because the model reports high confidence. Direct approved mappings produce reported facts; approved signed-sum aggregations produce separately typed calculated facts with raw/parsed component values, coefficients, contributions, locators, source identity, rule version, and review lineage. `OnboardingNormalizationWorkflow` re-verifies Phase 2C lineage and persists both types in one batch. See [model-assisted document onboarding](MODEL_ASSISTED_ONBOARDING.md).
 
 ## Workflow
 
@@ -72,6 +72,8 @@ data/processed/normalized/<document-id>/<parser-version>--<mapping-version>.json
 ```
 
 Raw documents, manifests, and normalized outputs are local and ignored by Git. If any row has an issue, the command still writes the complete result for review but returns a non-zero exit status. It refuses to overwrite a different result at the same versioned output path.
+
+For a reviewed model-assisted configuration, use `normalize-onboarding` with the source/extraction manifests, extraction link, onboarding request, and approved configuration. It re-verifies immutable artifact bytes and exact controlled-CSV rows before persisting the combined direct/aggregated batch. Unreviewed or failed extraction links remain visible but block analysis readiness.
 
 ## Lineage retained for every fact
 

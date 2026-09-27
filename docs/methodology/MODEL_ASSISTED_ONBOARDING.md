@@ -67,11 +67,34 @@ The first aggregation contract is deliberately narrow: two or more approved comp
 
 Execution fails explicitly when a component is missing, its approved evidence snapshot has changed, its number is invalid or ambiguous, a row is reused, a canonical target is duplicated, or the request's document/company/source/unit/period/basis differs from the approved configuration. The resulting observation can enter the existing statement reconciliation checks; the synthetic tax example verifies that profit before tax less aggregated tax expense equals profit after tax.
 
+## Combined verified normalization
+
+`OnboardingNormalizationWorkflow` now combines approved direct mappings, deterministic aggregations, and explicit exclusions into one persistable `OnboardingNormalizationBatch`. Before producing facts it:
+
+- re-verifies the immutable source PDF and derived CSV bytes through their extraction link;
+- matches the source document, company, source reference, checksum, extraction ID, and profile version;
+- confirms every controlled-CSV field and row still matches the onboarding evidence;
+- confirms every evidence row is used exactly once as a direct mapping, aggregation component, or exclusion; and
+- retains failed extraction benchmarks and missing extraction review as analysis blockers.
+
+Direct facts remain `reported` and use the mapping method `model_assisted_reviewed`; aggregate facts remain `calculated`. The batch embeds the reviewed configuration and extraction link, preserves issues and blockers, and refuses to overwrite a different artifact at the same output path.
+
+The local command accepts versioned JSON artifacts produced by the earlier intake, extraction, proposal, and approval steps:
+
+```bash
+uv run python -m indian_company_analysis normalize-onboarding \
+  --source-manifest /path/to/source-manifest.json \
+  --extraction-manifest /path/to/extraction-manifest.json \
+  --extraction-link /path/to/extraction-link.json \
+  --request /path/to/onboarding-request.json \
+  --configuration /path/to/approved-configuration.json \
+  --output /path/to/normalized-onboarding.json
+```
+
 ## Deferred work
 
-- integration of approved direct mappings and aggregated facts into one persisted normalization batch;
 - additional aggregation operators only when a reviewed accounting use case requires them;
-- CLI persistence, review queue, rejection records, and configuration catalog;
+- proposal/approval CLI, review queue, rejection records, and configuration catalog;
 - real provider selection and adapter implementation;
 - structured-output retries and provider error handling;
 - proposal accuracy, abstention, cost, and latency evaluation;

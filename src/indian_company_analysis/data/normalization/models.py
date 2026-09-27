@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import Field, model_validator
 
@@ -89,7 +90,7 @@ class NormalizedFact(DomainModel):
     observation: MetricObservation
     parser_version: str = Field(min_length=1)
     mapping_version: str = Field(min_length=1)
-    mapping_method: str = Field(default="exact_label", pattern=r"^exact_label$")
+    mapping_method: Literal["exact_label", "model_assisted_reviewed"] = "exact_label"
     mapping_confidence: ConfidenceLevel
     extraction_reference: ExtractionReference | None = None
 

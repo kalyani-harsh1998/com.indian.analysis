@@ -28,6 +28,8 @@ def build_onboarding_request(
     return DocumentOnboardingRequest(
         request_id=request_id,
         document_id=extraction.source_document_id,
+        extraction_id=extraction.extraction_id,
+        extraction_profile_version=extraction.profile_version,
         company_id=company_id,
         source_reference_id=source_reference_id,
         source_checksum_sha256=extraction.source_checksum_sha256,

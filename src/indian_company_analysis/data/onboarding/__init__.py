@@ -26,9 +26,17 @@ from indian_company_analysis.data.onboarding.models import (
     ProposalValidationIssue,
     ProposalValidationResult,
 )
+from indian_company_analysis.data.onboarding.normalization_workflow import (
+    OnboardingNormalizationBatch,
+    OnboardingNormalizationIssue,
+    OnboardingNormalizationWorkflow,
+)
 from indian_company_analysis.data.onboarding.request_builder import build_onboarding_request
 from indian_company_analysis.data.onboarding.static_provider import StaticProposalProvider
-from indian_company_analysis.data.onboarding.validation import validate_onboarding_proposal
+from indian_company_analysis.data.onboarding.validation import (
+    validate_configuration_identity,
+    validate_onboarding_proposal,
+)
 
 __all__ = [
     "AggregatedNormalizedFact",
@@ -48,6 +56,9 @@ __all__ = [
     "MetricAggregationComponent",
     "ModelRunProvenance",
     "OnboardingEvidenceRow",
+    "OnboardingNormalizationBatch",
+    "OnboardingNormalizationIssue",
+    "OnboardingNormalizationWorkflow",
     "OnboardingProposalProvider",
     "ProposalValidationIssue",
     "ProposalValidationResult",
@@ -55,5 +66,6 @@ __all__ = [
     "approve_onboarding_proposal",
     "build_onboarding_request",
     "execute_approved_aggregations",
+    "validate_configuration_identity",
     "validate_onboarding_proposal",
 ]

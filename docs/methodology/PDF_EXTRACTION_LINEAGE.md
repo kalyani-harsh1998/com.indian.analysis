@@ -85,7 +85,7 @@ Phase 2D now defines the provider-neutral request, proposal, deterministic-valid
 - component-to-total aggregation rules, such as current tax plus deferred tax to tax expense; and
 - confidence, rationale, and alternatives for ambiguous proposals.
 
-No live LLM is connected. The static test provider proves that the same proposal can be replayed without network access. The validator checks source identity, labels, locators, evidence coverage, duplicate use, canonical targets, and explicit exclusions before human review. The LLM does not directly publish normalized facts and does not become the source of a number. Deterministic code parses the reported values, enforces period/unit/basis compatibility, executes approved signed-sum aggregation rules, and supplies calculated observations to the existing accounting reconciliations. Broader aggregation operators and automatic handoff into a combined persisted normalization batch remain deferred.
+No live LLM is connected. The static test provider proves that the same proposal can be replayed without network access. The validator checks source identity, labels, locators, evidence coverage, duplicate use, canonical targets, and explicit exclusions before human review. The LLM does not directly publish normalized facts and does not become the source of a number. Deterministic code parses the reported values, enforces period/unit/basis compatibility, executes approved signed-sum aggregation rules, and supplies calculated observations to the existing accounting reconciliations. Direct and aggregated facts can now be persisted together; broader operators and automatic handoff into the complete company-analysis workflow remain deferred.
 
 Every model-assisted proposal must retain the source-document checksum, input locators or evidence excerpts, provider and model identifier, model version, prompt/schema version, generation timestamp, proposed configuration, rationale, confidence, validation results, reviewer or policy decision, and the final approved profile/mapping version. Once approved, the saved configuration can be replayed without asking the model to reinterpret the same layout on every run.
 
@@ -101,4 +101,4 @@ Every model-assisted proposal must retain the source-document checksum, input lo
 - XBRL and native exchange-file adapters;
 - real-report accuracy, precision, recall, and reconciliation benchmarks;
 - extraction-link revision history and reviewer authorization; and
-- automatic handoff into the complete company-analysis workflow.
+- automatic handoff from the combined normalized batch into the complete company-analysis workflow.
