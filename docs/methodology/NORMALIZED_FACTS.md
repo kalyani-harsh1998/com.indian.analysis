@@ -55,6 +55,8 @@ A separate JSON mapping set is scoped to one source organization and document ty
 
 Phase 2D now defines a provider-neutral proposal schema through which a future LLM may suggest a mapping set and aggregation rules for unfamiliar terminology. It retains model/prompt provenance, validates every evidence reference, requires every row to be mapped, aggregated, or explicitly excluded, prevents duplicate row use, and records human approval. It is not an approved mapping merely because the model reports high confidence. Direct approved mappings produce reported facts; approved signed-sum aggregations produce separately typed calculated facts with raw/parsed component values, coefficients, contributions, locators, source identity, rule version, and review lineage. `OnboardingNormalizationWorkflow` re-verifies Phase 2C lineage and persists both types in one batch. See [model-assisted document onboarding](MODEL_ASSISTED_ONBOARDING.md).
 
+Before a future live proposal provider is used, its output can be tested against versioned golden dispositions with deterministic value comparisons and accounting reconciliations. Evaluation reports are audit artifacts, not normalized facts or approvals. See [onboarding proposal evaluation](ONBOARDING_EVALUATION.md).
+
 ## Workflow
 
 First ingest the permitted CSV using the Phase 2A `intake` command. Then normalize it using the generated local manifest and a reviewed mapping file:

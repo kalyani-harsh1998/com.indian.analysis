@@ -93,7 +93,7 @@ Every model-assisted proposal must retain the source-document checksum, input lo
 
 - PDF-to-CSV command-line workflow and review UI;
 - live LLM adapter and profile-discovery proposal schema;
-- evaluation corpus for proposal accuracy, abstention, reconciliation, cost, and latency;
+- representative reviewed evaluation corpus for proposal accuracy, abstention, reconciliation, cost, and latency;
 - automatic coordinate/profile discovery and multiple periods in one extraction run;
 - prompt-injection isolation, evidence minimization, privacy policy, and provider selection;
 - merged cells, wrapped labels, footnotes, and continuation pages;

@@ -17,13 +17,19 @@ from indian_company_analysis.data.ingestion.models import (
 )
 from indian_company_analysis.data.normalization.csv_parser import ControlledCsvFinancialParser
 from indian_company_analysis.data.normalization.models import MetricMappingSet
+from indian_company_analysis.data.onboarding.evaluation import (
+    OnboardingEvaluationFixture,
+    OnboardingProposalEvaluator,
+)
 from indian_company_analysis.data.onboarding.models import (
     ApprovedOnboardingConfiguration,
+    DocumentOnboardingProposal,
     DocumentOnboardingRequest,
 )
 from indian_company_analysis.data.onboarding.normalization_workflow import (
     OnboardingNormalizationWorkflow,
 )
+from indian_company_analysis.data.onboarding.static_provider import StaticProposalProvider
 from indian_company_analysis.data.sources.local_files import LocalFixtureDataSource
 from indian_company_analysis.domain.enums import DocumentType, LicenceCategory, SourceKind
 from indian_company_analysis.workflows.company_analysis import CompanyAnalysisWorkflow
@@ -76,6 +82,14 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     onboarding.add_argument("--request", type=Path, required=True)
     onboarding.add_argument("--configuration", type=Path, required=True)
     onboarding.add_argument("--output", type=Path)
+    evaluation = subparsers.add_parser(
+        "evaluate-onboarding",
+        help="score a saved onboarding proposal against a versioned golden fixture",
+    )
+    evaluation.add_argument("--fixture", type=Path, required=True)
+    evaluation.add_argument("--proposal", type=Path, required=True)
+    evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
+    evaluation.add_argument("--output", type=Path)
     return parser
 
 
@@ -182,6 +196,30 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"result {status}"
         )
         return 0 if onboarding_batch.ready_for_analysis else 1
+    if args.command == "evaluate-onboarding":
+        fixture = OnboardingEvaluationFixture.model_validate_json(
+            args.fixture.read_text(encoding="utf-8")
+        )
+        proposal = DocumentOnboardingProposal.model_validate_json(
+            args.proposal.read_text(encoding="utf-8")
+        )
+        evaluator = OnboardingProposalEvaluator()
+        report = evaluator.evaluate(
+            fixture,
+            StaticProposalProvider(proposal),
+            evaluated_at=args.evaluated_at or datetime.now(UTC),
+        )
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "evaluations"
+            / fixture.case_id
+            / f"{proposal.proposal_id}.json"
+        )
+        evaluator.persist(report, output)
+        status = "passed" if report.passed else "failed"
+        print(f"Evaluated proposal {proposal.proposal_id} to {output}; result {status}")
+        return 0 if report.passed else 1
     return 2
 
 

@@ -134,7 +134,7 @@ Listed-company filings vary by format, layout, terminology, period presentation,
 - First-time onboarding effort can fall substantially while ambiguous cases remain visible to a reviewer.
 - High-confidence structured filings may eventually pass automatically; ambiguous PDF/OCR cases remain reviewable candidates.
 - Model changes cannot silently change accepted historical facts.
-- Profile routing, LLM evaluation, privacy, cost, and provider selection remain future tested slices.
+- Profile routing, representative live-model evaluation, privacy, cost, and provider selection remain future tested slices.
 
 ## ADR-006 — Treat model onboarding output as a reviewed proposal artifact
 
@@ -216,4 +216,30 @@ Direct mappings and deterministic aggregations were independently valid but did 
 - Consumers receive one auditable Phase 2D normalization artifact without losing the distinction between reported and calculated values.
 - Approved configurations cannot silently move across extraction profiles or changed derived rows.
 - The workflow remains local and provider-neutral with no model or network dependency.
-- Automatic creation of proposals/configurations, evaluation, review operations, and handoff to the full analysis workflow remain future work.
+- Automatic creation of proposals/configurations, representative real-report evaluation, review operations, and handoff to the full analysis workflow remain future work.
+
+## ADR-009 — Gate live onboarding models with versioned golden evaluations
+
+**Status:** Accepted for the POC
+**Date:** 27 September 2026
+
+### Context
+
+A strict schema prevents malformed model output but does not show whether semantic mappings are correct. Connecting a live provider without a repeatable benchmark would hide model, prompt, and schema regressions and could reward coverage even when values or accounting relationships are wrong.
+
+### Decision
+
+- Evaluate the provider-neutral proposal contract against versioned, human-reviewed golden fixtures before live integration.
+- Require each fixture to dispose of every evidence row exactly once through mapping, aggregation, or exclusion.
+- Measure decision precision/recall, evidence coverage, hallucinated/duplicated/unaccounted evidence, expected deterministic values, and declared accounting reconciliations.
+- Make thresholds explicit per fixture and persist the complete proposal, validation result, measurements, and pass/fail reasons.
+- Preserve provider/model, prompt/schema, generation time, and optional token, latency, and cost metadata for comparison.
+- Refuse to overwrite a different report at the same path and keep the evaluator outside the normalization authority path.
+- Use only an explicitly synthetic fixture in this slice; do not claim real-report accuracy until a permitted, representative, independently reviewed corpus exists.
+
+### Consequences
+
+- Model and prompt versions can be compared with repeatable evidence rather than anecdotal output.
+- A syntactically valid but semantically wrong proposal fails value and reconciliation gates.
+- Missing usage metadata remains visible; it is not silently inferred.
+- Live provider, privacy, prompt-injection, abstention, and representative-corpus gates remain future work.

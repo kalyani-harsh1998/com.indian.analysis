@@ -38,6 +38,7 @@ Every proposal records:
 - provider, model ID, and model version;
 - prompt and schema versions;
 - timezone-aware generation time;
+- optional token counts, latency, estimated cost, and cost currency;
 - candidate confidence and rationale; and
 - exact evidence-row identifiers used by each proposal.
 
@@ -91,13 +92,18 @@ uv run python -m indian_company_analysis normalize-onboarding \
   --output /path/to/normalized-onboarding.json
 ```
 
+## Golden-case evaluation
+
+`OnboardingProposalEvaluator` now runs any provider implementation against a versioned golden fixture. It scores direct mappings, aggregations, and exclusions; detects missing, duplicated, and hallucinated evidence use; recomputes canonical values deterministically; and runs declared accounting reconciliations. Strict thresholds determine the case result, while the persisted audit report retains the full proposal and validation outcome. The committed fixture is synthetic and proves the mechanism, not general model quality. See [onboarding proposal evaluation](ONBOARDING_EVALUATION.md).
+
 ## Deferred work
 
 - additional aggregation operators only when a reviewed accounting use case requires them;
 - proposal/approval CLI, review queue, rejection records, and configuration catalog;
 - real provider selection and adapter implementation;
 - structured-output retries and provider error handling;
-- proposal accuracy, abstention, cost, and latency evaluation;
+- a representative permitted, CA-reviewed evaluation corpus and expected-abstention cases;
+- live provider comparison using captured accuracy, token, cost, and latency metadata;
 - prompt-injection isolation and evidence-minimization policy;
 - automatic statement-page/profile discovery; and
 - controlled policy for any future low-risk automatic approval.

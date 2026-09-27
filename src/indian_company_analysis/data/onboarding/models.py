@@ -74,11 +74,18 @@ class ModelRunProvenance(DomainModel):
     prompt_version: str = Field(min_length=1)
     schema_version: str = Field(min_length=1)
     generated_at: datetime
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    latency_milliseconds: int | None = Field(default=None, ge=0)
+    estimated_cost: Decimal | None = Field(default=None, ge=0)
+    cost_currency: str | None = Field(default=None, min_length=3, max_length=3)
 
     @model_validator(mode="after")
-    def timestamp_is_timezone_aware(self) -> ModelRunProvenance:
+    def provenance_is_consistent(self) -> ModelRunProvenance:
         if self.generated_at.tzinfo is None or self.generated_at.utcoffset() is None:
             raise ValueError("model generation timestamp must include a timezone")
+        if (self.estimated_cost is None) != (self.cost_currency is None):
+            raise ValueError("estimated model cost and currency must be supplied together")
         return self
 
 

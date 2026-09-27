@@ -1,0 +1,213 @@
+"""Tests for golden-case evaluation of onboarding proposals."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from pathlib import Path
+
+import pytest
+
+from indian_company_analysis.__main__ import main
+from indian_company_analysis.data.onboarding import (
+    DocumentOnboardingProposal,
+    ExclusionCandidate,
+    MappingCandidate,
+    MetricAggregationCandidate,
+    ModelRunProvenance,
+    OnboardingEvaluationFixture,
+    OnboardingEvaluationReport,
+    OnboardingProposalEvaluator,
+    StaticProposalProvider,
+)
+from indian_company_analysis.domain.enums import ConfidenceLevel
+from indian_company_analysis.domain.metrics import MetricId
+
+_EVALUATED_AT = datetime(2026, 9, 27, 15, 0, tzinfo=UTC)
+
+
+def _fixture() -> OnboardingEvaluationFixture:
+    path = Path("tests/fixtures/evaluations/fictional_tax_onboarding.json")
+    return OnboardingEvaluationFixture.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+def _perfect_proposal(fixture: OnboardingEvaluationFixture) -> DocumentOnboardingProposal:
+    labels = {row.evidence_id: row.reported_label for row in fixture.request.evidence_rows}
+    return DocumentOnboardingProposal(
+        proposal_id="fictional-tax-perfect-proposal",
+        request_id=fixture.request.request_id,
+        document_id=fixture.request.document_id,
+        extraction_id=fixture.request.extraction_id,
+        extraction_profile_version=fixture.request.extraction_profile_version,
+        company_id=fixture.request.company_id,
+        source_reference_id=fixture.request.source_reference_id,
+        source_checksum_sha256=fixture.request.source_checksum_sha256,
+        source_organization=fixture.request.source_organization,
+        document_type=fixture.request.document_type,
+        model_run=ModelRunProvenance(
+            provider="deterministic-test-provider",
+            model_id="static-perfect-proposal",
+            model_version="1",
+            prompt_version="onboarding-prompt-v1",
+            schema_version="onboarding-proposal-v1",
+            generated_at=_EVALUATED_AT,
+            input_tokens=800,
+            output_tokens=250,
+            latency_milliseconds=1200,
+            estimated_cost="0.0042",
+            cost_currency="USD",
+        ),
+        mappings=tuple(
+            MappingCandidate(
+                candidate_id=f"mapping-{expected.evidence_id}",
+                evidence_id=expected.evidence_id,
+                reported_label=labels[expected.evidence_id],
+                metric_id=expected.metric_id,
+                sign_multiplier=expected.sign_multiplier,
+                confidence=ConfidenceLevel.HIGH,
+                rationale="Synthetic golden mapping.",
+            )
+            for expected in fixture.expected_mappings
+        ),
+        aggregations=tuple(
+            MetricAggregationCandidate(
+                candidate_id=f"aggregation-{expected.metric_id.value}",
+                metric_id=expected.metric_id,
+                components=expected.components,
+                confidence=ConfidenceLevel.HIGH,
+                rationale="Synthetic golden aggregation.",
+            )
+            for expected in fixture.expected_aggregations
+        ),
+        exclusions=tuple(
+            ExclusionCandidate(
+                evidence_id=expected.evidence_id,
+                confidence=ConfidenceLevel.HIGH,
+                rationale="Synthetic golden exclusion.",
+            )
+            for expected in fixture.expected_exclusions
+        ),
+    )
+
+
+def test_perfect_proposal_passes_values_and_accounting_reconciliation() -> None:
+    fixture = _fixture()
+    report = OnboardingProposalEvaluator().evaluate(
+        fixture,
+        StaticProposalProvider(_perfect_proposal(fixture)),
+        evaluated_at=_EVALUATED_AT,
+    )
+
+    assert report.passed is True
+    assert not report.failure_reasons
+    assert report.validation.ready_for_review is True
+    assert report.metrics.exact_decision_match is True
+    assert str(report.metrics.mapping_precision) == "1.000000"
+    assert str(report.metrics.aggregation_recall) == "1.000000"
+    assert str(report.metrics.evidence_coverage) == "1.000000"
+    assert all(item.matched for item in report.metric_values)
+    assert report.reconciliations[0].passed is True
+    assert str(report.reconciliations[0].difference) == "0"
+
+
+def test_semantically_wrong_mapping_fails_precision_and_expected_values() -> None:
+    fixture = _fixture()
+    proposal = _perfect_proposal(fixture)
+    wrong_revenue = proposal.mappings[0].model_copy(update={"metric_id": MetricId.EBIT})
+    proposal = proposal.model_copy(update={"mappings": (wrong_revenue, *proposal.mappings[1:])})
+
+    report = OnboardingProposalEvaluator().evaluate(
+        fixture,
+        StaticProposalProvider(proposal),
+        evaluated_at=_EVALUATED_AT,
+    )
+
+    assert report.passed is False
+    assert report.validation.ready_for_review is True
+    assert str(report.metrics.mapping_precision) == "0.666667"
+    assert str(report.metrics.mapping_recall) == "0.666667"
+    assert "one or more expected canonical values did not match" in report.failure_reasons
+
+
+def test_hallucinated_evidence_and_missing_coverage_are_measured() -> None:
+    fixture = _fixture()
+    proposal = _perfect_proposal(fixture)
+    hallucinated = proposal.exclusions[0].model_copy(update={"evidence_id": "row-999"})
+    proposal = proposal.model_copy(update={"exclusions": (hallucinated,)})
+
+    report = OnboardingProposalEvaluator().evaluate(
+        fixture,
+        StaticProposalProvider(proposal),
+        evaluated_at=_EVALUATED_AT,
+    )
+
+    assert report.passed is False
+    assert report.validation.ready_for_review is False
+    assert report.metrics.hallucinated_evidence_count == 1
+    assert report.metrics.unaccounted_evidence_count == 1
+    assert str(report.metrics.evidence_coverage) == "0.833333"
+    assert "proposal failed deterministic validation" in report.failure_reasons
+
+
+def test_evaluation_report_persistence_is_idempotent_and_non_overwriting(
+    tmp_path: Path,
+) -> None:
+    fixture = _fixture()
+    evaluator = OnboardingProposalEvaluator()
+    report = evaluator.evaluate(
+        fixture,
+        StaticProposalProvider(_perfect_proposal(fixture)),
+        evaluated_at=_EVALUATED_AT,
+    )
+    output = tmp_path / "evaluations" / "report.json"
+
+    evaluator.persist(report, output)
+    evaluator.persist(report, output)
+    restored = OnboardingEvaluationReport.model_validate_json(output.read_text(encoding="utf-8"))
+
+    assert restored == report
+    output.write_text("{}\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="refusing to overwrite"):
+        evaluator.persist(report, output)
+
+
+def test_evaluation_cli_persists_a_repeatable_audit_report(
+    tmp_path: Path,
+) -> None:
+    fixture = _fixture()
+    proposal = _perfect_proposal(fixture)
+    fixture_path = tmp_path / "fixture.json"
+    proposal_path = tmp_path / "proposal.json"
+    output = tmp_path / "report.json"
+    fixture_path.write_text(fixture.model_dump_json(indent=2), encoding="utf-8")
+    proposal_path.write_text(proposal.model_dump_json(indent=2), encoding="utf-8")
+
+    exit_code = main(
+        [
+            "evaluate-onboarding",
+            "--fixture",
+            str(fixture_path),
+            "--proposal",
+            str(proposal_path),
+            "--evaluated-at",
+            _EVALUATED_AT.isoformat(),
+            "--output",
+            str(output),
+        ]
+    )
+
+    report = OnboardingEvaluationReport.model_validate_json(output.read_text(encoding="utf-8"))
+    assert exit_code == 0
+    assert report.passed is True
+    assert report.evaluated_at == _EVALUATED_AT
+    assert report.proposal.model_run.input_tokens == 800
+
+
+def test_model_cost_requires_a_currency() -> None:
+    fixture = _fixture()
+    proposal = _perfect_proposal(fixture)
+    invalid_provenance = proposal.model_run.model_dump()
+    invalid_provenance["estimated_cost"] = "0.01"
+    invalid_provenance["cost_currency"] = None
+
+    with pytest.raises(ValueError, match="cost and currency"):
+        ModelRunProvenance.model_validate(invalid_provenance)
