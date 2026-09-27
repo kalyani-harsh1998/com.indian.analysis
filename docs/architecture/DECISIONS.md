@@ -79,3 +79,190 @@ Automatic PDF or OCR extraction would combine several uncertain problems: docume
 - A human still prepares and reviews the controlled CSV and mapping configuration.
 - The CSV checksum identifies the normalized input; cryptographic PDF-to-extraction linkage remains future work.
 - Real-company mappings require CA review and benchmark comparison before analytical use.
+
+## ADR-004 — Separate source PDFs from benchmarked derived extractions
+
+**Status:** Accepted for the POC
+**Date:** 26 September 2026
+
+### Context
+
+A derived table is not the same evidence object as its source filing. Treating an extracted CSV as the source would hide parser risk and make it difficult to prove which PDF bytes, tool version, pages, and transformation produced a normalized fact.
+
+### Decision
+
+- Keep the original PDF and derived controlled CSV as separate immutable raw artifacts with separate manifests and SHA-256 checksums.
+- Bind them through a strict `DocumentExtractionLink` carrying tool/version, extraction-profile version, source pages, extraction time, benchmark, and review state.
+- Begin with text-based ruled-table and explicitly configured aligned-column profiles implemented with `pdfplumber`.
+- Benchmark exact label/value pairs against independently prepared golden rows.
+- Preserve unreviewed, rejected, and failed results, but block them from analysis readiness.
+- Require an accepted human review in addition to a passing benchmark.
+- Cite the original PDF source reference in normalized observations while retaining the derived CSV identity as adjacent extraction lineage.
+
+### Consequences
+
+- A normalized fact can be traced to both original evidence bytes and derived extraction bytes.
+- Parser upgrades or extraction-profile changes produce distinguishable, reproducible lineage.
+- The committed synthetic fixture proves the contract but says nothing about real-report accuracy.
+- Real annual reports require permitted benchmark corpora and independent accounting review.
+- General layouts, OCR, XBRL, multiple tables, and automated review remain future work.
+
+## ADR-005 — Hybrid interpretation with deterministic numerical authority
+
+**Status:** Accepted as the target architecture
+**Date:** 27 September 2026
+
+### Context
+
+Listed-company filings vary by format, layout, terminology, period presentation, and accounting detail. A single rigid parser will not generalize, while allowing a language model to directly create trusted numbers would introduce nondeterminism and unsupported values.
+
+### Decision
+
+- Route documents among replaceable deterministic extraction profiles rather than require one universal layout.
+- Treat extracted labels, values, units, periods, and coordinates as candidates until validation and review complete.
+- Use a future provider-neutral LLM adapter during first-time document onboarding to reduce manual configuration work.
+- Permit the adapter to suggest document classification, relevant pages, extraction profile/coordinates, table semantics, periods/units/basis, canonical metric mappings, and component aggregation rules.
+- Never allow an LLM suggestion to become numerical evidence without a source locator, deterministic parsing, validation, and the required review gate.
+- Keep number parsing, unit transformations, duplicate handling, period/basis checks, accounting reconciliation, and acceptance status in deterministic Python.
+- Preserve model/provider, model version, prompt/schema version, source evidence/locators, suggestion, rationale, confidence, validation results, and review decision when LLM assistance is introduced.
+- Persist accepted suggestions as versioned reusable configurations so compatible later filings can run deterministically; do not require repeated model interpretation when an approved profile applies.
+- Add no LLM or OpenAI runtime dependency during the current POC.
+
+### Consequences
+
+- Input handling can evolve across company layouts while canonical output remains strict.
+- First-time onboarding effort can fall substantially while ambiguous cases remain visible to a reviewer.
+- High-confidence structured filings may eventually pass automatically; ambiguous PDF/OCR cases remain reviewable candidates.
+- Model changes cannot silently change accepted historical facts.
+- Profile routing, representative live-model evaluation, privacy, cost, and provider selection remain future tested slices.
+
+## ADR-006 — Treat model onboarding output as a reviewed proposal artifact
+
+**Status:** Accepted for the POC foundation
+**Date:** 27 September 2026
+
+### Context
+
+The hybrid target needs a concrete boundary before any live model is connected. Model output must not bypass evidence identity, silently omit inconvenient rows, reuse a source value in multiple facts, or become an executable aggregation merely because it is expressed confidently.
+
+### Decision
+
+- Build a checksummed onboarding request only from a review-ready deterministic extraction.
+- Give every source row a stable evidence ID plus its page/table/row/column locator and raw label/value.
+- Require a provider-neutral proposal to classify every row as a direct mapping, aggregation component, or explicit exclusion.
+- Reject unknown evidence, changed labels, duplicate row use, duplicate canonical targets, unaccounted rows, source-identity mismatches, and direct mappings to derived metrics.
+- Preserve provider/model, prompt/schema, generation-time, candidate rationale/confidence, source checksum, reviewer, review time, and approval-policy versions.
+- Rerun deterministic validation inside the human-approval operation rather than trust a supplied validation result.
+- Permit reviewed direct mappings to produce the existing mapping set, but retain approved aggregation semantics behind an explicit blocker until deterministic aggregation execution exists.
+- Use a static provider for tests; add no network or model dependency in this slice.
+
+### Consequences
+
+- A future provider can reduce semantic setup work without changing the acceptance boundary.
+- High model confidence cannot bypass evidence validation or human approval.
+- Every extracted row receives an explicit disposition, making omissions and double counting visible.
+- The current slice does not discover statement pages or coordinates, call an LLM, execute aggregations, persist configurations, or automate approval.
+- ADR-007 subsequently adds deterministic execution for the reviewed signed-sum aggregation subset.
+
+## ADR-007 — Execute approved component aggregations as calculated facts
+
+**Status:** Accepted for the POC
+**Date:** 27 September 2026
+
+### Context
+
+Real statements may present one canonical metric as several rows. Treating only one component as the metric would be incomplete, while embedding issuer labels or arithmetic in Python would not generalize. A reviewed semantic rule needs deterministic execution without converting model output into numerical evidence.
+
+### Decision
+
+- Freeze the exact locator, label, raw value, and evidence ID for every approved direct mapping, aggregation component, and exclusion.
+- Support an initial generic signed-sum rule whose component coefficients are limited to `1` and `-1`.
+- Reconfirm request, company, source reference, checksum, organization, document type, unit, period, and reporting basis before execution.
+- Parse each component with the deterministic reported-number parser and retain its parsed value, coefficient, and contribution.
+- Reject missing or changed evidence, invalid numbers, duplicate evidence use, duplicate targets, and contextual mismatches explicitly.
+- Classify aggregate observations as `calculated`, retain source/proposal/rule/configuration/reviewer lineage, and make them compatible with existing statement reconciliation.
+- Keep broader aggregation operators and the combined persisted normalization workflow out of this slice.
+
+### Consequences
+
+- Company-specific labels and component combinations remain versioned configuration rather than Python branches.
+- Reviewed aggregation semantics can now produce reproducible canonical facts without model arithmetic.
+- Component-level lineage makes signs, omissions, and double counting independently inspectable.
+- A synthetic current-tax plus deferred-tax result passes the existing PBT-to-PAT reconciliation.
+- Real-company aggregation rules and expected values still require independent accounting review.
+
+## ADR-008 — Persist direct and aggregated onboarding outcomes together
+
+**Status:** Accepted for the POC
+**Date:** 27 September 2026
+
+### Context
+
+Direct mappings and deterministic aggregations were independently valid but did not yet form one durable normalization result. Persisting them without rechecking the Phase 2C link could allow an approved configuration to be paired with different PDF, CSV, extraction-profile, or row bytes.
+
+### Decision
+
+- Require the source manifest, extraction manifest, extraction link, onboarding request, and approved configuration for combined normalization.
+- Re-verify both immutable artifacts and their extraction-link identities before producing facts.
+- Bind onboarding requests and configurations to the extraction ID and profile version in addition to document and checksum identity.
+- Compare every controlled-CSV field and row with the approved onboarding evidence.
+- Require every evidence row to appear exactly once as a direct mapping, aggregation component, or exclusion.
+- Persist reported direct facts, calculated aggregate facts, exclusions, issues, analysis blockers, extraction link, and approved configuration in one strict batch.
+- Preserve failed benchmark or missing extraction review as blockers, and refuse to overwrite a different batch at the same output path.
+- Provide a local `normalize-onboarding` CLI; proposal generation and approval remain separate reviewed steps.
+
+### Consequences
+
+- Consumers receive one auditable Phase 2D normalization artifact without losing the distinction between reported and calculated values.
+- Approved configurations cannot silently move across extraction profiles or changed derived rows.
+- The workflow remains local and provider-neutral with no model or network dependency.
+- Automatic creation of proposals/configurations, representative real-report evaluation, review operations, and handoff to the full analysis workflow remain future work.
+
+## ADR-009 — Gate live onboarding models with versioned golden evaluations
+
+**Status:** Accepted for the POC
+**Date:** 27 September 2026
+
+### Context
+
+A strict schema prevents malformed model output but does not show whether semantic mappings are correct. Connecting a live provider without a repeatable benchmark would hide model, prompt, and schema regressions and could reward coverage even when values or accounting relationships are wrong.
+
+### Decision
+
+- Evaluate the provider-neutral proposal contract against versioned, human-reviewed golden fixtures before live integration.
+- Require each fixture to dispose of every evidence row exactly once through mapping, aggregation, or exclusion.
+- Measure decision precision/recall, evidence coverage, hallucinated/duplicated/unaccounted evidence, expected deterministic values, and declared accounting reconciliations.
+- Make thresholds explicit per fixture and persist the complete proposal, validation result, measurements, and pass/fail reasons.
+- Preserve provider/model, prompt/schema, generation time, and optional token, latency, and cost metadata for comparison.
+- Refuse to overwrite a different report at the same path and keep the evaluator outside the normalization authority path.
+- Use only an explicitly synthetic fixture in this slice; do not claim real-report accuracy until a permitted, representative, independently reviewed corpus exists.
+
+### Consequences
+
+- Model and prompt versions can be compared with repeatable evidence rather than anecdotal output.
+- A syntactically valid but semantically wrong proposal fails value and reconciliation gates.
+- Missing usage metadata remains visible; it is not silently inferred.
+- Live provider, privacy, prompt-injection, and representative-corpus gates remain future work.
+
+## ADR-010 — Require explicit abstention for unresolved onboarding evidence
+
+**Status:** Accepted for the POC
+**Date:** 27 September 2026
+
+### Context
+
+Forcing a model to choose only a mapping, aggregation, or exclusion encourages confident but unsupported handling of ambiguous labels. Treating a missing disposition as an abstention would instead hide an omission and weaken evidence coverage controls.
+
+### Decision
+
+- Add a strict `AbstentionCandidate` containing a candidate ID, exact evidence ID, confidence, and rationale.
+- Count an abstention as a visible evidence disposition for validation and golden-case evaluation.
+- Score expected abstentions using precision and recall alongside the other disposition types.
+- Allow a syntactically valid proposal with abstentions to be reviewed and evaluated, but reject it from approval until a reviewer resolves every abstention.
+- Keep abstentions out of normalized facts and approved configurations.
+
+### Consequences
+
+- A provider can safely defer ambiguous rows without fabricating an accounting classification.
+- Silent omissions remain validation errors, rather than being reclassified as abstentions.
+- Evaluation can reward appropriate uncertainty, while normalization remains fully deterministic and reviewer-approved.

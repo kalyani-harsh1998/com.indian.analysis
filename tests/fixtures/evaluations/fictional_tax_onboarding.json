@@ -1,0 +1,182 @@
+{
+  "case_id": "fictional-tax-onboarding",
+  "fixture_version": "1.0.0",
+  "description": "Synthetic golden case for direct mappings, tax aggregation, exclusion, and PAT reconciliation.",
+  "request": {
+    "request_id": "fictionalco-fy2026-evaluation-v1",
+    "document_id": "fictionalco-fy2026-synthetic-report",
+    "extraction_id": "fictionalco-fy2026-profit-loss",
+    "extraction_profile_version": "aligned-single-period-v1",
+    "company_id": "fictionalco",
+    "source_reference_id": "source-fictionalco-fy2026-evaluation",
+    "source_checksum_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "source_organization": "Synthetic evaluation fixture",
+    "document_type": "annual_report",
+    "unit": "INR crore",
+    "period": {
+      "label": "FY2026",
+      "period_type": "annual",
+      "start_date": "2025-04-01",
+      "end_date": "2026-03-31"
+    },
+    "reporting_basis": "consolidated",
+    "evidence_rows": [
+      {
+        "evidence_id": "row-1",
+        "source_locator": {
+          "page_number": 287,
+          "table_id": "profit_and_loss",
+          "row_number": 1,
+          "column_name": "FY2026"
+        },
+        "reported_label": "Revenue from operations",
+        "raw_value": "1,78,650"
+      },
+      {
+        "evidence_id": "row-2",
+        "source_locator": {
+          "page_number": 287,
+          "table_id": "profit_and_loss",
+          "row_number": 2,
+          "column_name": "FY2026"
+        },
+        "reported_label": "Profit before tax",
+        "raw_value": "39,995"
+      },
+      {
+        "evidence_id": "row-3",
+        "source_locator": {
+          "page_number": 287,
+          "table_id": "profit_and_loss",
+          "row_number": 3,
+          "column_name": "FY2026"
+        },
+        "reported_label": "Current tax",
+        "raw_value": "11,767"
+      },
+      {
+        "evidence_id": "row-4",
+        "source_locator": {
+          "page_number": 287,
+          "table_id": "profit_and_loss",
+          "row_number": 4,
+          "column_name": "FY2026"
+        },
+        "reported_label": "Deferred tax",
+        "raw_value": "(1,246)"
+      },
+      {
+        "evidence_id": "row-5",
+        "source_locator": {
+          "page_number": 287,
+          "table_id": "profit_and_loss",
+          "row_number": 5,
+          "column_name": "FY2026"
+        },
+        "reported_label": "Profit for the year",
+        "raw_value": "29,474"
+      },
+      {
+        "evidence_id": "row-6",
+        "source_locator": {
+          "page_number": 287,
+          "table_id": "profit_and_loss",
+          "row_number": 6,
+          "column_name": "FY2026"
+        },
+        "reported_label": "Other income",
+        "raw_value": "3,100"
+      }
+    ]
+  },
+  "expected_mappings": [
+    {
+      "evidence_id": "row-1",
+      "metric_id": "revenue",
+      "sign_multiplier": "1"
+    },
+    {
+      "evidence_id": "row-2",
+      "metric_id": "profit_before_tax",
+      "sign_multiplier": "1"
+    },
+    {
+      "evidence_id": "row-5",
+      "metric_id": "profit_after_tax",
+      "sign_multiplier": "1"
+    }
+  ],
+  "expected_aggregations": [
+    {
+      "metric_id": "tax_expense",
+      "components": [
+        {
+          "evidence_id": "row-3",
+          "coefficient": "1"
+        },
+        {
+          "evidence_id": "row-4",
+          "coefficient": "1"
+        }
+      ]
+    }
+  ],
+  "expected_exclusions": [
+    {
+      "evidence_id": "row-6"
+    }
+  ],
+  "expected_metric_values": [
+    {
+      "metric_id": "revenue",
+      "value": "178650"
+    },
+    {
+      "metric_id": "profit_before_tax",
+      "value": "39995"
+    },
+    {
+      "metric_id": "tax_expense",
+      "value": "10521"
+    },
+    {
+      "metric_id": "profit_after_tax",
+      "value": "29474"
+    }
+  ],
+  "reconciliation_expectations": [
+    {
+      "reconciliation_id": "profit-after-tax",
+      "description": "Profit before tax less tax expense equals profit after tax.",
+      "terms": [
+        {
+          "metric_id": "profit_before_tax",
+          "coefficient": "1"
+        },
+        {
+          "metric_id": "tax_expense",
+          "coefficient": "-1"
+        },
+        {
+          "metric_id": "profit_after_tax",
+          "coefficient": "-1"
+        }
+      ],
+      "expected_difference": "0",
+      "tolerance": "0.01"
+    }
+  ],
+  "thresholds": {
+    "minimum_mapping_precision": "1",
+    "minimum_mapping_recall": "1",
+    "minimum_aggregation_precision": "1",
+    "minimum_aggregation_recall": "1",
+    "minimum_exclusion_precision": "1",
+    "minimum_exclusion_recall": "1",
+    "minimum_evidence_coverage": "1",
+    "maximum_hallucinated_evidence": 0,
+    "require_valid_proposal": true,
+    "require_expected_values": true,
+    "require_reconciliations": true
+  }
+}

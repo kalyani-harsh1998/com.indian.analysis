@@ -31,7 +31,22 @@ Each phase ends at a validation gate. Later phases may be replanned as open deci
 - **Risks:** document variation, revisions, OCR/table errors, access restrictions, and unauthorized reuse.
 - **Explicitly deferred:** broad-universe automation and unofficial scraping.
 
-**Current implementation — Phases 2A–2B:** local intake copies a manually supplied, permitted file into checksum-addressed raw storage and registers provenance and licence metadata. A controlled CSV parser now produces canonical observations through source-specific, versioned exact-label mappings while retaining raw values and page/table/row/column lineage. Invalid, unmapped, mismatched, and duplicate rows block analysis readiness. PDF/XBRL extraction, source-to-extraction linkage, adapter retrieval, revision handling, conflict resolution, and real-report accuracy benchmarks remain later Phase 2 slices.
+**Current implementation — Phases 2A–2C:** local intake copies a manually supplied, permitted file into checksum-addressed raw storage and registers provenance and licence metadata. Controlled CSV normalization produces canonical observations through source-specific, versioned exact-label mappings. Synthetic benchmarks cover ruled and borderless aligned statements; separate PDF/CSV checksums, exact-row benchmarks, and accepted human review are required. A local Infosys FY2026 page test matched 19/19 manually checked candidates and validated Indian number parsing, but is not a general accuracy benchmark. General profile routing, semantic/aggregation review, OCR/XBRL extraction, adapter retrieval, revision handling, and conflict resolution remain later Phase 2 slices.
+
+### Phase 2D — LLM-assisted document onboarding
+
+**Implementation status:** Provider-neutral foundation, reviewed signed-sum aggregation, combined verified normalization/persistence, and synthetic golden-case evaluation with safe abstention handling implemented; a representative reviewed corpus, live model integration, proposal/approval tooling, and review operations remain open.
+
+- **Objective:** reduce first-time setup work for new companies and filing layouts without making a model the numerical authority.
+- **LLM responsibilities:** propose document/statement classification, relevant pages, extraction profile and coordinates, period/unit/basis interpretation, canonical metric mappings, and component aggregation candidates.
+- **Deterministic responsibilities:** re-extract values from cited locations, parse numbers, apply units/signs, enforce period and basis consistency, prevent duplicate row use, execute aggregation rules, reconcile statements, and decide readiness under an explicit review policy.
+- **Provenance:** retain document checksum, evidence locators, provider/model/version, prompt and schema versions, candidate output, rationale/confidence, validation outcomes, review decision, and approved configuration version.
+- **Implemented deliverables:** provider-neutral proposal protocol, strict checksummed request/proposal schemas, deterministic static adapter, extracted-row request builder, candidate validation, explicit exclusions and abstentions, human approval record, versioned direct mapping configuration, frozen approved evidence snapshots, signed-sum aggregation with reconciliation coverage, reviewed PDF/CSV re-verification, combined normalization batch, non-overwriting persistence, `normalize-onboarding` CLI, versioned golden fixture schema, accuracy/coverage/value/reconciliation evaluator, model-usage provenance, immutable-style evaluation report, and `evaluate-onboarding` CLI.
+- **Remaining deliverables:** representative permitted CA-reviewed evaluation corpus, further adversarial cases, proposal/approval CLI, configuration catalog, review queue, real provider adapter, and profile-discovery proposals.
+- **Validation criteria:** benchmark mapping/profile proposal accuracy and abstention; reject malformed, unsupported, duplicated, or unreconciled candidates; replay approved configurations deterministically; measure cost and latency without weakening evidence gates.
+- **Dependencies:** approved privacy/provider policy, representative permitted filings, CA-reviewed golden mappings and aggregations, and the Phase 2C lineage contract.
+- **Risks:** hallucinated locators, semantic overconfidence, prompt injection in filings, data disclosure, model drift, cost, latency, and false automation confidence.
+- **POC sequencing:** expand the implemented synthetic evaluation/audit fixture into a representative reviewed corpus and implement the review workflow before connecting a live model. Connect a real LLM only after quality and privacy gates are agreed; the current POC does not add an OpenAI API dependency.
 
 ## Phase 3 — Peer selection and sector rules
 
@@ -47,7 +62,7 @@ Each phase ends at a validation gate. Later phases may be replanned as open deci
 - **Objectives:** coordinate deterministic capabilities and produce evidence-backed narrative findings.
 - **Deliverables:** controlled orchestration, retrieval, claim/evidence validation, finding schema, confidence handling, evaluation cases, and model/provider adapter.
 - **Validation criteria:** no uncited material claims, no model arithmetic as truth, reproducible runs, adversarial tests, and cost/latency measurements.
-- **Dependencies:** stable facts/analytics, evaluation set, provider decision, and privacy/compliance boundaries.
+- **Dependencies:** stable facts/analytics, evaluation set, provider decision, privacy/compliance boundaries, and lessons from the narrower Phase 2D model adapter if implemented.
 - **Risks:** hallucination, prompt injection, unsupported synthesis, non-determinism, and vendor lock-in.
 - **Explicitly deferred:** unconstrained autonomous agents and public recommendations.
 

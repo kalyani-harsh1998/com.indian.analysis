@@ -18,6 +18,7 @@ Before substantial work, read `docs/PROJECT_CONTEXT.md`, this file, and the rele
 - Add tests for financial formulas, transformations, validation, provenance, and failure behavior.
 - Run `pytest`, `ruff check .`, `ruff format --check .`, and `mypy src tests` before committing.
 - Record material architectural decisions in `docs/architecture/DECISIONS.md`; create it when the first such decision is accepted.
+- Treat documentation as part of every material change: update the relevant project context, roadmap, methodology, architecture/decision records, and README when implementation status, behavior, limitations, or future work changes.
 
 ## Architecture boundaries
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import Field, model_validator
 
@@ -69,6 +70,14 @@ class NormalizationIssue(DomainModel):
     reported_label: str | None = None
 
 
+class ExtractionReference(DomainModel):
+    """Checksummed derived artifact used to produce a normalized fact."""
+
+    extraction_id: str = Field(min_length=1)
+    extraction_document_id: str = Field(min_length=1)
+    extraction_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
 class NormalizedFact(DomainModel):
     """An engine-compatible observation plus its field-level document lineage."""
 
@@ -81,8 +90,9 @@ class NormalizedFact(DomainModel):
     observation: MetricObservation
     parser_version: str = Field(min_length=1)
     mapping_version: str = Field(min_length=1)
-    mapping_method: str = Field(default="exact_label", pattern=r"^exact_label$")
+    mapping_method: Literal["exact_label", "model_assisted_reviewed"] = "exact_label"
     mapping_confidence: ConfidenceLevel
+    extraction_reference: ExtractionReference | None = None
 
 
 class NormalizedFactBatch(DomainModel):
@@ -96,12 +106,17 @@ class NormalizedFactBatch(DomainModel):
     total_rows: int = Field(ge=0)
     facts: tuple[NormalizedFact, ...]
     issues: tuple[NormalizationIssue, ...]
+    analysis_blockers: tuple[str, ...] = ()
+    extraction_reference: ExtractionReference | None = None
     ready_for_analysis: bool
 
     @model_validator(mode="after")
     def readiness_and_lineage_are_consistent(self) -> NormalizedFactBatch:
-        if self.ready_for_analysis != (not self.issues):
-            raise ValueError("ready_for_analysis must be false whenever normalization issues exist")
+        expected_readiness = not self.issues and not self.analysis_blockers
+        if self.ready_for_analysis != expected_readiness:
+            raise ValueError(
+                "ready_for_analysis requires no normalization issues or analysis blockers"
+            )
         if self.total_rows != len(self.facts) + len(self.issues):
             raise ValueError("each CSV row must produce exactly one fact or one issue")
         for fact in self.facts:
@@ -115,4 +130,6 @@ class NormalizedFactBatch(DomainModel):
                 raise ValueError("all normalized facts must use the batch mapping version")
             if self.source_reference.source_id not in fact.observation.source_reference_ids:
                 raise ValueError("normalized observations must retain the source reference")
+            if fact.extraction_reference != self.extraction_reference:
+                raise ValueError("fact extraction lineage must match its normalization batch")
         return self

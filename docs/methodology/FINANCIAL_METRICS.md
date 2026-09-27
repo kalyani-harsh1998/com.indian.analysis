@@ -128,11 +128,22 @@ original value + adjustment amount = adjusted value
 
 Phase 1 stores adjustment records but continues to calculate reported metrics from current reported/restated observations. Normalized metrics using adjustments require a separately reviewed policy.
 
-## 11. Review checklist before real-company use
+## 11. Aggregated reported components
+
+When a filing presents one canonical concept as multiple reported rows, an approved versioned rule may combine those components deterministically. The initial rule supports only signed sums with coefficients of `1` or `-1`. For example:
+
+```text
+tax expense = current tax + deferred tax
+```
+
+Each component retains its source locator, raw value, parsed value, coefficient, and contribution. The aggregate is classified as `calculated`, even though all components are reported, and retains the source checksum/reference plus proposal, rule, configuration, and reviewer lineage. Company, document, unit, period, and reporting basis must match the approved configuration. Aggregation does not replace statement reconciliation; applicable equations must still pass before analytical reliance.
+
+## 12. Review checklist before real-company use
 
 - Confirm metric mappings against the company's notes and accounting policies.
 - Confirm consolidated versus standalone basis.
 - Confirm units, currency, fiscal dates, and revised filing status.
+- Review every component and sign in an aggregation rule and confirm it is neither omitted nor reused.
 - Reconcile statements and investigate differences above tolerance.
 - Check whether finance cost includes lease interest or other items.
 - Check whether cash should exclude restricted balances and include liquid investments.

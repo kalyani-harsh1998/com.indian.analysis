@@ -2,6 +2,7 @@
 
 from indian_company_analysis.data.normalization.csv_parser import ControlledCsvFinancialParser
 from indian_company_analysis.data.normalization.models import (
+    ExtractionReference,
     MetricLabelMapping,
     MetricMappingSet,
     NormalizationIssue,
@@ -12,6 +13,7 @@ from indian_company_analysis.data.normalization.models import (
 
 __all__ = [
     "ControlledCsvFinancialParser",
+    "ExtractionReference",
     "MetricLabelMapping",
     "MetricMappingSet",
     "NormalizedFact",

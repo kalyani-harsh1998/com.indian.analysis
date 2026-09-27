@@ -29,6 +29,7 @@ class DocumentType(StrEnum):
     EXCHANGE_ANNOUNCEMENT = "exchange_announcement"
     XBRL_FILING = "xbrl_filing"
     GOVERNANCE_FILING = "governance_filing"
+    CONTROLLED_EXTRACTION = "controlled_extraction"
     OTHER = "other"
 
 
@@ -38,6 +39,12 @@ class LicenceCategory(StrEnum):
     OPEN_LICENCE = "open_licence"
     LICENSED = "licensed"
     RESTRICTED = "restricted"
+
+
+class ExtractionReviewStatus(StrEnum):
+    UNREVIEWED = "unreviewed"
+    REVIEWED = "reviewed"
+    REJECTED = "rejected"
 
 
 class ConfidenceLevel(StrEnum):

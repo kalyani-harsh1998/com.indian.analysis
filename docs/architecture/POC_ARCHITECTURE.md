@@ -26,7 +26,7 @@ LocalFileDataSource -> Pydantic validation -> provenance/revision gate
 Phase 2A adds a separate evidence-intake path; it does not yet feed the financial engine:
 
 ```text
-manually supplied local document
+manually supplied source PDF
         |
         v
 SHA-256 + copy-only content-addressed raw store
@@ -38,11 +38,47 @@ immutable raw copy + append-only local manifest catalog
 independent checksum verification
         |
         v
+explicit ruled or aligned-coordinate extraction profile
+        |
+        v
+derived CSV checksum + benchmark + human review
+        |
+        v
+cryptographic PDF-to-CSV extraction link
+        |
+        v
 controlled CSV parser + versioned exact-label mapping
         |
         v
 normalized observations + field lineage + explicit issues
 ```
+
+The Phase 2D foundation adds a replaceable proposal adapter beside, not inside, the deterministic pipeline:
+
+```text
+PDF text/layout evidence -> LLM candidate profile/mappings/aggregations
+                                      |
+                                      v
+                        strict versioned proposal schema
+                                      |
+                                      v
+source locators -> deterministic extraction/parsing/aggregation/reconciliation
+                                      |
+                                      v
+                         review policy or human review
+                                      |
+                                      v
+                       approved reusable configuration
+                                      |
+                                      v
+              verified combined normalization batch
+```
+
+The current static adapter and strict schemas prove this boundary without calling a model. A future live model can reduce discovery and mapping effort for a new layout. Approved numbers still originate from source locations and deterministic transformations, never from model-generated arithmetic or unsupported narrative. The signed-sum executor freezes each approved component row, parses and combines it with `Decimal`, classifies the output as calculated, and carries it into existing statement reconciliation. The combined workflow re-verifies the source/derived artifact link and exact CSV rows before persisting direct facts, aggregate facts, exclusions, issues, and blockers together.
+
+Before a live adapter is connected, the same provider protocol can be routed through a golden-case evaluator. Versioned fixtures define expected evidence dispositions, canonical values, reconciliations, and thresholds. Persisted reports retain the proposal, deterministic validation, accuracy/coverage results, model and prompt identity, and optional usage/cost metadata. This is a quality gate around the adapter; it does not replace review or enter the financial calculation path.
+
+An explicit abstention is a fourth evidence disposition alongside mapping, aggregation, and exclusion. It carries the source row and rationale into validation and evaluation, allowing a provider to safely defer an ambiguous row. Approval rejects any proposal containing an abstention, so a reviewer must resolve it before a configuration enters deterministic normalization.
 
 ## Boundaries and dependency direction
 
@@ -69,7 +105,7 @@ Protocols are intentionally narrow and framework-neutral. Additional methods sho
 
 Each input observation has one or more source-reference IDs. The workflow rejects missing references and unknown IDs before calculation. Calculation and reconciliation results retain the input observation IDs and the union of their source references. Superseded observations remain stored but are excluded from current-period calculations.
 
-The fixture source is explicitly `synthetic`; its fictional values are not representations of Infosys or its peers. Phase 2A manifests retain checksums, publication/retrieval timestamps, document locators, parser version where relevant, and licensing classification. Phase 2B normalized facts additionally retain the original label/value, field locator, parser and mapping versions, mapping rationale/confidence, and the engine-compatible observation. A checksum proves byte identity, not accounting correctness, completeness, or rights to use a source.
+The fixture source is explicitly `synthetic`; its fictional values are not representations of Infosys or its peers. Phase 2A manifests retain checksums, publication/retrieval timestamps, document locators, parser version where relevant, and licensing classification. Phase 2B normalized facts retain the original label/value, field locator, parser and mapping versions, mapping rationale/confidence, and the engine-compatible observation. Phase 2C keeps original PDF evidence and its derived CSV as different immutable artifacts and records both checksums, extraction tool/profile, benchmark, pages, and human-review state. Phase 2D approved configurations freeze the exact evidence disposition, model run, reviewer, and rule versions; aggregate facts additionally retain every parsed component and contribution. Evaluation reports retain their golden-fixture version, complete proposal, validation outcome, thresholds, and model-run metadata. A checksum proves byte identity, not accounting correctness, completeness, or rights to use a source.
 
 ## Deterministic metric semantics
 
@@ -82,7 +118,7 @@ All values use `Decimal`. Missing, zero-denominator, or incomparable cases produ
 
 ## Deliberate omissions
 
-Role-specific agent implementations, live NSE/BSE adapters, PDF/HTML/OCR/XBRL extraction, automated normalization, databases, LLMs, forecasts, valuation, recommendations, charts, PowerPoint, API, and web UI are deferred. The controlled CSV bridge is not represented as automatic filing parsing. Adapter filenames are not created as empty promises. Banks, NBFCs, and insurers require separate future sector modules.
+Role-specific agent implementations, live NSE/BSE adapters, general PDF/HTML/OCR/XBRL extraction, automated profile selection, databases, runtime LLM integration, forecasts, valuation, recommendations, charts, PowerPoint, API, and web UI are deferred. The ruled and explicitly configured aligned profiles are not represented as general filing parsing. A future LLM may suggest document classes, profiles, semantic mappings, and aggregation rules, but deterministic extraction, normalization, reconciliation, provenance, and review gates remain authoritative. Adapter filenames are not created as empty promises. Banks, NBFCs, and insurers require separate future sector modules.
 
 The research blueprint's possible IT-services-plus-cement MVP is broader than this assignment. This slice uses only fictional IT-services-shaped records; cement becomes useful after ingestion and financial-statement foundations are proven.
 

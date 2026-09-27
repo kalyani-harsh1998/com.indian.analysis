@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import csv
 from datetime import date
-from decimal import Decimal
 from pathlib import Path
 
 from pydantic import Field, ValidationError
 
+from indian_company_analysis.data.extraction.linking import verify_extraction_link
+from indian_company_analysis.data.extraction.models import DocumentExtractionLink
 from indian_company_analysis.data.ingestion.models import RawDocumentManifest
 from indian_company_analysis.data.ingestion.verification import verify_raw_document
 from indian_company_analysis.data.normalization.models import (
+    ExtractionReference,
     MetricLabelMapping,
     MetricMappingSet,
     NormalizationIssue,
@@ -20,7 +22,13 @@ from indian_company_analysis.data.normalization.models import (
     SourceFactLocator,
     normalize_reported_label,
 )
-from indian_company_analysis.domain.enums import PeriodType, ReportingBasis, ValueClassification
+from indian_company_analysis.data.normalization.numbers import parse_reported_decimal
+from indian_company_analysis.domain.enums import (
+    ExtractionReviewStatus,
+    PeriodType,
+    ReportingBasis,
+    ValueClassification,
+)
 from indian_company_analysis.domain.models import DomainModel, MetricObservation, ReportingPeriod
 
 
@@ -31,7 +39,7 @@ class _ControlledCsvRow(DomainModel):
     row_number: int = Field(ge=1)
     column_name: str = Field(min_length=1)
     reported_label: str = Field(min_length=1)
-    value: Decimal
+    value: str = Field(min_length=1)
     unit: str = Field(min_length=1)
     period_label: str = Field(min_length=1)
     period_type: PeriodType
@@ -61,13 +69,73 @@ class ControlledCsvFinancialParser:
             raise ValueError("controlled CSV parser accepts only text/csv manifests")
         self._validate_mapping_scope(manifest, mapping_set)
 
+        return self._parse_csv(
+            csv_manifest=manifest,
+            evidence_manifest=manifest,
+            raw_root=raw_root,
+            mapping_set=mapping_set,
+            extraction_reference=None,
+            analysis_blockers=(),
+        )
+
+    def parse_linked(
+        self,
+        *,
+        source_manifest: RawDocumentManifest,
+        extraction_manifest: RawDocumentManifest,
+        extraction_link: DocumentExtractionLink,
+        raw_root: Path,
+        mapping_set: MetricMappingSet,
+    ) -> NormalizedFactBatch:
+        """Normalize a CSV while retaining its checksum-bound source PDF as evidence."""
+
+        link_verification = verify_extraction_link(
+            extraction_link,
+            source_manifest,
+            extraction_manifest,
+            raw_root,
+        )
+        if not link_verification.valid:
+            raise ValueError(f"extraction link verification failed: {link_verification.message}")
+        self._validate_mapping_scope(source_manifest, mapping_set)
+
+        blockers: list[str] = []
+        if not extraction_link.benchmark.passed:
+            blockers.append("extraction benchmark did not meet its required exact-match rate")
+        if extraction_link.review_status is not ExtractionReviewStatus.REVIEWED:
+            blockers.append("extraction has not received an accepted human review")
+        extraction_reference = ExtractionReference(
+            extraction_id=extraction_link.extraction_id,
+            extraction_document_id=extraction_link.extraction_document_id,
+            extraction_checksum_sha256=extraction_link.extraction_checksum_sha256,
+        )
+        return self._parse_csv(
+            csv_manifest=extraction_manifest,
+            evidence_manifest=source_manifest,
+            raw_root=raw_root,
+            mapping_set=mapping_set,
+            extraction_reference=extraction_reference,
+            analysis_blockers=tuple(blockers),
+        )
+
+    def _parse_csv(
+        self,
+        *,
+        csv_manifest: RawDocumentManifest,
+        evidence_manifest: RawDocumentManifest,
+        raw_root: Path,
+        mapping_set: MetricMappingSet,
+        extraction_reference: ExtractionReference | None,
+        analysis_blockers: tuple[str, ...],
+    ) -> NormalizedFactBatch:
+
         mapping_lookup = {
             normalize_reported_label(item.reported_label): item for item in mapping_set.mappings
         }
         facts: list[NormalizedFact] = []
         issues: list[NormalizationIssue] = []
         seen_fact_keys: set[tuple[object, ...]] = set()
-        stored_path = raw_root / manifest.stored_relative_path
+        stored_path = raw_root / csv_manifest.stored_relative_path
 
         with stored_path.open(encoding="utf-8-sig", newline="") as csv_file:
             reader = csv.DictReader(csv_file)
@@ -81,27 +149,30 @@ class ControlledCsvFinancialParser:
                 self._normalize_row(
                     raw_row=raw_row,
                     csv_record_number=csv_record_number,
-                    manifest=manifest,
+                    manifest=evidence_manifest,
                     mapping_set=mapping_set,
+                    extraction_reference=extraction_reference,
                     mapping_lookup=mapping_lookup,
                     seen_fact_keys=seen_fact_keys,
                     facts=facts,
                     issues=issues,
                 )
 
-        parsed_source = manifest.source_reference.model_copy(
+        parsed_source = evidence_manifest.source_reference.model_copy(
             update={"parser_version": self.parser_version}
         )
         return NormalizedFactBatch(
-            document_id=manifest.document_id,
-            source_checksum_sha256=manifest.checksum_sha256,
+            document_id=evidence_manifest.document_id,
+            source_checksum_sha256=evidence_manifest.checksum_sha256,
             source_reference=parsed_source,
             parser_version=self.parser_version,
             mapping_version=mapping_set.mapping_version,
             total_rows=len(facts) + len(issues),
             facts=tuple(facts),
             issues=tuple(issues),
-            ready_for_analysis=not issues,
+            analysis_blockers=analysis_blockers,
+            extraction_reference=extraction_reference,
+            ready_for_analysis=not issues and not analysis_blockers,
         )
 
     @staticmethod
@@ -120,6 +191,7 @@ class ControlledCsvFinancialParser:
         csv_record_number: int,
         manifest: RawDocumentManifest,
         mapping_set: MetricMappingSet,
+        extraction_reference: ExtractionReference | None,
         mapping_lookup: dict[str, MetricLabelMapping],
         seen_fact_keys: set[tuple[object, ...]],
         facts: list[NormalizedFact],
@@ -159,6 +231,18 @@ class ControlledCsvFinancialParser:
                 )
             )
             return
+        try:
+            normalized_value = parse_reported_decimal(row.value)
+        except ValueError as error:
+            issues.append(
+                NormalizationIssue(
+                    csv_record_number=csv_record_number,
+                    code="invalid_numeric_value",
+                    message=str(error),
+                    reported_label=row.reported_label,
+                )
+            )
+            return
 
         fact_key = (
             row.company_id,
@@ -190,7 +274,7 @@ class ControlledCsvFinancialParser:
             observation_id=fact_id,
             company_id=row.company_id,
             metric_id=mapping.metric_id,
-            value=row.value * mapping.sign_multiplier,
+            value=normalized_value * mapping.sign_multiplier,
             unit=row.unit,
             period=ReportingPeriod(
                 label=row.period_label,
@@ -209,11 +293,12 @@ class ControlledCsvFinancialParser:
                 source_checksum_sha256=manifest.checksum_sha256,
                 source_locator=locator,
                 reported_label=row.reported_label,
-                raw_value=str(raw_row["value"]),
+                raw_value=row.value,
                 observation=observation,
                 parser_version=self.parser_version,
                 mapping_version=mapping_set.mapping_version,
                 mapping_confidence=mapping.confidence,
+                extraction_reference=extraction_reference,
             )
         )
 
