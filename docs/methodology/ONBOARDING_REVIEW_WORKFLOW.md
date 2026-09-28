@@ -52,6 +52,8 @@ Artifacts remain local under `data/interim/onboarding-reviews/`. Approved config
 
 The catalog can retrieve a configuration only when its request ID, document ID, extraction ID/profile, company, source reference, SHA-256 checksum, source organization, document type, unit, reporting period, and reporting basis all match the current request. This POC therefore supports auditable replay for the same verified source context; it does not yet automatically apply one configuration to a later filing.
 
+For a later filing, use the [cross-filing configuration reuse assessment](ONBOARDING_CONFIGURATION_REUSE.md). It reports candidate matches and required review work without bypassing this source-identity rule.
+
 ## Deferred work
 
 This is a local CLI workflow, not a multi-user review system. Role-based access, assignment queues, review amendments, configuration migration across filings, and electronic-signature or compliance requirements remain future work.

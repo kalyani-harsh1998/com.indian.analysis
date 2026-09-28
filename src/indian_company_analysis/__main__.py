@@ -33,6 +33,7 @@ from indian_company_analysis.data.onboarding.models import (
 from indian_company_analysis.data.onboarding.normalization_workflow import (
     OnboardingNormalizationWorkflow,
 )
+from indian_company_analysis.data.onboarding.reuse import OnboardingReuseAssessor
 from indian_company_analysis.data.onboarding.review import approve_proposal, reject_proposal
 from indian_company_analysis.data.onboarding.static_provider import StaticProposalProvider
 from indian_company_analysis.data.sources.local_files import LocalFixtureDataSource
@@ -113,6 +114,15 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
         required=True,
         help="repeat for each reviewer rejection reason",
     )
+    reuse = subparsers.add_parser(
+        "assess-onboarding-reuse",
+        help="compare a reviewed configuration with a new filing without applying it",
+    )
+    reuse.add_argument("--configuration", type=Path, required=True)
+    reuse.add_argument("--request", type=Path, required=True)
+    reuse.add_argument("--assessment-id", required=True)
+    reuse.add_argument("--assessed-at", type=datetime.fromisoformat, required=True)
+    reuse.add_argument("--output", type=Path)
     return parser
 
 
@@ -305,6 +315,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         if configuration_path is not None:
             message += f"; configuration {configuration_action}: {configuration_path}"
         print(message)
+        return 0
+    if args.command == "assess-onboarding-reuse":
+        configuration = ApprovedOnboardingConfiguration.model_validate_json(
+            args.configuration.read_text(encoding="utf-8")
+        )
+        target_request = DocumentOnboardingRequest.model_validate_json(
+            args.request.read_text(encoding="utf-8")
+        )
+        assessor = OnboardingReuseAssessor()
+        assessment = assessor.assess(
+            configuration,
+            target_request,
+            assessment_id=args.assessment_id,
+            assessed_at=args.assessed_at,
+        )
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "onboarding-reuse-assessments"
+            / f"{assessment.assessment_id}.json"
+        )
+        assessor.persist(assessment, output)
+        print(
+            f"Assessed {len(assessment.decision_assessments)} prior decisions to {output}; "
+            f"{assessment.reusable_candidate_count} reuse candidates and "
+            f"{assessment.review_required_count} requiring review"
+        )
         return 0
     return 2
 

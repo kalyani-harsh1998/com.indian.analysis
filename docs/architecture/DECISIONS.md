@@ -290,3 +290,28 @@ The approval function created a valid configuration in memory, but there was no 
 - Review outcomes remain auditable even when a proposal is rejected.
 - Approved configurations can be replayed only for their verified source context.
 - Later-filing reuse requires an explicit future migration/review policy rather than implicit label matching.
+
+## ADR-012 — Compare cross-filing configurations without automatic migration
+
+**Status:** Accepted for the POC
+**Date:** 29 September 2026
+
+### Context
+
+Source-bound configurations are safe but leave repeated manual work when a company publishes a later filing with a similar statement layout. Automatically copying an old configuration based on label similarity could silently ignore new rows, changed labels, a changed extraction profile, or a different statement context.
+
+### Decision
+
+- Add a deterministic, review-only assessment between a prior approved configuration and a new onboarding request.
+- Match only exact reported labels and require a single target row for each prior source row.
+- Report missing and ambiguous labels, target-row conflicts, new rows, and all changed request-context fields.
+- Block reuse candidates when company, source organization, document type, unit, reporting basis, or extraction profile differs.
+- Keep document, checksum, source-reference, extraction-ID, and period changes visible but expected for a later filing.
+- Persist the full source configuration, target request, and results in an immutable-style assessment with `requires_human_approval: true`.
+- Do not generate a proposal, configuration, normalized fact, or automatic approval from the assessment.
+
+### Consequences
+
+- Reviewers can focus on changed and new evidence while retaining a complete comparison trail.
+- Exact-label matching avoids hidden semantic inference in deterministic code.
+- A future provider or migration policy can use the assessment as input only after evaluation and reviewer controls are established.

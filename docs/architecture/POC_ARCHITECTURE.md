@@ -82,6 +82,8 @@ An explicit abstention is a fourth evidence disposition alongside mapping, aggre
 
 The local review boundary records approvals and rejections separately from proposal artifacts. An approved record embeds its configuration and is registered in an append-only catalog keyed by company, document type, extraction profile, and configuration version. Retrieval revalidates the full request identity, including the source checksum, so the catalog supports reproducible replay for the same evidence rather than unreviewed reuse on a later filing.
 
+For a later filing, a deterministic reuse assessor compares the new evidence labels with each approved mapping, aggregation component, and exclusion. Its persisted assessment identifies reuse candidates, missing/ambiguous rows, incompatible context, and new rows. It is deliberately outside both approval and normalization: every target configuration still needs new validation and human approval.
+
 ## Boundaries and dependency direction
 
 Dependencies point inward toward `domain` and deterministic functions:

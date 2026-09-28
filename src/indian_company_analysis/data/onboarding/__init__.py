@@ -54,6 +54,12 @@ from indian_company_analysis.data.onboarding.normalization_workflow import (
     OnboardingNormalizationWorkflow,
 )
 from indian_company_analysis.data.onboarding.request_builder import build_onboarding_request
+from indian_company_analysis.data.onboarding.reuse import (
+    DecisionReuseAssessment,
+    OnboardingReuseAssessment,
+    OnboardingReuseAssessor,
+    ReuseContextDifference,
+)
 from indian_company_analysis.data.onboarding.review import approve_proposal, reject_proposal
 from indian_company_analysis.data.onboarding.static_provider import StaticProposalProvider
 from indian_company_analysis.data.onboarding.validation import (
@@ -74,6 +80,7 @@ __all__ = [
     "AbstentionCandidate",
     "DocumentOnboardingProposal",
     "DocumentOnboardingRequest",
+    "DecisionReuseAssessment",
     "EvaluationThresholds",
     "ExclusionCandidate",
     "ExpectedAggregationDecision",
@@ -97,12 +104,15 @@ __all__ = [
     "OnboardingProposalProvider",
     "OnboardingProposalEvaluator",
     "OnboardingReviewDecision",
+    "OnboardingReuseAssessment",
+    "OnboardingReuseAssessor",
     "ProposalAccuracyMetrics",
     "ProposalValidationIssue",
     "ProposalValidationResult",
     "ReconciliationEvaluationResult",
     "ReconciliationExpectation",
     "ReconciliationTerm",
+    "ReuseContextDifference",
     "StaticProposalProvider",
     "approve_onboarding_proposal",
     "approve_proposal",
