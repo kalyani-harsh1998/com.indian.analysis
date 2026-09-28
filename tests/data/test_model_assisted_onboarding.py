@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
+from indian_company_analysis.__main__ import main
 from indian_company_analysis.data.extraction.models import (
     ExtractedTableRow,
     PdfTableExtractionResult,
@@ -18,15 +20,20 @@ from indian_company_analysis.data.onboarding import (
     DocumentOnboardingProposal,
     DocumentOnboardingRequest,
     ExclusionCandidate,
+    LocalOnboardingConfigurationCatalog,
+    LocalOnboardingReviewCatalog,
     MappingCandidate,
     MetricAggregationCandidate,
     MetricAggregationComponent,
     ModelRunProvenance,
     OnboardingEvidenceRow,
     OnboardingProposalProvider,
+    OnboardingReviewDecision,
     StaticProposalProvider,
     approve_onboarding_proposal,
+    approve_proposal,
     build_onboarding_request,
+    reject_proposal,
     validate_onboarding_proposal,
 )
 from indian_company_analysis.domain.enums import (
@@ -264,6 +271,158 @@ def test_review_preserves_model_and_source_evidence_lineage() -> None:
     assert configuration.exclusions[0].evidence_id == "row-4"
     assert configuration.ready_for_normalization is True
     assert not configuration.normalization_blockers
+
+
+def test_review_records_and_catalog_require_matching_source_identity(tmp_path: Path) -> None:
+    reviewed_at = datetime(2026, 9, 29, 10, 0, tzinfo=UTC)
+    decision = approve_proposal(
+        _request(),
+        _proposal(),
+        decision_id="fictionalco-fy2026-approval-v1",
+        configuration_version="fictionalco-fy2026-mapping-v1",
+        aggregation_rule_version="aggregation-v1",
+        reviewed_by="ca-reviewer@example.test",
+        reviewed_at=reviewed_at,
+        approval_policy_version="human-review-v1",
+        review_rationale="Source labels and the tax aggregation were checked against evidence.",
+    )
+    assert decision.configuration is not None
+    configuration_catalog = LocalOnboardingConfigurationCatalog(tmp_path / "configurations")
+    review_catalog = LocalOnboardingReviewCatalog(tmp_path / "reviews")
+
+    assert configuration_catalog.register(decision.configuration) is True
+    assert configuration_catalog.register(decision.configuration) is False
+    assert review_catalog.register(decision) is True
+    assert review_catalog.register(decision) is False
+    assert (
+        configuration_catalog.get_for_request(
+            _request(),
+            configuration_version="fictionalco-fy2026-mapping-v1",
+        )
+        == decision.configuration
+    )
+    changed_request = _request().model_copy(update={"source_checksum_sha256": "b" * 64})
+    with pytest.raises(ValueError, match="source_checksum_sha256"):
+        configuration_catalog.get_for_request(
+            changed_request,
+            configuration_version="fictionalco-fy2026-mapping-v1",
+        )
+    with pytest.raises(ValueError, match="different record"):
+        review_catalog.register(decision.model_copy(update={"review_rationale": "Changed."}))
+
+
+def test_rejection_records_reasons_without_creating_configuration() -> None:
+    decision = reject_proposal(
+        _request(),
+        _proposal(),
+        decision_id="fictionalco-fy2026-rejection-v1",
+        reviewed_by="ca-reviewer@example.test",
+        reviewed_at=datetime(2026, 9, 29, 11, 0, tzinfo=UTC),
+        approval_policy_version="human-review-v1",
+        review_rationale="The proposed revenue mapping needs further source review.",
+        rejection_reasons=("Confirm that revenue excludes pass-through income.",),
+    )
+
+    assert decision.outcome == "rejected"
+    assert decision.configuration is None
+    assert decision.rejection_reasons == ("Confirm that revenue excludes pass-through income.",)
+
+
+def test_approved_review_record_rejects_unresolved_abstentions() -> None:
+    decision = approve_proposal(
+        _request(),
+        _proposal(),
+        decision_id="fictionalco-fy2026-approval-v1",
+        configuration_version="fictionalco-fy2026-mapping-v1",
+        aggregation_rule_version="aggregation-v1",
+        reviewed_by="ca-reviewer@example.test",
+        reviewed_at=datetime(2026, 9, 29, 10, 0, tzinfo=UTC),
+        approval_policy_version="human-review-v1",
+        review_rationale="Synthetic approval.",
+    )
+    invalid_validation = decision.validation.model_copy(
+        update={"validated_abstention_ids": ("abstain-row-4",)}
+    )
+    invalid_record = decision.model_dump()
+    invalid_record["validation"] = invalid_validation.model_dump()
+
+    with pytest.raises(ValueError, match="unresolved abstentions"):
+        OnboardingReviewDecision.model_validate(invalid_record)
+
+
+def test_approval_cli_registers_configuration_and_review_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request_path = tmp_path / "request.json"
+    proposal_path = tmp_path / "proposal.json"
+    request_path.write_text(_request().model_dump_json(indent=2), encoding="utf-8")
+    proposal_path.write_text(_proposal().model_dump_json(indent=2), encoding="utf-8")
+    monkeypatch.setenv("ICA_DATA_DIRECTORY", str(tmp_path / "data"))
+
+    exit_code = main(
+        [
+            "approve-onboarding",
+            "--request",
+            str(request_path),
+            "--proposal",
+            str(proposal_path),
+            "--decision-id",
+            "fictionalco-fy2026-cli-approval-v1",
+            "--configuration-version",
+            "fictionalco-fy2026-mapping-v1",
+            "--aggregation-rule-version",
+            "aggregation-v1",
+            "--reviewed-by",
+            "ca-reviewer@example.test",
+            "--reviewed-at",
+            "2026-09-29T12:00:00+00:00",
+            "--approval-policy-version",
+            "human-review-v1",
+            "--review-rationale",
+            "Synthetic end-to-end approval.",
+        ]
+    )
+
+    assert exit_code == 0
+    assert list((tmp_path / "data" / "interim" / "onboarding-configurations").rglob("*.json"))
+    assert list((tmp_path / "data" / "interim" / "onboarding-reviews").glob("*.json"))
+
+
+def test_rejection_cli_records_decision_without_configuration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request_path = tmp_path / "request.json"
+    proposal_path = tmp_path / "proposal.json"
+    request_path.write_text(_request().model_dump_json(indent=2), encoding="utf-8")
+    proposal_path.write_text(_proposal().model_dump_json(indent=2), encoding="utf-8")
+    data_directory = tmp_path / "data"
+    monkeypatch.setenv("ICA_DATA_DIRECTORY", str(data_directory))
+
+    exit_code = main(
+        [
+            "reject-onboarding",
+            "--request",
+            str(request_path),
+            "--proposal",
+            str(proposal_path),
+            "--decision-id",
+            "fictionalco-fy2026-cli-rejection-v1",
+            "--reviewed-by",
+            "ca-reviewer@example.test",
+            "--reviewed-at",
+            "2026-09-29T12:00:00+00:00",
+            "--approval-policy-version",
+            "human-review-v1",
+            "--review-rationale",
+            "Synthetic end-to-end rejection.",
+            "--rejection-reason",
+            "Confirm revenue scope before approval.",
+        ]
+    )
+
+    assert exit_code == 0
+    assert list((data_directory / "interim" / "onboarding-reviews").glob("*.json"))
+    assert not (data_directory / "interim" / "onboarding-configurations").exists()
 
 
 def test_direct_mapping_only_configuration_can_enter_current_normalization() -> None:

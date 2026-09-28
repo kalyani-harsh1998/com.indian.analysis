@@ -17,6 +17,10 @@ from indian_company_analysis.data.ingestion.models import (
 )
 from indian_company_analysis.data.normalization.csv_parser import ControlledCsvFinancialParser
 from indian_company_analysis.data.normalization.models import MetricMappingSet
+from indian_company_analysis.data.onboarding.catalog import (
+    LocalOnboardingConfigurationCatalog,
+    LocalOnboardingReviewCatalog,
+)
 from indian_company_analysis.data.onboarding.evaluation import (
     OnboardingEvaluationFixture,
     OnboardingProposalEvaluator,
@@ -29,6 +33,7 @@ from indian_company_analysis.data.onboarding.models import (
 from indian_company_analysis.data.onboarding.normalization_workflow import (
     OnboardingNormalizationWorkflow,
 )
+from indian_company_analysis.data.onboarding.review import approve_proposal, reject_proposal
 from indian_company_analysis.data.onboarding.static_provider import StaticProposalProvider
 from indian_company_analysis.data.sources.local_files import LocalFixtureDataSource
 from indian_company_analysis.domain.enums import DocumentType, LicenceCategory, SourceKind
@@ -90,7 +95,35 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     evaluation.add_argument("--proposal", type=Path, required=True)
     evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
     evaluation.add_argument("--output", type=Path)
+    approve = subparsers.add_parser(
+        "approve-onboarding",
+        help="record human approval and register its reviewed onboarding configuration",
+    )
+    _add_review_inputs(approve)
+    approve.add_argument("--configuration-version", required=True)
+    approve.add_argument("--aggregation-rule-version", required=True)
+    reject = subparsers.add_parser(
+        "reject-onboarding",
+        help="record a human rejection without changing the original proposal",
+    )
+    _add_review_inputs(reject)
+    reject.add_argument(
+        "--rejection-reason",
+        action="append",
+        required=True,
+        help="repeat for each reviewer rejection reason",
+    )
     return parser
+
+
+def _add_review_inputs(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--request", type=Path, required=True)
+    parser.add_argument("--proposal", type=Path, required=True)
+    parser.add_argument("--decision-id", required=True)
+    parser.add_argument("--reviewed-by", required=True)
+    parser.add_argument("--reviewed-at", type=datetime.fromisoformat, required=True)
+    parser.add_argument("--approval-policy-version", required=True)
+    parser.add_argument("--review-rationale", required=True)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -220,6 +253,59 @@ def main(argv: Sequence[str] | None = None) -> int:
         status = "passed" if report.passed else "failed"
         print(f"Evaluated proposal {proposal.proposal_id} to {output}; result {status}")
         return 0 if report.passed else 1
+    if args.command in {"approve-onboarding", "reject-onboarding"}:
+        onboarding_request = DocumentOnboardingRequest.model_validate_json(
+            args.request.read_text(encoding="utf-8")
+        )
+        proposal = DocumentOnboardingProposal.model_validate_json(
+            args.proposal.read_text(encoding="utf-8")
+        )
+        if args.command == "approve-onboarding":
+            decision = approve_proposal(
+                onboarding_request,
+                proposal,
+                decision_id=args.decision_id,
+                configuration_version=args.configuration_version,
+                aggregation_rule_version=args.aggregation_rule_version,
+                reviewed_by=args.reviewed_by,
+                reviewed_at=args.reviewed_at,
+                approval_policy_version=args.approval_policy_version,
+                review_rationale=args.review_rationale,
+            )
+            configuration_catalog = LocalOnboardingConfigurationCatalog(
+                settings.data_directory / "interim" / "onboarding-configurations"
+            )
+            approved_configuration = decision.configuration
+            if approved_configuration is None:
+                raise RuntimeError("approved review decision is missing its configuration")
+            configuration_registered = configuration_catalog.register(approved_configuration)
+            configuration_path = configuration_catalog.path_for(approved_configuration)
+            configuration_action = (
+                "registered" if configuration_registered else "already registered"
+            )
+        else:
+            decision = reject_proposal(
+                onboarding_request,
+                proposal,
+                decision_id=args.decision_id,
+                reviewed_by=args.reviewed_by,
+                reviewed_at=args.reviewed_at,
+                approval_policy_version=args.approval_policy_version,
+                review_rationale=args.review_rationale,
+                rejection_reasons=tuple(args.rejection_reason),
+            )
+            configuration_action = None
+            configuration_path = None
+        review_catalog = LocalOnboardingReviewCatalog(
+            settings.data_directory / "interim" / "onboarding-reviews"
+        )
+        decision_registered = review_catalog.register(decision)
+        decision_action = "recorded" if decision_registered else "already recorded"
+        message = f"Review decision {decision_action}: {decision.decision_id}"
+        if configuration_path is not None:
+            message += f"; configuration {configuration_action}: {configuration_path}"
+        print(message)
+        return 0
     return 2
 
 

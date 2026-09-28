@@ -266,3 +266,27 @@ Forcing a model to choose only a mapping, aggregation, or exclusion encourages c
 - A provider can safely defer ambiguous rows without fabricating an accounting classification.
 - Silent omissions remain validation errors, rather than being reclassified as abstentions.
 - Evaluation can reward appropriate uncertainty, while normalization remains fully deterministic and reviewer-approved.
+
+## ADR-011 — Persist reviewer outcomes and bind configurations to source identity
+
+**Status:** Accepted for the POC
+**Date:** 29 September 2026
+
+### Context
+
+The approval function created a valid configuration in memory, but there was no durable reviewer outcome, rejection trail, or safe way to retrieve an approved configuration. A version label alone is insufficient: applying a configuration to a different document, checksum, extraction profile, period, or reporting basis would undermine provenance.
+
+### Decision
+
+- Record an append-only review decision for every local approval or rejection.
+- Store reviewer identity, timezone-aware timestamp, policy version, rationale, and deterministic validation result in each decision.
+- Embed the approved configuration in an approved decision; require explicit rejection reasons for rejected decisions.
+- Register approved configurations in a local append-only catalog keyed by company, document type, extraction profile, and configuration version.
+- On retrieval, revalidate the configuration against every material request-identity field, including the source checksum and reporting context.
+- Provide local `approve-onboarding` and `reject-onboarding` commands; do not create a multi-user queue, access-control system, or configuration-migration mechanism in this slice.
+
+### Consequences
+
+- Review outcomes remain auditable even when a proposal is rejected.
+- Approved configurations can be replayed only for their verified source context.
+- Later-filing reuse requires an explicit future migration/review policy rather than implicit label matching.

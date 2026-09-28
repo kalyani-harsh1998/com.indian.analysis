@@ -18,7 +18,7 @@ checksummed onboarding request + source row locators
 provider-neutral proposal interface
         |
         v
-mapping + aggregation + exclusion candidates
+mapping + aggregation + exclusion + abstention candidates
         |
         v
 deterministic proposal validation
@@ -66,6 +66,8 @@ When a row cannot be mapped safely, the provider must emit an `AbstentionCandida
 
 `approve_onboarding_proposal` reruns deterministic validation before creating a reviewed configuration. The configuration preserves the model run, reviewer, review timestamp, approval-policy version, direct mapping set, exclusions, and approved aggregation semantics.
 
+The local `approve-onboarding` and `reject-onboarding` commands wrap this decision in a durable review record. Approval registers a configuration only after validation and abstention checks pass; rejection records reviewer reasons without altering the proposal or creating a configuration. See [onboarding review workflow](ONBOARDING_REVIEW_WORKFLOW.md).
+
 Direct one-to-one mappings can feed the existing controlled normalization pipeline. Approved many-to-one rules can now be executed by `execute_approved_aggregations` when every component shares the approved request's company, source document, unit, period, and reporting basis.
 
 The first aggregation contract is deliberately narrow: two or more approved component rows are combined with coefficients restricted to `1` or `-1`. Each result preserves the raw and parsed component values, coefficient, contribution, page/table/row/column locator, rule and configuration versions, source checksum/reference, model proposal, and human-review metadata. The output observation is classified as `calculated`, not `reported`, because deterministic code constructed it from reported components.
@@ -103,7 +105,7 @@ uv run python -m indian_company_analysis normalize-onboarding \
 ## Deferred work
 
 - additional aggregation operators only when a reviewed accounting use case requires them;
-- proposal/approval CLI, review queue, rejection records, and configuration catalog;
+- multi-user review queue, review amendments, and configuration migration across filings;
 - real provider selection and adapter implementation;
 - structured-output retries and provider error handling;
 - a representative permitted, CA-reviewed evaluation corpus and expected-abstention cases;
