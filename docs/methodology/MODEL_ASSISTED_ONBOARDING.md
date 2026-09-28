@@ -18,7 +18,7 @@ checksummed onboarding request + source row locators
 provider-neutral proposal interface
         |
         v
-mapping + aggregation + exclusion candidates
+mapping + aggregation + exclusion + abstention candidates
         |
         v
 deterministic proposal validation
@@ -49,6 +49,7 @@ The provider returns semantic suggestions only. The request's extracted values a
 Before human review, the validator rejects proposals that:
 
 - do not match the request ID, document ID, checksum, source organization, or document type;
+- do not match the request's unit, reporting period, or reporting basis;
 - reference an evidence row that was not supplied;
 - change a reported label;
 - consume one evidence row more than once;
@@ -65,6 +66,10 @@ When a row cannot be mapped safely, the provider must emit an `AbstentionCandida
 ## Human approval and deterministic aggregation
 
 `approve_onboarding_proposal` reruns deterministic validation before creating a reviewed configuration. The configuration preserves the model run, reviewer, review timestamp, approval-policy version, direct mapping set, exclusions, and approved aggregation semantics.
+
+The local `approve-onboarding` and `reject-onboarding` commands wrap this decision in a durable review record. Approval registers a configuration only after validation and abstention checks pass; rejection records reviewer reasons without altering the proposal or creating a configuration. See [onboarding review workflow](ONBOARDING_REVIEW_WORKFLOW.md).
+
+For a later filing, `assess-onboarding-reuse` compares a prior configuration with the new evidence and produces reviewer-only reuse candidates. It does not alter, copy, or apply the prior configuration. See [cross-filing configuration reuse assessment](ONBOARDING_CONFIGURATION_REUSE.md).
 
 Direct one-to-one mappings can feed the existing controlled normalization pipeline. Approved many-to-one rules can now be executed by `execute_approved_aggregations` when every component shares the approved request's company, source document, unit, period, and reporting basis.
 
@@ -100,10 +105,12 @@ uv run python -m indian_company_analysis normalize-onboarding \
 
 `OnboardingProposalEvaluator` now runs any provider implementation against a versioned golden fixture. It scores direct mappings, aggregations, exclusions, and explicit abstentions; detects missing, duplicated, and hallucinated evidence use; recomputes canonical values deterministically; and runs declared accounting reconciliations. Strict thresholds determine the case result, while the persisted audit report retains the full proposal and validation outcome. The committed fixtures are synthetic and prove the mechanism, not general model quality. See [onboarding proposal evaluation](ONBOARDING_EVALUATION.md).
 
+The synthetic adversarial suite covers changed labels, duplicate evidence, invented locators, statement-context mismatch, incorrect aggregation signs, and instruction-like filing text. It proves that invalid proposals fail or expected abstention is measured; it does not claim to provide provider-side prompt-injection protection before a live adapter exists.
+
 ## Deferred work
 
 - additional aggregation operators only when a reviewed accounting use case requires them;
-- proposal/approval CLI, review queue, rejection records, and configuration catalog;
+- multi-user review queue, review amendments, and an approved configuration-migration policy across filings;
 - real provider selection and adapter implementation;
 - structured-output retries and provider error handling;
 - a representative permitted, CA-reviewed evaluation corpus and expected-abstention cases;

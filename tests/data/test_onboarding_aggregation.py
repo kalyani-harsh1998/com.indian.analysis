@@ -96,6 +96,14 @@ def _proposal() -> DocumentOnboardingProposal:
         source_checksum_sha256="a" * 64,
         source_organization="Fictional Co Limited",
         document_type=DocumentType.ANNUAL_REPORT,
+        unit="INR crore",
+        period=ReportingPeriod(
+            label="FY2026",
+            period_type=PeriodType.ANNUAL,
+            start_date=date(2025, 4, 1),
+            end_date=date(2026, 3, 31),
+        ),
+        reporting_basis=ReportingBasis.CONSOLIDATED,
         model_run=ModelRunProvenance(
             provider="deterministic-test-provider",
             model_id="static-proposal",

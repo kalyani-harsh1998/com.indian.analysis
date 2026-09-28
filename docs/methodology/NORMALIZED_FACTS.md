@@ -77,6 +77,8 @@ Raw documents, manifests, and normalized outputs are local and ignored by Git. I
 
 For a reviewed model-assisted configuration, use `normalize-onboarding` with the source/extraction manifests, extraction link, onboarding request, and approved configuration. It re-verifies immutable artifact bytes and exact controlled-CSV rows before persisting the combined direct/aggregated batch. Unreviewed or failed extraction links remain visible but block analysis readiness.
 
+Approved configurations can be recorded and retrieved locally only for their exact request identity through the [onboarding review workflow](ONBOARDING_REVIEW_WORKFLOW.md). A configuration cannot silently move to a changed document, checksum, extraction profile, period, basis, or source reference.
+
 ## Lineage retained for every fact
 
 Each normalized fact carries the source-document checksum, document and source IDs, original reported label and value, page/table/row/column locator, canonical metric, reporting period and basis, parser version, mapping version, mapping method, mapping confidence, and source reference. Linked facts additionally carry the extraction ID, derived CSV document ID, and derived CSV checksum. The batch retains every rejected row as a structured issue and every review or benchmark restriction as an analysis blocker.

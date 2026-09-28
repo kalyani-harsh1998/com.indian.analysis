@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import Field, model_validator
 
@@ -167,6 +168,9 @@ class DocumentOnboardingProposal(DomainModel):
     source_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_organization: str = Field(min_length=1)
     document_type: DocumentType
+    unit: str = Field(min_length=1)
+    period: ReportingPeriod
+    reporting_basis: ReportingBasis
     model_run: ModelRunProvenance
     mappings: tuple[MappingCandidate, ...] = ()
     aggregations: tuple[MetricAggregationCandidate, ...] = ()
@@ -358,4 +362,52 @@ class ApprovedOnboardingConfiguration(DomainModel):
         }
         if proposal_ids != {self.proposal_id}:
             raise ValueError("all approved decisions must reference the configuration proposal")
+        return self
+
+
+class OnboardingReviewDecision(DomainModel):
+    """Immutable reviewer outcome for one model proposal and onboarding request."""
+
+    decision_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
+    outcome: Literal["approved", "rejected"]
+    request_id: str = Field(min_length=1)
+    proposal_id: str = Field(min_length=1)
+    reviewed_by: str = Field(min_length=1)
+    reviewed_at: datetime
+    approval_policy_version: str = Field(min_length=1)
+    review_rationale: str = Field(min_length=1)
+    validation: ProposalValidationResult
+    configuration: ApprovedOnboardingConfiguration | None = None
+    rejection_reasons: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def outcome_is_consistent(self) -> OnboardingReviewDecision:
+        if self.reviewed_at.tzinfo is None or self.reviewed_at.utcoffset() is None:
+            raise ValueError("review decision timestamp must include a timezone")
+        if (
+            self.request_id != self.validation.request_id
+            or self.proposal_id != self.validation.proposal_id
+        ):
+            raise ValueError("review decision identity must match its validation result")
+        if self.outcome == "approved":
+            if self.configuration is None or self.rejection_reasons:
+                raise ValueError(
+                    "approved review decision requires configuration and no rejection reasons"
+                )
+            if not self.validation.ready_for_review:
+                raise ValueError("approved review decision requires a validation-ready proposal")
+            if self.validation.validated_abstention_ids:
+                raise ValueError("approved review decision cannot contain unresolved abstentions")
+            if (
+                self.configuration.request_id != self.request_id
+                or self.configuration.proposal_id != self.proposal_id
+                or self.configuration.reviewed_by != self.reviewed_by
+                or self.configuration.reviewed_at != self.reviewed_at
+                or self.configuration.approval_policy_version != self.approval_policy_version
+            ):
+                raise ValueError("approved configuration must match review decision provenance")
+        elif self.configuration is not None or not self.rejection_reasons:
+            raise ValueError("rejected review decision requires reasons and no configuration")
+        elif any(not reason.strip() for reason in self.rejection_reasons):
+            raise ValueError("rejected review decision reasons must not be blank")
         return self

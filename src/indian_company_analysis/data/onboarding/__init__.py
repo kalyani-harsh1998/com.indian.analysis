@@ -8,6 +8,10 @@ from indian_company_analysis.data.onboarding.aggregation import (
     execute_approved_aggregations,
 )
 from indian_company_analysis.data.onboarding.approval import approve_onboarding_proposal
+from indian_company_analysis.data.onboarding.catalog import (
+    LocalOnboardingConfigurationCatalog,
+    LocalOnboardingReviewCatalog,
+)
 from indian_company_analysis.data.onboarding.contracts import OnboardingProposalProvider
 from indian_company_analysis.data.onboarding.evaluation import (
     EvaluationThresholds,
@@ -40,6 +44,7 @@ from indian_company_analysis.data.onboarding.models import (
     MetricAggregationComponent,
     ModelRunProvenance,
     OnboardingEvidenceRow,
+    OnboardingReviewDecision,
     ProposalValidationIssue,
     ProposalValidationResult,
 )
@@ -49,6 +54,13 @@ from indian_company_analysis.data.onboarding.normalization_workflow import (
     OnboardingNormalizationWorkflow,
 )
 from indian_company_analysis.data.onboarding.request_builder import build_onboarding_request
+from indian_company_analysis.data.onboarding.reuse import (
+    DecisionReuseAssessment,
+    OnboardingReuseAssessment,
+    OnboardingReuseAssessor,
+    ReuseContextDifference,
+)
+from indian_company_analysis.data.onboarding.review import approve_proposal, reject_proposal
 from indian_company_analysis.data.onboarding.static_provider import StaticProposalProvider
 from indian_company_analysis.data.onboarding.validation import (
     validate_configuration_identity,
@@ -68,6 +80,7 @@ __all__ = [
     "AbstentionCandidate",
     "DocumentOnboardingProposal",
     "DocumentOnboardingRequest",
+    "DecisionReuseAssessment",
     "EvaluationThresholds",
     "ExclusionCandidate",
     "ExpectedAggregationDecision",
@@ -79,6 +92,8 @@ __all__ = [
     "MetricAggregationCandidate",
     "MetricAggregationComponent",
     "MetricValueComparison",
+    "LocalOnboardingConfigurationCatalog",
+    "LocalOnboardingReviewCatalog",
     "ModelRunProvenance",
     "OnboardingEvidenceRow",
     "OnboardingEvaluationFixture",
@@ -88,16 +103,22 @@ __all__ = [
     "OnboardingNormalizationWorkflow",
     "OnboardingProposalProvider",
     "OnboardingProposalEvaluator",
+    "OnboardingReviewDecision",
+    "OnboardingReuseAssessment",
+    "OnboardingReuseAssessor",
     "ProposalAccuracyMetrics",
     "ProposalValidationIssue",
     "ProposalValidationResult",
     "ReconciliationEvaluationResult",
     "ReconciliationExpectation",
     "ReconciliationTerm",
+    "ReuseContextDifference",
     "StaticProposalProvider",
     "approve_onboarding_proposal",
+    "approve_proposal",
     "build_onboarding_request",
     "execute_approved_aggregations",
+    "reject_proposal",
     "validate_configuration_identity",
     "validate_onboarding_proposal",
 ]

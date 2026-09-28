@@ -214,6 +214,9 @@ def _approved_onboarding(
         source_checksum_sha256=request.source_checksum_sha256,
         source_organization=request.source_organization,
         document_type=request.document_type,
+        unit=request.unit,
+        period=request.period,
+        reporting_basis=request.reporting_basis,
         model_run=ModelRunProvenance(
             provider="deterministic-test-provider",
             model_id="static-proposal",

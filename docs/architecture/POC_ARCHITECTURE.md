@@ -80,6 +80,12 @@ Before a live adapter is connected, the same provider protocol can be routed thr
 
 An explicit abstention is a fourth evidence disposition alongside mapping, aggregation, and exclusion. It carries the source row and rationale into validation and evaluation, allowing a provider to safely defer an ambiguous row. Approval rejects any proposal containing an abstention, so a reviewer must resolve it before a configuration enters deterministic normalization.
 
+The local review boundary records approvals and rejections separately from proposal artifacts. An approved record embeds its configuration and is registered in an append-only catalog keyed by company, document type, extraction profile, and configuration version. Retrieval revalidates the full request identity, including the source checksum, so the catalog supports reproducible replay for the same evidence rather than unreviewed reuse on a later filing.
+
+For a later filing, a deterministic reuse assessor compares the new evidence labels with each approved mapping, aggregation component, and exclusion. Its persisted assessment identifies reuse candidates, missing/ambiguous rows, incompatible context, and new rows. It is deliberately outside both approval and normalization: every target configuration still needs new validation and human approval.
+
+The proposal boundary also includes unit, period, and reporting basis. Synthetic adversarial cases prove that a changed label, duplicate evidence use, invented locator, incompatible statement context, incorrect aggregation sign, or instruction-like source text cannot silently become a trusted configuration or fact. Provider-side prompt isolation remains a separate future live-adapter requirement.
+
 ## Boundaries and dependency direction
 
 Dependencies point inward toward `domain` and deterministic functions:

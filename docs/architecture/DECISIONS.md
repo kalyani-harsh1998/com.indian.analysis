@@ -266,3 +266,74 @@ Forcing a model to choose only a mapping, aggregation, or exclusion encourages c
 - A provider can safely defer ambiguous rows without fabricating an accounting classification.
 - Silent omissions remain validation errors, rather than being reclassified as abstentions.
 - Evaluation can reward appropriate uncertainty, while normalization remains fully deterministic and reviewer-approved.
+
+## ADR-011 — Persist reviewer outcomes and bind configurations to source identity
+
+**Status:** Accepted for the POC
+**Date:** 29 September 2026
+
+### Context
+
+The approval function created a valid configuration in memory, but there was no durable reviewer outcome, rejection trail, or safe way to retrieve an approved configuration. A version label alone is insufficient: applying a configuration to a different document, checksum, extraction profile, period, or reporting basis would undermine provenance.
+
+### Decision
+
+- Record an append-only review decision for every local approval or rejection.
+- Store reviewer identity, timezone-aware timestamp, policy version, rationale, and deterministic validation result in each decision.
+- Embed the approved configuration in an approved decision; require explicit rejection reasons for rejected decisions.
+- Register approved configurations in a local append-only catalog keyed by company, document type, extraction profile, and configuration version.
+- On retrieval, revalidate the configuration against every material request-identity field, including the source checksum and reporting context.
+- Provide local `approve-onboarding` and `reject-onboarding` commands; do not create a multi-user queue, access-control system, or configuration-migration mechanism in this slice.
+
+### Consequences
+
+- Review outcomes remain auditable even when a proposal is rejected.
+- Approved configurations can be replayed only for their verified source context.
+- Later-filing reuse requires an explicit future migration/review policy rather than implicit label matching.
+
+## ADR-012 — Compare cross-filing configurations without automatic migration
+
+**Status:** Accepted for the POC
+**Date:** 29 September 2026
+
+### Context
+
+Source-bound configurations are safe but leave repeated manual work when a company publishes a later filing with a similar statement layout. Automatically copying an old configuration based on label similarity could silently ignore new rows, changed labels, a changed extraction profile, or a different statement context.
+
+### Decision
+
+- Add a deterministic, review-only assessment between a prior approved configuration and a new onboarding request.
+- Match only exact reported labels and require a single target row for each prior source row.
+- Report missing and ambiguous labels, target-row conflicts, new rows, and all changed request-context fields.
+- Block reuse candidates when company, source organization, document type, unit, reporting basis, or extraction profile differs.
+- Keep document, checksum, source-reference, extraction-ID, and period changes visible but expected for a later filing.
+- Persist the full source configuration, target request, and results in an immutable-style assessment with `requires_human_approval: true`.
+- Do not generate a proposal, configuration, normalized fact, or automatic approval from the assessment.
+
+### Consequences
+
+- Reviewers can focus on changed and new evidence while retaining a complete comparison trail.
+- Exact-label matching avoids hidden semantic inference in deterministic code.
+- A future provider or migration policy can use the assessment as input only after evaluation and reviewer controls are established.
+
+## ADR-013 — Require adversarial validation before live onboarding models
+
+**Status:** Accepted for the POC
+**Date:** 29 September 2026
+
+### Context
+
+A nominal golden case can show that a correct proposal works, but cannot show whether the same boundary rejects common model and document failures. The previous proposal identity omitted unit, period, and reporting basis, leaving a material statement-context mismatch undetected.
+
+### Decision
+
+- Require every proposal to carry the request's unit, reporting period, and reporting basis, and validate them deterministically.
+- Add synthetic adversarial cases for changed labels, duplicate evidence, invented locators, wrong statement context, incorrect aggregation signs, and instruction-like filing text.
+- Treat instruction-like filing text as evidence content; expected-abstention cases must demonstrate that it is not accepted as an instruction.
+- Keep adversarial fixtures synthetic and use them to prove contract behavior only, not real-world model accuracy or provider-side prompt-isolation claims.
+
+### Consequences
+
+- A model cannot advance a proposal that changes material statement context.
+- Evaluation now tests both correct and unsafe behavior before any live adapter is connected.
+- Live-provider prompt isolation, privacy controls, and representative CA-reviewed corpus testing remain required future gates.

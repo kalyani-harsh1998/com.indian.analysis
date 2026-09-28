@@ -254,6 +254,9 @@ def _validate_identity(
         ),
         ("source_organization", request.source_organization, proposal.source_organization),
         ("document_type", request.document_type, proposal.document_type),
+        ("unit", request.unit, proposal.unit),
+        ("period", request.period, proposal.period),
+        ("reporting_basis", request.reporting_basis, proposal.reporting_basis),
     )
     for field_name, expected, actual in identity_fields:
         if actual != expected:
