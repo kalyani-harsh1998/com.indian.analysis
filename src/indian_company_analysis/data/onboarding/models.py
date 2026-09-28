@@ -168,6 +168,9 @@ class DocumentOnboardingProposal(DomainModel):
     source_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_organization: str = Field(min_length=1)
     document_type: DocumentType
+    unit: str = Field(min_length=1)
+    period: ReportingPeriod
+    reporting_basis: ReportingBasis
     model_run: ModelRunProvenance
     mappings: tuple[MappingCandidate, ...] = ()
     aggregations: tuple[MetricAggregationCandidate, ...] = ()

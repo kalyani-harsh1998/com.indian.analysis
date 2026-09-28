@@ -36,6 +36,18 @@ An abstention is an explicit, locator-backed request for a human decision. It co
 
 The evaluator persists immutable-style JSON: writing the identical report is idempotent, while replacing it with different content at the same path is refused.
 
+## Synthetic adversarial suite
+
+The committed synthetic suite proves that the deterministic boundary detects or escalates:
+
+- changed labels and duplicated evidence use;
+- invented evidence IDs, representing hallucinated page/row locators;
+- mismatched unit, reporting period, and reporting basis in a proposal;
+- incorrect aggregation components or signs, including resulting value and reconciliation failures; and
+- instruction-like text in a reported label. The golden case expects explicit abstention, so text from a filing is treated as evidence content rather than a command.
+
+These cases demonstrate the local contract only. They are not a real-company accuracy benchmark and do not replace future provider-side prompt-isolation, privacy, or security tests.
+
 ## Local evaluation
 
 Use a frozen proposal so the run has no network or API dependency:
@@ -52,7 +64,7 @@ The command exits with status `0` when the case passes and `1` when it fails. It
 
 ## Current limitations and next gate
 
-This slice supplies the evaluation machinery plus synthetic tax and ambiguity/abstention cases. It does not yet establish real-world model accuracy, security, privacy, or acceptable cost/latency. Before connecting a live LLM:
+This slice supplies the evaluation machinery plus synthetic tax, ambiguity/abstention, and adversarial cases. It does not yet establish real-world model accuracy, security, privacy, or acceptable cost/latency. Before connecting a live LLM:
 
 1. assemble a representative, permitted multi-company and multi-layout corpus;
 2. have a qualified accounting reviewer approve the golden dispositions and values;

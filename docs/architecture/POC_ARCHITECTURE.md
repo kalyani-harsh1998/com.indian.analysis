@@ -84,6 +84,8 @@ The local review boundary records approvals and rejections separately from propo
 
 For a later filing, a deterministic reuse assessor compares the new evidence labels with each approved mapping, aggregation component, and exclusion. Its persisted assessment identifies reuse candidates, missing/ambiguous rows, incompatible context, and new rows. It is deliberately outside both approval and normalization: every target configuration still needs new validation and human approval.
 
+The proposal boundary also includes unit, period, and reporting basis. Synthetic adversarial cases prove that a changed label, duplicate evidence use, invented locator, incompatible statement context, incorrect aggregation sign, or instruction-like source text cannot silently become a trusted configuration or fact. Provider-side prompt isolation remains a separate future live-adapter requirement.
+
 ## Boundaries and dependency direction
 
 Dependencies point inward toward `domain` and deterministic functions:

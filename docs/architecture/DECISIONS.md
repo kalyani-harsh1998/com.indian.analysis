@@ -315,3 +315,25 @@ Source-bound configurations are safe but leave repeated manual work when a compa
 - Reviewers can focus on changed and new evidence while retaining a complete comparison trail.
 - Exact-label matching avoids hidden semantic inference in deterministic code.
 - A future provider or migration policy can use the assessment as input only after evaluation and reviewer controls are established.
+
+## ADR-013 — Require adversarial validation before live onboarding models
+
+**Status:** Accepted for the POC
+**Date:** 29 September 2026
+
+### Context
+
+A nominal golden case can show that a correct proposal works, but cannot show whether the same boundary rejects common model and document failures. The previous proposal identity omitted unit, period, and reporting basis, leaving a material statement-context mismatch undetected.
+
+### Decision
+
+- Require every proposal to carry the request's unit, reporting period, and reporting basis, and validate them deterministically.
+- Add synthetic adversarial cases for changed labels, duplicate evidence, invented locators, wrong statement context, incorrect aggregation signs, and instruction-like filing text.
+- Treat instruction-like filing text as evidence content; expected-abstention cases must demonstrate that it is not accepted as an instruction.
+- Keep adversarial fixtures synthetic and use them to prove contract behavior only, not real-world model accuracy or provider-side prompt-isolation claims.
+
+### Consequences
+
+- A model cannot advance a proposal that changes material statement context.
+- Evaluation now tests both correct and unsafe behavior before any live adapter is connected.
+- Live-provider prompt isolation, privacy controls, and representative CA-reviewed corpus testing remain required future gates.

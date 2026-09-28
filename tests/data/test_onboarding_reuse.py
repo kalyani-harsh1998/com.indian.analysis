@@ -48,6 +48,9 @@ def _configuration() -> ApprovedOnboardingConfiguration:
         source_checksum_sha256=fixture.request.source_checksum_sha256,
         source_organization=fixture.request.source_organization,
         document_type=fixture.request.document_type,
+        unit=fixture.request.unit,
+        period=fixture.request.period,
+        reporting_basis=fixture.request.reporting_basis,
         model_run=ModelRunProvenance(
             provider="deterministic-test-provider",
             model_id="static-source-proposal",

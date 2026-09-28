@@ -49,6 +49,7 @@ The provider returns semantic suggestions only. The request's extracted values a
 Before human review, the validator rejects proposals that:
 
 - do not match the request ID, document ID, checksum, source organization, or document type;
+- do not match the request's unit, reporting period, or reporting basis;
 - reference an evidence row that was not supplied;
 - change a reported label;
 - consume one evidence row more than once;
@@ -103,6 +104,8 @@ uv run python -m indian_company_analysis normalize-onboarding \
 ## Golden-case evaluation
 
 `OnboardingProposalEvaluator` now runs any provider implementation against a versioned golden fixture. It scores direct mappings, aggregations, exclusions, and explicit abstentions; detects missing, duplicated, and hallucinated evidence use; recomputes canonical values deterministically; and runs declared accounting reconciliations. Strict thresholds determine the case result, while the persisted audit report retains the full proposal and validation outcome. The committed fixtures are synthetic and prove the mechanism, not general model quality. See [onboarding proposal evaluation](ONBOARDING_EVALUATION.md).
+
+The synthetic adversarial suite covers changed labels, duplicate evidence, invented locators, statement-context mismatch, incorrect aggregation signs, and instruction-like filing text. It proves that invalid proposals fail or expected abstention is measured; it does not claim to provide provider-side prompt-injection protection before a live adapter exists.
 
 ## Deferred work
 
