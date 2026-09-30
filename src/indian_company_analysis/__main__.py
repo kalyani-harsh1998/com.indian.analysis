@@ -21,6 +21,10 @@ from indian_company_analysis.data.onboarding.catalog import (
     LocalOnboardingConfigurationCatalog,
     LocalOnboardingReviewCatalog,
 )
+from indian_company_analysis.data.onboarding.corpus import (
+    EvaluationCorpusEntry,
+    LocalEvaluationCorpusCatalog,
+)
 from indian_company_analysis.data.onboarding.evaluation import (
     OnboardingEvaluationFixture,
     OnboardingProposalEvaluator,
@@ -123,6 +127,22 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     reuse.add_argument("--assessment-id", required=True)
     reuse.add_argument("--assessed-at", type=datetime.fromisoformat, required=True)
     reuse.add_argument("--output", type=Path)
+    corpus = subparsers.add_parser(
+        "register-evaluation-corpus",
+        help="register a locally reviewed onboarding evaluation-corpus entry once",
+    )
+    corpus.add_argument("--entry", type=Path, required=True)
+    corpus.add_argument("--catalog-root", type=Path)
+    approved_evaluation = subparsers.add_parser(
+        "evaluate-approved-corpus",
+        help="evaluate a proposal only against a CA-approved real-corpus fixture",
+    )
+    approved_evaluation.add_argument("--catalog-root", type=Path)
+    approved_evaluation.add_argument("--entry-id", required=True)
+    approved_evaluation.add_argument("--corpus-version", required=True)
+    approved_evaluation.add_argument("--proposal", type=Path, required=True)
+    approved_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
+    approved_evaluation.add_argument("--output", type=Path)
     return parser
 
 
@@ -262,6 +282,50 @@ def main(argv: Sequence[str] | None = None) -> int:
         evaluator.persist(report, output)
         status = "passed" if report.passed else "failed"
         print(f"Evaluated proposal {proposal.proposal_id} to {output}; result {status}")
+        return 0 if report.passed else 1
+    if args.command == "register-evaluation-corpus":
+        entry = EvaluationCorpusEntry.model_validate_json(args.entry.read_text(encoding="utf-8"))
+        evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
+            args.catalog_root or settings.data_directory / "interim" / "evaluation-corpus"
+        )
+        registered = evaluation_corpus_catalog.register(entry)
+        action = "registered" if registered else "already registered"
+        print(f"Evaluation corpus entry {action}: {entry.entry_id} ({entry.corpus_version})")
+        return 0
+    if args.command == "evaluate-approved-corpus":
+        evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
+            args.catalog_root or settings.data_directory / "interim" / "evaluation-corpus"
+        )
+        entry = evaluation_corpus_catalog.get_approved(
+            entry_id=args.entry_id,
+            corpus_version=args.corpus_version,
+        )
+        if entry.fixture is None:
+            raise RuntimeError("approved evaluation corpus entry is missing its fixture")
+        proposal = DocumentOnboardingProposal.model_validate_json(
+            args.proposal.read_text(encoding="utf-8")
+        )
+        evaluator = OnboardingProposalEvaluator()
+        report = evaluator.evaluate(
+            entry.fixture,
+            StaticProposalProvider(proposal),
+            evaluated_at=args.evaluated_at or datetime.now(UTC),
+        )
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "evaluations"
+            / "approved-corpus"
+            / entry.entry_id
+            / entry.corpus_version
+            / f"{proposal.proposal_id}.json"
+        )
+        evaluator.persist(report, output)
+        status = "passed" if report.passed else "failed"
+        print(
+            f"Evaluated approved corpus entry {entry.entry_id} ({entry.corpus_version}) "
+            f"to {output}; result {status}"
+        )
         return 0 if report.passed else 1
     if args.command in {"approve-onboarding", "reject-onboarding"}:
         onboarding_request = DocumentOnboardingRequest.model_validate_json(

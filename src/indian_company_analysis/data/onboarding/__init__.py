@@ -13,6 +13,10 @@ from indian_company_analysis.data.onboarding.catalog import (
     LocalOnboardingReviewCatalog,
 )
 from indian_company_analysis.data.onboarding.contracts import OnboardingProposalProvider
+from indian_company_analysis.data.onboarding.corpus import (
+    EvaluationCorpusEntry,
+    LocalEvaluationCorpusCatalog,
+)
 from indian_company_analysis.data.onboarding.evaluation import (
     EvaluationThresholds,
     ExpectedAbstentionDecision,
@@ -82,6 +86,7 @@ __all__ = [
     "DocumentOnboardingRequest",
     "DecisionReuseAssessment",
     "EvaluationThresholds",
+    "EvaluationCorpusEntry",
     "ExclusionCandidate",
     "ExpectedAggregationDecision",
     "ExpectedAbstentionDecision",
@@ -93,6 +98,7 @@ __all__ = [
     "MetricAggregationComponent",
     "MetricValueComparison",
     "LocalOnboardingConfigurationCatalog",
+    "LocalEvaluationCorpusCatalog",
     "LocalOnboardingReviewCatalog",
     "ModelRunProvenance",
     "OnboardingEvidenceRow",

@@ -337,3 +337,29 @@ A nominal golden case can show that a correct proposal works, but cannot show wh
 - A model cannot advance a proposal that changes material statement context.
 - Evaluation now tests both correct and unsafe behavior before any live adapter is connected.
 - Live-provider prompt isolation, privacy controls, and representative CA-reviewed corpus testing remain required future gates.
+
+## ADR-014 — Gate real-model evaluation with a CA-reviewed local corpus registry
+
+**Status:** Accepted for the POC
+**Date:** 30 September 2026
+
+### Context
+
+Synthetic golden cases prove evaluator behavior but cannot substantiate accuracy on real company filings. A future real fixture must be tied to the permitted source document, reviewed extraction, exact statement context, and the full set of values/dispositions a qualified accounting reviewer actually examined. Otherwise a fixture could silently drift after review or be confused with a synthetic case.
+
+### Decision
+
+- Store each candidate real-case fixture as an append-only local evaluation-corpus entry; do not commit real reports, fixtures, or evaluation results.
+- Bind the entry to a raw source manifest, reviewed extraction link, and exact onboarding request, validating all shared document, source, checksum, and extraction identity fields.
+- Hash the canonical complete fixture and require that digest in the entry so the reviewed mappings, values, reconciliations, and thresholds are one audited object.
+- Distinguish `ready_for_ca_review`, `approved_for_evaluation`, and `rejected` entries.
+- Permit only a non-synthetic source with an assessed, non-restricted licence to become `approved_for_evaluation`.
+- Require a named reviewer, timezone-aware review timestamp, policy version, and nonblank review notes for approval; reject entries with an unreviewed or rejected extraction link.
+- Provide only local append-only registration, approved-case retrieval, and evaluation of a saved proposal through an approved entry. Do not add a model provider, corpus-wide release threshold, multi-user queue, or automated CA approval.
+
+### Consequences
+
+- A future provider can be evaluated only against fixtures whose values and evidence lineage have a specific CA approval record.
+- Synthetic cases remain useful for contract and adversarial tests but cannot be misrepresented as a real-model quality gate.
+- Real corpus population and reviewer judgment remain explicit local work, while versioned entries provide a reproducible audit foundation for later provider comparisons.
+- Privacy, prompt-isolation, corpus-level performance thresholds, cost/latency budgets, and review operations remain required future controls.

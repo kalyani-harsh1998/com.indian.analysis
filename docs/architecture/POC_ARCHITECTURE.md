@@ -84,6 +84,8 @@ The local review boundary records approvals and rejections separately from propo
 
 For a later filing, a deterministic reuse assessor compares the new evidence labels with each approved mapping, aggregation component, and exclusion. Its persisted assessment identifies reuse candidates, missing/ambiguous rows, incompatible context, and new rows. It is deliberately outside both approval and normalization: every target configuration still needs new validation and human approval.
 
+The live-model quality gate is likewise separate from normalization. A local evaluation-corpus entry binds a permitted real source manifest, reviewed PDF-to-CSV extraction link, exact onboarding request, complete golden fixture, and fixture checksum. Only after a CA reviewer records policy, timestamp, and review notes may the entry be marked `approved_for_evaluation`. Candidate, rejected, and synthetic entries cannot serve as real-model benchmark cases.
+
 The proposal boundary also includes unit, period, and reporting basis. Synthetic adversarial cases prove that a changed label, duplicate evidence use, invented locator, incompatible statement context, incorrect aggregation sign, or instruction-like source text cannot silently become a trusted configuration or fact. Provider-side prompt isolation remains a separate future live-adapter requirement.
 
 ## Boundaries and dependency direction

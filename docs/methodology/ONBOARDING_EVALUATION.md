@@ -50,7 +50,7 @@ These cases demonstrate the local contract only. They are not a real-company acc
 
 ## Local evaluation
 
-Use a frozen proposal so the run has no network or API dependency:
+Use a frozen proposal so the run has no network or API dependency. `evaluate-onboarding` remains useful for synthetic fixtures and local contract development:
 
 ```bash
 uv run python -m indian_company_analysis evaluate-onboarding \
@@ -62,12 +62,25 @@ uv run python -m indian_company_analysis evaluate-onboarding \
 
 The command exits with status `0` when the case passes and `1` when it fails. It records the current UTC time unless `--evaluated-at` supplies an explicit timezone-aware audit timestamp. The default output is under `data/interim/evaluations/<case-id>/` and remains local.
 
+For a permitted real-company case, do not supply a fixture path directly. Retrieve the fixture only through its CA-approved corpus entry:
+
+```bash
+uv run python -m indian_company_analysis evaluate-approved-corpus \
+  --catalog-root /path/to/local-evaluation-corpus \
+  --entry-id company-fy2026-income-statement \
+  --corpus-version v1 \
+  --proposal /path/to/local-provider-proposal.json \
+  --evaluated-at 2026-09-30T15:00:00+00:00
+```
+
+This command refuses a candidate or rejected entry before reading the proposal. It retrieves the approved fixture by entry ID and corpus version, applies the same deterministic evaluation, and writes the default report under `data/interim/evaluations/approved-corpus/`. It still does not call a live provider: a future provider adapter must write its strict proposal artifact first.
+
 ## Current limitations and next gate
 
-This slice supplies the evaluation machinery plus synthetic tax, ambiguity/abstention, and adversarial cases. It does not yet establish real-world model accuracy, security, privacy, or acceptable cost/latency. Before connecting a live LLM:
+This slice supplies the evaluation machinery plus synthetic tax, ambiguity/abstention, and adversarial cases. The local [CA-reviewed evaluation corpus registry](EVALUATION_CORPUS_REGISTRY.md) now provides the lineage and approval gate for permitted real-company cases, but no real corpus case is committed or approved yet. It does not establish real-world model accuracy, security, privacy, or acceptable cost/latency. Before connecting a live LLM:
 
-1. assemble a representative, permitted multi-company and multi-layout corpus;
-2. have a qualified accounting reviewer approve the golden dispositions and values;
+1. assemble a representative, permitted multi-company and multi-layout corpus in the local registry;
+2. have a qualified accounting reviewer approve each fixture's golden dispositions and values;
 3. add ambiguous, missing, adversarial, and expected-abstention cases;
 4. agree minimum quality, privacy, prompt-injection, cost, and latency gates; and
 5. compare model/prompt/schema versions without weakening deterministic validation or human approval.
