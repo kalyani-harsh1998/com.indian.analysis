@@ -16,8 +16,10 @@ from indian_company_analysis.data.onboarding.contracts import OnboardingProposal
 from indian_company_analysis.data.onboarding.corpus import (
     EvaluationCorpusEntry,
     LocalEvaluationCorpusCatalog,
+    provisionally_review_entry,
 )
 from indian_company_analysis.data.onboarding.evaluation import (
+    EvaluationQualification,
     EvaluationThresholds,
     ExpectedAbstentionDecision,
     ExpectedAggregationDecision,
@@ -86,6 +88,7 @@ __all__ = [
     "DocumentOnboardingRequest",
     "DecisionReuseAssessment",
     "EvaluationThresholds",
+    "EvaluationQualification",
     "EvaluationCorpusEntry",
     "ExclusionCandidate",
     "ExpectedAggregationDecision",
@@ -125,6 +128,7 @@ __all__ = [
     "build_onboarding_request",
     "execute_approved_aggregations",
     "reject_proposal",
+    "provisionally_review_entry",
     "validate_configuration_identity",
     "validate_onboarding_proposal",
 ]

@@ -1,4 +1,4 @@
-"""Tests for the local, CA-reviewed onboarding evaluation corpus registry."""
+"""Tests for the local controlled onboarding evaluation corpus registry."""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from indian_company_analysis.data.onboarding import (
     LocalEvaluationCorpusCatalog,
     ModelRunProvenance,
     OnboardingEvaluationFixture,
+    provisionally_review_entry,
 )
 from indian_company_analysis.domain.enums import (
     ExtractionReviewStatus,
@@ -103,7 +104,12 @@ def _link() -> DocumentExtractionLink:
 
 def _entry(
     *,
-    status: Literal["ready_for_ca_review", "approved_for_evaluation", "rejected"],
+    status: Literal[
+        "ready_for_ca_review",
+        "provisional_internal_review",
+        "approved_for_evaluation",
+        "rejected",
+    ],
     synthetic: bool = False,
 ) -> EvaluationCorpusEntry:
     fixture = _fixture()
@@ -129,6 +135,16 @@ def _entry(
             **common,
             fixture=fixture,
             fixture_checksum_sha256=_fixture_checksum(fixture),
+        )
+    if status == "provisional_internal_review":
+        return EvaluationCorpusEntry(
+            **common,
+            fixture=fixture,
+            fixture_checksum_sha256=_fixture_checksum(fixture),
+            reviewed_by="internal-reviewer@example.test",
+            reviewed_at=_REVIEWED_AT,
+            review_policy_version="internal-review-v1",
+            review_notes=("Internal reviewer checked deterministic extraction and fixture.",),
         )
     return EvaluationCorpusEntry(
         **common,
@@ -196,6 +212,57 @@ def test_approved_case_requires_real_permitted_source_and_ca_signoff(tmp_path: P
         _entry(status="approved_for_evaluation", synthetic=True)
 
 
+def test_provisional_case_is_available_only_to_the_internal_evaluator(tmp_path: Path) -> None:
+    provisional = _entry(status="provisional_internal_review")
+    catalog = LocalEvaluationCorpusCatalog(tmp_path / "corpus")
+    catalog.register(provisional)
+
+    assert provisional.is_approved_for_evaluation is False
+    assert provisional.is_provisionally_reviewed_for_internal_evaluation is True
+    assert (
+        catalog.get_provisionally_reviewed_for_internal_evaluation(
+            entry_id=provisional.entry_id,
+            corpus_version=provisional.corpus_version,
+        )
+        == provisional
+    )
+    with pytest.raises(ValueError, match="has not received CA approval"):
+        catalog.get_approved(
+            entry_id=provisional.entry_id,
+            corpus_version=provisional.corpus_version,
+        )
+    with pytest.raises(ValueError, match="only permitted_real"):
+        _entry(status="provisional_internal_review", synthetic=True)
+
+
+def test_provisional_review_creates_a_new_version_only_from_a_candidate(tmp_path: Path) -> None:
+    candidate = _entry(status="ready_for_ca_review")
+    provisional = provisionally_review_entry(
+        candidate,
+        corpus_version="provisional-v1",
+        reviewed_by="internal-reviewer@example.test",
+        reviewed_at=_REVIEWED_AT,
+        review_policy_version="internal-review-v1",
+        review_notes=("Internal review; this is not CA approval.",),
+    )
+    catalog = LocalEvaluationCorpusCatalog(tmp_path / "corpus")
+
+    assert candidate.review_status == "ready_for_ca_review"
+    assert provisional.corpus_version == "provisional-v1"
+    assert provisional.review_status == "provisional_internal_review"
+    assert catalog.register(candidate) is True
+    assert catalog.register(provisional) is True
+    with pytest.raises(ValueError, match="only a ready_for_ca_review"):
+        provisionally_review_entry(
+            provisional,
+            corpus_version="provisional-v2",
+            reviewed_by="internal-reviewer@example.test",
+            reviewed_at=_REVIEWED_AT,
+            review_policy_version="internal-review-v1",
+            review_notes=("This must not overwrite or promote an existing review.",),
+        )
+
+
 def test_registry_rejects_changed_fixture_contents_or_unreviewed_extraction() -> None:
     entry = _entry(status="ready_for_ca_review")
     changed_checksum = entry.model_dump()
@@ -238,6 +305,40 @@ def test_registry_cli_persists_an_append_only_local_case(tmp_path: Path) -> None
     assert stored == entry
 
 
+def test_provisional_review_cli_creates_a_new_catalog_version(tmp_path: Path) -> None:
+    candidate = _entry(status="ready_for_ca_review")
+    candidate_path = tmp_path / "candidate.json"
+    catalog_root = tmp_path / "catalog"
+    candidate_path.write_text(candidate.model_dump_json(indent=2), encoding="utf-8")
+
+    exit_code = main(
+        [
+            "provisionally-review-evaluation-corpus",
+            "--entry",
+            str(candidate_path),
+            "--catalog-root",
+            str(catalog_root),
+            "--corpus-version",
+            "provisional-v1",
+            "--reviewed-by",
+            "internal-reviewer@example.test",
+            "--reviewed-at",
+            _REVIEWED_AT.isoformat(),
+            "--review-policy-version",
+            "internal-review-v1",
+            "--review-note",
+            "Internal review; this is not CA approval.",
+        ]
+    )
+
+    assert exit_code == 0
+    stored = EvaluationCorpusEntry.model_validate_json(
+        (catalog_root / candidate.entry_id / "provisional-v1.json").read_text(encoding="utf-8")
+    )
+    assert stored.review_status == "provisional_internal_review"
+    assert stored.corpus_version == "provisional-v1"
+
+
 def test_approved_corpus_cli_evaluates_only_a_ca_approved_entry(tmp_path: Path) -> None:
     approved = _entry(status="approved_for_evaluation")
     proposal = _empty_proposal(approved)
@@ -267,6 +368,42 @@ def test_approved_corpus_cli_evaluates_only_a_ca_approved_entry(tmp_path: Path) 
 
     assert exit_code == 1
     assert '"case_id": "fictional-tax-onboarding"' in report_path.read_text(encoding="utf-8")
+    assert '"evaluation_qualification": "ca_approved_real"' in report_path.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_provisional_corpus_cli_writes_a_clearly_labelled_internal_report(tmp_path: Path) -> None:
+    provisional = _entry(status="provisional_internal_review")
+    proposal = _empty_proposal(provisional)
+    catalog_root = tmp_path / "catalog"
+    proposal_path = tmp_path / "proposal.json"
+    report_path = tmp_path / "report.json"
+    LocalEvaluationCorpusCatalog(catalog_root).register(provisional)
+    proposal_path.write_text(proposal.model_dump_json(indent=2), encoding="utf-8")
+
+    exit_code = main(
+        [
+            "evaluate-provisional-corpus",
+            "--catalog-root",
+            str(catalog_root),
+            "--entry-id",
+            provisional.entry_id,
+            "--corpus-version",
+            provisional.corpus_version,
+            "--proposal",
+            str(proposal_path),
+            "--evaluated-at",
+            _REVIEWED_AT.isoformat(),
+            "--output",
+            str(report_path),
+        ]
+    )
+
+    assert exit_code == 1
+    assert '"evaluation_qualification": "provisional_internal_review"' in report_path.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_approved_corpus_cli_rejects_a_case_still_waiting_for_ca_review(tmp_path: Path) -> None:

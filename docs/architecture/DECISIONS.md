@@ -363,3 +363,26 @@ Synthetic golden cases prove evaluator behavior but cannot substantiate accuracy
 - Synthetic cases remain useful for contract and adversarial tests but cannot be misrepresented as a real-model quality gate.
 - Real corpus population and reviewer judgment remain explicit local work, while versioned entries provide a reproducible audit foundation for later provider comparisons.
 - Privacy, prompt-isolation, corpus-level performance thresholds, cost/latency budgets, and review operations remain required future controls.
+
+## ADR-015 — Separate provisional internal evaluation from CA-approved model gates
+
+**Status:** Accepted for the POC
+**Date:** 1 October 2026
+
+### Context
+
+The first permitted real-company corpus case can be useful to exercise the local onboarding and evaluator workflow before a qualified CA is available. Calling that work CA approval, or allowing it to enter the same evaluation route as CA-approved cases, would overstate the reliability of the golden fixture and weaken the live-model gate.
+
+### Decision
+
+- Add the append-only corpus state `provisional_internal_review` for a permitted real case with the exact fixture checksum, named internal reviewer, timezone-aware timestamp, internal-policy version, and nonblank notes. A local command creates it only as a new version from a `ready_for_ca_review` candidate.
+- Keep `approved_for_evaluation` unchanged: it remains the only state returned by `get_approved` and the only source accepted by `evaluate-approved-corpus`.
+- Add `evaluate-provisional-corpus`, which retrieves only a provisional entry and writes a report with `evaluation_qualification: provisional_internal_review` to a separate default location.
+- Do not permit synthetic, unassessed, or restricted cases to receive provisional internal review.
+- Treat provisional results as local workflow-testing evidence only. They cannot authorize a live provider, create an approved configuration, demonstrate real-model readiness, or substitute for CA review.
+
+### Consequences
+
+- The team can find integration and evaluation defects using a locally reviewed permitted case without mislabelling the review authority.
+- Consumers can distinguish provisional and CA-approved reports directly from persisted artifacts, not only from a command name or file path.
+- A later CA review requires a new append-only corpus version; it cannot overwrite or silently promote the provisional record.

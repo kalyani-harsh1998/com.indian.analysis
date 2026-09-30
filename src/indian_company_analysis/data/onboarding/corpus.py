@@ -1,4 +1,4 @@
-"""Local registry records for CA-reviewed onboarding evaluation corpus cases."""
+"""Local registry records for controlled onboarding evaluation corpus cases."""
 
 from __future__ import annotations
 
@@ -19,11 +19,16 @@ from indian_company_analysis.domain.enums import ExtractionReviewStatus, Licence
 from indian_company_analysis.domain.models import DomainModel
 
 CorpusScope = Literal["synthetic", "permitted_real"]
-CorpusReviewStatus = Literal["ready_for_ca_review", "approved_for_evaluation", "rejected"]
+CorpusReviewStatus = Literal[
+    "ready_for_ca_review",
+    "provisional_internal_review",
+    "approved_for_evaluation",
+    "rejected",
+]
 
 
 class EvaluationCorpusEntry(DomainModel):
-    """One proposed or approved real-filing golden case with complete lineage.
+    """One controlled real-filing golden case with complete lineage.
 
     The registry stores only local metadata and the reviewed golden fixture.  Raw source
     documents and any locally generated evaluation reports remain outside Git.
@@ -107,6 +112,21 @@ class EvaluationCorpusEntry(DomainModel):
                 raise ValueError("CA review requires a candidate evaluation fixture")
             if any(value is not None for value in review_metadata) or self.review_notes:
                 raise ValueError("unreviewed corpus entries cannot carry CA review metadata")
+        elif self.review_status == "provisional_internal_review":
+            if self.corpus_scope != "permitted_real":
+                raise ValueError(
+                    "only permitted_real corpus cases may receive provisional internal review"
+                )
+            if self.fixture is None or any(value is None for value in review_metadata):
+                raise ValueError(
+                    "provisional internal review requires fixture and reviewer metadata"
+                )
+            if not self.review_notes:
+                raise ValueError("provisional internal review requires reviewer notes")
+            if self.reviewed_at is None or (
+                self.reviewed_at.tzinfo is None or self.reviewed_at.utcoffset() is None
+            ):
+                raise ValueError("provisional internal review timestamp must include a timezone")
         elif self.review_status == "approved_for_evaluation":
             if self.corpus_scope != "permitted_real":
                 raise ValueError("only permitted_real corpus cases may be approved for evaluation")
@@ -131,6 +151,12 @@ class EvaluationCorpusEntry(DomainModel):
 
         return self.review_status == "approved_for_evaluation"
 
+    @property
+    def is_provisionally_reviewed_for_internal_evaluation(self) -> bool:
+        """Whether this case may be used only for clearly labelled internal testing."""
+
+        return self.review_status == "provisional_internal_review"
+
 
 def _fixture_checksum(fixture: OnboardingEvaluationFixture) -> str:
     """Return a reproducible digest of the complete golden fixture, including values."""
@@ -141,6 +167,33 @@ def _fixture_checksum(fixture: OnboardingEvaluationFixture) -> str:
         separators=(",", ":"),
     )
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def provisionally_review_entry(
+    entry: EvaluationCorpusEntry,
+    *,
+    corpus_version: str,
+    reviewed_by: str,
+    reviewed_at: datetime,
+    review_policy_version: str,
+    review_notes: tuple[str, ...],
+) -> EvaluationCorpusEntry:
+    """Create a new append-only internal-review version from a candidate entry."""
+
+    if entry.review_status != "ready_for_ca_review":
+        raise ValueError("only a ready_for_ca_review entry may receive provisional internal review")
+    entry_data = entry.model_dump(mode="json")
+    entry_data.update(
+        {
+            "corpus_version": corpus_version,
+            "review_status": "provisional_internal_review",
+            "reviewed_by": reviewed_by,
+            "reviewed_at": reviewed_at,
+            "review_policy_version": review_policy_version,
+            "review_notes": review_notes,
+        }
+    )
+    return EvaluationCorpusEntry.model_validate(entry_data)
 
 
 class LocalEvaluationCorpusCatalog:
@@ -177,6 +230,25 @@ class LocalEvaluationCorpusCatalog:
             raise ValueError("evaluation corpus entry identity does not match its catalog path")
         if not entry.is_approved_for_evaluation:
             raise ValueError("evaluation corpus entry has not received CA approval")
+        return entry
+
+    def get_provisionally_reviewed_for_internal_evaluation(
+        self,
+        *,
+        entry_id: str,
+        corpus_version: str,
+    ) -> EvaluationCorpusEntry:
+        """Return only an explicitly provisional entry for internal evaluation."""
+
+        entry = EvaluationCorpusEntry.model_validate_json(
+            self._path_for(entry_id=entry_id, corpus_version=corpus_version).read_text(
+                encoding="utf-8"
+            )
+        )
+        if entry.entry_id != entry_id or entry.corpus_version != corpus_version:
+            raise ValueError("evaluation corpus entry identity does not match its catalog path")
+        if not entry.is_provisionally_reviewed_for_internal_evaluation:
+            raise ValueError("evaluation corpus entry has not received provisional internal review")
         return entry
 
     def path_for(self, entry: EvaluationCorpusEntry) -> Path:

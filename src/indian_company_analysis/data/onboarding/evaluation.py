@@ -6,6 +6,7 @@ from collections import Counter
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, model_validator
 
@@ -20,6 +21,12 @@ from indian_company_analysis.data.onboarding.models import (
 from indian_company_analysis.data.onboarding.validation import validate_onboarding_proposal
 from indian_company_analysis.domain.metrics import MetricId
 from indian_company_analysis.domain.models import DomainModel
+
+EvaluationQualification = Literal[
+    "unqualified",
+    "provisional_internal_review",
+    "ca_approved_real",
+]
 
 _RATE_QUANTUM = Decimal("0.000001")
 
@@ -195,6 +202,7 @@ class ReconciliationEvaluationResult(DomainModel):
 class OnboardingEvaluationReport(DomainModel):
     case_id: str = Field(min_length=1)
     fixture_version: str = Field(min_length=1)
+    evaluation_qualification: EvaluationQualification = "unqualified"
     evaluated_at: datetime
     proposal: DocumentOnboardingProposal
     validation: ProposalValidationResult
@@ -223,6 +231,7 @@ class OnboardingProposalEvaluator:
         provider: OnboardingProposalProvider,
         *,
         evaluated_at: datetime,
+        evaluation_qualification: EvaluationQualification = "unqualified",
     ) -> OnboardingEvaluationReport:
         proposal = provider.propose(fixture.request)
         validation = validate_onboarding_proposal(fixture.request, proposal)
@@ -251,6 +260,7 @@ class OnboardingProposalEvaluator:
         return OnboardingEvaluationReport(
             case_id=fixture.case_id,
             fixture_version=fixture.fixture_version,
+            evaluation_qualification=evaluation_qualification,
             evaluated_at=evaluated_at,
             proposal=proposal,
             validation=validation,

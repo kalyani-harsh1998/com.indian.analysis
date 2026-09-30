@@ -1,10 +1,10 @@
-# CA-reviewed evaluation corpus registry
+# Controlled evaluation corpus registry
 
 ## Purpose
 
 The golden-case evaluator is useful only when its expected dispositions, values, and reconciliations are trustworthy. This registry is the Phase 2D control for moving a **permitted real-company filing** from local source evidence to an evaluation case that may gate a future live onboarding model.
 
-It does not retrieve documents, call a model, approve an onboarding configuration, or make a financial conclusion. It records the local artefacts and CA review that must already exist. Raw reports, local manifests, registry entries, and generated evaluations live under ignored `data/` paths. Do not commit a source report, a real-company fixture, or output from this workflow.
+It does not retrieve documents, call a model, approve an onboarding configuration, or make a financial conclusion. It records the local artefacts and review status that must already exist. Raw reports, local manifests, registry entries, and generated evaluations live under ignored `data/` paths. Do not commit a source report, a real-company fixture, or output from this workflow.
 
 ## Required lineage
 
@@ -17,10 +17,11 @@ The registry validates that document ID, company, document type, source-referenc
 | State | Meaning | Can gate a live model? |
 | --- | --- | --- |
 | `ready_for_ca_review` | A candidate fixture is present and the deterministic extraction has been reviewed. It has no CA approval metadata. | No |
+| `provisional_internal_review` | A named internal reviewer has checked the exact fixture and recorded notes under an internal policy. It may be used only by the separately labelled internal evaluator. | No |
 | `approved_for_evaluation` | A non-synthetic, licence-assessed permitted filing has a fixture checksum, named CA reviewer, timezone-aware review time, policy version, and review notes. | Yes |
 | `rejected` | The reviewer recorded policy/version/time and reasons. No evaluable fixture remains attached. | No |
 
-Only an `approved_for_evaluation` entry is returned by `LocalEvaluationCorpusCatalog.get_approved`. The code rejects synthetic sources, unassessed or restricted licences, unreviewed/rejected extraction links, changed fixture contents, missing review information, and mismatched request lineage from that state.
+Only an `approved_for_evaluation` entry is returned by `LocalEvaluationCorpusCatalog.get_approved`. An internal reviewer may instead record `provisional_internal_review` for a permitted real case, with a fixture checksum, named reviewer, timezone-aware timestamp, internal-policy version, and notes. `get_provisionally_reviewed_for_internal_evaluation` retrieves only that state; it cannot retrieve an approved, candidate, synthetic, or rejected case. The code rejects synthetic sources, unassessed or restricted licences, unreviewed/rejected extraction links, changed fixture contents, missing review information, and mismatched request lineage.
 
 ## CA review checklist
 
@@ -48,10 +49,35 @@ uv run python -m indian_company_analysis register-evaluation-corpus \
 
 The default catalog is `data/interim/evaluation-corpus/`. It is append-only: replaying identical JSON is harmless, while attempting to write different content at the same entry ID and corpus version fails. A custom local catalog location may be supplied with `--catalog-root`.
 
-After CA approval, use `evaluate-approved-corpus` rather than passing the fixture to the generic evaluator. That command retrieves only an `approved_for_evaluation` entry before it evaluates the saved provider proposal. See [onboarding proposal evaluation](ONBOARDING_EVALUATION.md).
+To record a new provisional internal-review version from a candidate entry without modifying that candidate:
+
+```bash
+uv run python -m indian_company_analysis provisionally-review-evaluation-corpus \
+  --entry /path/to/candidate-corpus-entry.json \
+  --corpus-version provisional-v1 \
+  --reviewed-by "Internal reviewer name" \
+  --reviewed-at 2026-10-01T15:00:00+05:30 \
+  --review-policy-version internal-review-v1 \
+  --review-note "Reviewed for internal workflow testing; not CA approval."
+```
+
+This command accepts only `ready_for_ca_review` input and creates a new record. It cannot modify, promote, or overwrite the candidate entry.
+
+After CA approval, use `evaluate-approved-corpus` rather than passing the fixture to the generic evaluator. That command retrieves only an `approved_for_evaluation` entry before it evaluates the saved provider proposal.
+
+When a CA review is not available, a permitted real entry with `provisional_internal_review` may be exercised using the separate command:
+
+```bash
+uv run python -m indian_company_analysis evaluate-provisional-corpus \
+  --entry-id company-fy2026-income-statement \
+  --corpus-version provisional-v1 \
+  --proposal /path/to/local-provider-proposal.json
+```
+
+Its persisted report is marked `evaluation_qualification: provisional_internal_review` and is stored separately by default. It is suitable for developing the local workflow and finding defects, but it does not demonstrate real-model accuracy, authorize a live provider, create an approved onboarding configuration, or substitute for CA approval. See [onboarding proposal evaluation](ONBOARDING_EVALUATION.md).
 
 ## Scope and next work
 
 Committed test cases remain explicitly synthetic and are not registered as approved real-company cases. The first real corpus should deliberately cover multiple companies, layouts, periods, terminology changes, aggregations, exclusions, and safe abstentions.
 
-Before a live provider is connected, we still need corpus-level pass-rate and failure-budget policies, privacy/evidence-minimization controls, prompt-isolation tests, provider error/retry behavior, cost/latency budgets, and model/prompt/schema comparison rules. The registry is the audit boundary for those future evaluations; it does not relax deterministic validation or human approval.
+Before a live provider is connected, we still need a representative CA-approved corpus, corpus-level pass-rate and failure-budget policies, privacy/evidence-minimization controls, prompt-isolation tests, provider error/retry behavior, cost/latency budgets, and model/prompt/schema comparison rules. The registry is the audit boundary for those future evaluations; provisional internal review does not relax deterministic validation or CA approval.
