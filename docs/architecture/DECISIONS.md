@@ -355,7 +355,7 @@ Synthetic golden cases prove evaluator behavior but cannot substantiate accuracy
 - Distinguish `ready_for_ca_review`, `approved_for_evaluation`, and `rejected` entries.
 - Permit only a non-synthetic source with an assessed, non-restricted licence to become `approved_for_evaluation`.
 - Require a named reviewer, timezone-aware review timestamp, policy version, and nonblank review notes for approval; reject entries with an unreviewed or rejected extraction link.
-- Provide only local append-only registration and approved-case retrieval. Do not add a model provider, corpus-wide release threshold, multi-user queue, or automated CA approval.
+- Provide only local append-only registration, approved-case retrieval, and evaluation of a saved proposal through an approved entry. Do not add a model provider, corpus-wide release threshold, multi-user queue, or automated CA approval.
 
 ### Consequences
 

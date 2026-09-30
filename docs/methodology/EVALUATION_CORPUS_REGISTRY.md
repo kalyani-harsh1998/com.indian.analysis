@@ -48,6 +48,8 @@ uv run python -m indian_company_analysis register-evaluation-corpus \
 
 The default catalog is `data/interim/evaluation-corpus/`. It is append-only: replaying identical JSON is harmless, while attempting to write different content at the same entry ID and corpus version fails. A custom local catalog location may be supplied with `--catalog-root`.
 
+After CA approval, use `evaluate-approved-corpus` rather than passing the fixture to the generic evaluator. That command retrieves only an `approved_for_evaluation` entry before it evaluates the saved provider proposal. See [onboarding proposal evaluation](ONBOARDING_EVALUATION.md).
+
 ## Scope and next work
 
 Committed test cases remain explicitly synthetic and are not registered as approved real-company cases. The first real corpus should deliberately cover multiple companies, layouts, periods, terminology changes, aggregations, exclusions, and safe abstentions.

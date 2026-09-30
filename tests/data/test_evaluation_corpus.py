@@ -17,8 +17,10 @@ from indian_company_analysis.data.extraction.models import (
 )
 from indian_company_analysis.data.ingestion.models import RawDocumentManifest
 from indian_company_analysis.data.onboarding import (
+    DocumentOnboardingProposal,
     EvaluationCorpusEntry,
     LocalEvaluationCorpusCatalog,
+    ModelRunProvenance,
     OnboardingEvaluationFixture,
 )
 from indian_company_analysis.domain.enums import (
@@ -139,6 +141,33 @@ def _entry(
     )
 
 
+def _empty_proposal(entry: EvaluationCorpusEntry) -> DocumentOnboardingProposal:
+    request = entry.onboarding_request
+    return DocumentOnboardingProposal(
+        proposal_id="registry-schema-empty-proposal-v1",
+        request_id=request.request_id,
+        document_id=request.document_id,
+        extraction_id=request.extraction_id,
+        extraction_profile_version=request.extraction_profile_version,
+        company_id=request.company_id,
+        source_reference_id=request.source_reference_id,
+        source_checksum_sha256=request.source_checksum_sha256,
+        source_organization=request.source_organization,
+        document_type=request.document_type,
+        unit=request.unit,
+        period=request.period,
+        reporting_basis=request.reporting_basis,
+        model_run=ModelRunProvenance(
+            provider="registry-schema-test-provider",
+            model_id="empty-proposal",
+            model_version="1",
+            prompt_version="onboarding-prompt-v1",
+            schema_version="onboarding-proposal-v1",
+            generated_at=_REVIEWED_AT,
+        ),
+    )
+
+
 def test_ready_case_retains_candidate_fixture_but_is_not_evaluable(tmp_path: Path) -> None:
     entry = _entry(status="ready_for_ca_review")
     catalog = LocalEvaluationCorpusCatalog(tmp_path / "corpus")
@@ -207,3 +236,57 @@ def test_registry_cli_persists_an_append_only_local_case(tmp_path: Path) -> None
         (catalog_root / entry.entry_id / f"{entry.corpus_version}.json").read_text(encoding="utf-8")
     )
     assert stored == entry
+
+
+def test_approved_corpus_cli_evaluates_only_a_ca_approved_entry(tmp_path: Path) -> None:
+    approved = _entry(status="approved_for_evaluation")
+    proposal = _empty_proposal(approved)
+    catalog_root = tmp_path / "catalog"
+    proposal_path = tmp_path / "proposal.json"
+    report_path = tmp_path / "report.json"
+    LocalEvaluationCorpusCatalog(catalog_root).register(approved)
+    proposal_path.write_text(proposal.model_dump_json(indent=2), encoding="utf-8")
+
+    exit_code = main(
+        [
+            "evaluate-approved-corpus",
+            "--catalog-root",
+            str(catalog_root),
+            "--entry-id",
+            approved.entry_id,
+            "--corpus-version",
+            approved.corpus_version,
+            "--proposal",
+            str(proposal_path),
+            "--evaluated-at",
+            _REVIEWED_AT.isoformat(),
+            "--output",
+            str(report_path),
+        ]
+    )
+
+    assert exit_code == 1
+    assert '"case_id": "fictional-tax-onboarding"' in report_path.read_text(encoding="utf-8")
+
+
+def test_approved_corpus_cli_rejects_a_case_still_waiting_for_ca_review(tmp_path: Path) -> None:
+    entry = _entry(status="ready_for_ca_review")
+    proposal_path = tmp_path / "proposal.json"
+    catalog_root = tmp_path / "catalog"
+    LocalEvaluationCorpusCatalog(catalog_root).register(entry)
+    proposal_path.write_text(_empty_proposal(entry).model_dump_json(indent=2), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="has not received CA approval"):
+        main(
+            [
+                "evaluate-approved-corpus",
+                "--catalog-root",
+                str(catalog_root),
+                "--entry-id",
+                entry.entry_id,
+                "--corpus-version",
+                entry.corpus_version,
+                "--proposal",
+                str(proposal_path),
+            ]
+        )
