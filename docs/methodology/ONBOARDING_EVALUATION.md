@@ -64,10 +64,10 @@ The command exits with status `0` when the case passes and `1` when it fails. It
 
 ## Current limitations and next gate
 
-This slice supplies the evaluation machinery plus synthetic tax, ambiguity/abstention, and adversarial cases. It does not yet establish real-world model accuracy, security, privacy, or acceptable cost/latency. Before connecting a live LLM:
+This slice supplies the evaluation machinery plus synthetic tax, ambiguity/abstention, and adversarial cases. The local [CA-reviewed evaluation corpus registry](EVALUATION_CORPUS_REGISTRY.md) now provides the lineage and approval gate for permitted real-company cases, but no real corpus case is committed or approved yet. It does not establish real-world model accuracy, security, privacy, or acceptable cost/latency. Before connecting a live LLM:
 
-1. assemble a representative, permitted multi-company and multi-layout corpus;
-2. have a qualified accounting reviewer approve the golden dispositions and values;
+1. assemble a representative, permitted multi-company and multi-layout corpus in the local registry;
+2. have a qualified accounting reviewer approve each fixture's golden dispositions and values;
 3. add ambiguous, missing, adversarial, and expected-abstention cases;
 4. agree minimum quality, privacy, prompt-injection, cost, and latency gates; and
 5. compare model/prompt/schema versions without weakening deterministic validation or human approval.

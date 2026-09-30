@@ -105,7 +105,7 @@ uv run python -m indian_company_analysis normalize-onboarding \
 
 `OnboardingProposalEvaluator` now runs any provider implementation against a versioned golden fixture. It scores direct mappings, aggregations, exclusions, and explicit abstentions; detects missing, duplicated, and hallucinated evidence use; recomputes canonical values deterministically; and runs declared accounting reconciliations. Strict thresholds determine the case result, while the persisted audit report retains the full proposal and validation outcome. The committed fixtures are synthetic and prove the mechanism, not general model quality. See [onboarding proposal evaluation](ONBOARDING_EVALUATION.md).
 
-The synthetic adversarial suite covers changed labels, duplicate evidence, invented locators, statement-context mismatch, incorrect aggregation signs, and instruction-like filing text. It proves that invalid proposals fail or expected abstention is measured; it does not claim to provide provider-side prompt-injection protection before a live adapter exists.
+The synthetic adversarial suite covers changed labels, duplicate evidence, invented locators, statement-context mismatch, incorrect aggregation signs, and instruction-like filing text. It proves that invalid proposals fail or expected abstention is measured; it does not claim to provide provider-side prompt-injection protection before a live adapter exists. A future live provider must be evaluated only against an approved permitted-real case in the [CA-reviewed evaluation corpus registry](EVALUATION_CORPUS_REGISTRY.md); a candidate or synthetic fixture cannot satisfy that gate.
 
 ## Deferred work
 
@@ -113,7 +113,7 @@ The synthetic adversarial suite covers changed labels, duplicate evidence, inven
 - multi-user review queue, review amendments, and an approved configuration-migration policy across filings;
 - real provider selection and adapter implementation;
 - structured-output retries and provider error handling;
-- a representative permitted, CA-reviewed evaluation corpus and expected-abstention cases;
+- creation and CA approval of a representative permitted evaluation corpus, including expected-abstention cases, under the implemented local registry;
 - live provider comparison using captured accuracy, token, cost, and latency metadata;
 - prompt-injection isolation and evidence-minimization policy;
 - automatic statement-page/profile discovery; and
