@@ -76,8 +76,33 @@ uv run python -m indian_company_analysis evaluate-provisional-corpus \
 
 Its persisted report is marked `evaluation_qualification: provisional_internal_review` and is stored separately by default. It is suitable for developing the local workflow and finding defects, but it does not demonstrate real-model accuracy, authorize a live provider, create an approved onboarding configuration, or substitute for CA approval. See [onboarding proposal evaluation](ONBOARDING_EVALUATION.md).
 
+## Provisional corpus summary
+
+When several provisional entries exist, `evaluate-provisional-corpus-set` evaluates the saved proposal for each case and applies an explicit local policy: a minimum number of cases and distinct companies, minimum pass rate, and maximum failed cases. It writes one append-only summary containing every underlying evaluation report, aggregate counts, pass rate, and the policy outcome.
+
+For example, the current three-case internal corpus can be checked as follows:
+
+```bash
+uv run python -m indian_company_analysis evaluate-provisional-corpus-set \
+  --entry-id infosys-fy2026-consolidated-profit-loss-corpus-v1 \
+  --corpus-version provisional-internal-v1 \
+  --proposal /path/to/infosys-candidate.json \
+  --entry-id tcs-fy2026-consolidated-profit-loss-corpus-v1 \
+  --corpus-version provisional-internal-v1 \
+  --proposal /path/to/tcs-candidate.json \
+  --entry-id apsez-fy2026-consolidated-profit-loss-corpus-v1 \
+  --corpus-version provisional-internal-v1 \
+  --proposal /path/to/apsez-candidate.json \
+  --run-id fy2026-internal-corpus-v1 \
+  --policy-version internal-corpus-policy-v1 \
+  --minimum-case-count 3 \
+  --minimum-distinct-company-count 3
+```
+
+An internal-policy pass means only that the declared provisional cases met the local threshold. Every summary is permanently marked `evaluation_qualification: provisional_internal_review`, sets `live_model_eligible: false`, and records an explicit live-model blocker. It cannot replace CA approval, a representative CA-reviewed corpus, privacy controls, prompt-isolation tests, or future provider-specific gates.
+
 ## Scope and next work
 
 Committed test cases remain explicitly synthetic and are not registered as approved real-company cases. The first real corpus should deliberately cover multiple companies, layouts, periods, terminology changes, aggregations, exclusions, and safe abstentions.
 
-Before a live provider is connected, we still need a representative CA-approved corpus, corpus-level pass-rate and failure-budget policies, privacy/evidence-minimization controls, prompt-isolation tests, provider error/retry behavior, cost/latency budgets, and model/prompt/schema comparison rules. The registry is the audit boundary for those future evaluations; provisional internal review does not relax deterministic validation or CA approval.
+Before a live provider is connected, we still need a representative CA-approved corpus, CA-approved corpus-level pass-rate and failure-budget policies, privacy/evidence-minimization controls, prompt-isolation tests, provider error/retry behavior, cost/latency budgets, and model/prompt/schema comparison rules. The implemented provisional summary is local workflow evidence only; provisional internal review does not relax deterministic validation or CA approval.

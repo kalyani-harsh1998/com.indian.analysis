@@ -386,3 +386,26 @@ The first permitted real-company corpus case can be useful to exercise the local
 - The team can find integration and evaluation defects using a locally reviewed permitted case without mislabelling the review authority.
 - Consumers can distinguish provisional and CA-approved reports directly from persisted artifacts, not only from a command name or file path.
 - A later CA review requires a new append-only corpus version; it cannot overwrite or silently promote the provisional record.
+
+## ADR-016 — Summarize provisional corpus quality without creating a live-model gate
+
+**Status:** Accepted for the POC
+**Date:** 1 October 2026
+
+### Context
+
+Several internally reviewed real-company cases can exercise the onboarding workflow more meaningfully than a single case. A simple collection of individual reports, however, does not state whether a declared internal policy was met. Treating an internal aggregate pass as permission to connect a live provider would wrongly convert non-CA review into a production-quality claim.
+
+### Decision
+
+- Add a `ProvisionalCorpusEvaluator` that accepts only entries already marked `provisional_internal_review` and evaluates one saved proposal per entry.
+- Make a versioned policy declare minimum case count, distinct-company count, pass rate, and maximum failed cases.
+- Persist all individual reports, aggregate counts, pass rate, policy failures, and an `internal_gate_passed` result in a non-overwriting report.
+- Hard-code the report qualification as `provisional_internal_review`, require `live_model_eligible: false`, and retain an explicit live-model blocker regardless of the internal outcome.
+- Keep CA-approved corpus policy, privacy controls, prompt isolation, provider reliability, cost/latency budgets, and live-provider admission as separate future work.
+
+### Consequences
+
+- The team can compare several local cases under a transparent and reproducible internal threshold before a provider is connected.
+- A passing internal summary remains workflow evidence only; it cannot promote entries, create approved configurations, or authorize a live model.
+- A future CA-approved gate may reuse the reporting pattern but requires its own policy and review authority rather than relaxing this one.

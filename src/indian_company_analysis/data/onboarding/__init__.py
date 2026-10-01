@@ -18,6 +18,12 @@ from indian_company_analysis.data.onboarding.corpus import (
     LocalEvaluationCorpusCatalog,
     provisionally_review_entry,
 )
+from indian_company_analysis.data.onboarding.corpus_evaluation import (
+    ProvisionalCorpusCaseEvaluation,
+    ProvisionalCorpusEvaluationPolicy,
+    ProvisionalCorpusEvaluationReport,
+    ProvisionalCorpusEvaluator,
+)
 from indian_company_analysis.data.onboarding.evaluation import (
     EvaluationQualification,
     EvaluationThresholds,
@@ -118,6 +124,10 @@ __all__ = [
     "ProposalAccuracyMetrics",
     "ProposalValidationIssue",
     "ProposalValidationResult",
+    "ProvisionalCorpusCaseEvaluation",
+    "ProvisionalCorpusEvaluationPolicy",
+    "ProvisionalCorpusEvaluationReport",
+    "ProvisionalCorpusEvaluator",
     "ReconciliationEvaluationResult",
     "ReconciliationExpectation",
     "ReconciliationTerm",

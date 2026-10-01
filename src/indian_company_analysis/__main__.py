@@ -26,6 +26,10 @@ from indian_company_analysis.data.onboarding.corpus import (
     LocalEvaluationCorpusCatalog,
     provisionally_review_entry,
 )
+from indian_company_analysis.data.onboarding.corpus_evaluation import (
+    ProvisionalCorpusEvaluationPolicy,
+    ProvisionalCorpusEvaluator,
+)
 from indian_company_analysis.data.onboarding.evaluation import (
     OnboardingEvaluationFixture,
     OnboardingProposalEvaluator,
@@ -170,6 +174,29 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     provisional_evaluation.add_argument("--proposal", type=Path, required=True)
     provisional_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
     provisional_evaluation.add_argument("--output", type=Path)
+    provisional_corpus_evaluation = subparsers.add_parser(
+        "evaluate-provisional-corpus-set",
+        help=(
+            "evaluate multiple provisional cases under an internal-only corpus policy; "
+            "never authorizes a live model"
+        ),
+    )
+    provisional_corpus_evaluation.add_argument("--catalog-root", type=Path)
+    provisional_corpus_evaluation.add_argument("--entry-id", action="append", required=True)
+    provisional_corpus_evaluation.add_argument("--corpus-version", action="append", required=True)
+    provisional_corpus_evaluation.add_argument(
+        "--proposal", type=Path, action="append", required=True
+    )
+    provisional_corpus_evaluation.add_argument("--run-id", required=True)
+    provisional_corpus_evaluation.add_argument("--policy-version", required=True)
+    provisional_corpus_evaluation.add_argument("--minimum-case-count", type=int, default=1)
+    provisional_corpus_evaluation.add_argument(
+        "--minimum-distinct-company-count", type=int, default=1
+    )
+    provisional_corpus_evaluation.add_argument("--minimum-pass-rate", default="1")
+    provisional_corpus_evaluation.add_argument("--maximum-failed-case-count", type=int, default=0)
+    provisional_corpus_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
+    provisional_corpus_evaluation.add_argument("--output", type=Path)
     return parser
 
 
@@ -414,6 +441,54 @@ def main(argv: Sequence[str] | None = None) -> int:
             "This result is not CA-approved or a live-model quality gate."
         )
         return 0 if report.passed else 1
+    if args.command == "evaluate-provisional-corpus-set":
+        if not (len(args.entry_id) == len(args.corpus_version) == len(args.proposal)):
+            raise ValueError(
+                "provide matching counts of --entry-id, --corpus-version, and --proposal"
+            )
+        evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
+            args.catalog_root or settings.data_directory / "interim" / "evaluation-corpus"
+        )
+        entries = tuple(
+            evaluation_corpus_catalog.get_provisionally_reviewed_for_internal_evaluation(
+                entry_id=entry_id,
+                corpus_version=corpus_version,
+            )
+            for entry_id, corpus_version in zip(args.entry_id, args.corpus_version, strict=True)
+        )
+        proposals = tuple(
+            DocumentOnboardingProposal.model_validate_json(path.read_text(encoding="utf-8"))
+            for path in args.proposal
+        )
+        policy = ProvisionalCorpusEvaluationPolicy(
+            policy_version=args.policy_version,
+            minimum_case_count=args.minimum_case_count,
+            minimum_distinct_company_count=args.minimum_distinct_company_count,
+            minimum_pass_rate=args.minimum_pass_rate,
+            maximum_failed_case_count=args.maximum_failed_case_count,
+        )
+        corpus_evaluator = ProvisionalCorpusEvaluator()
+        corpus_report = corpus_evaluator.evaluate(
+            entries,
+            proposals,
+            run_id=args.run_id,
+            policy=policy,
+            evaluated_at=args.evaluated_at or datetime.now(UTC),
+        )
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "evaluations"
+            / "provisional-internal-corpus-summary"
+            / f"{args.run_id}.json"
+        )
+        corpus_evaluator.persist(corpus_report, output)
+        status = "passed" if corpus_report.internal_gate_passed else "failed"
+        print(
+            f"Evaluated {corpus_report.total_case_count} provisional corpus cases to {output}; "
+            f"internal policy result {status}. This never authorizes a live model."
+        )
+        return 0 if corpus_report.internal_gate_passed else 1
     if args.command in {"approve-onboarding", "reject-onboarding"}:
         onboarding_request = DocumentOnboardingRequest.model_validate_json(
             args.request.read_text(encoding="utf-8")

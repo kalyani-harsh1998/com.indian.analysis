@@ -17,14 +17,21 @@ from indian_company_analysis.data.extraction.models import (
 )
 from indian_company_analysis.data.ingestion.models import RawDocumentManifest
 from indian_company_analysis.data.onboarding import (
+    AbstentionCandidate,
     DocumentOnboardingProposal,
     EvaluationCorpusEntry,
+    ExclusionCandidate,
     LocalEvaluationCorpusCatalog,
+    MappingCandidate,
+    MetricAggregationCandidate,
     ModelRunProvenance,
     OnboardingEvaluationFixture,
+    ProvisionalCorpusEvaluationPolicy,
+    ProvisionalCorpusEvaluator,
     provisionally_review_entry,
 )
 from indian_company_analysis.domain.enums import (
+    ConfidenceLevel,
     ExtractionReviewStatus,
     LicenceCategory,
     SourceKind,
@@ -180,6 +187,75 @@ def _empty_proposal(entry: EvaluationCorpusEntry) -> DocumentOnboardingProposal:
             prompt_version="onboarding-prompt-v1",
             schema_version="onboarding-proposal-v1",
             generated_at=_REVIEWED_AT,
+        ),
+    )
+
+
+def _perfect_proposal(entry: EvaluationCorpusEntry) -> DocumentOnboardingProposal:
+    fixture = entry.fixture
+    assert fixture is not None
+    request = fixture.request
+    labels = {row.evidence_id: row.reported_label for row in request.evidence_rows}
+    return DocumentOnboardingProposal(
+        proposal_id="registry-schema-perfect-proposal-v1",
+        request_id=request.request_id,
+        document_id=request.document_id,
+        extraction_id=request.extraction_id,
+        extraction_profile_version=request.extraction_profile_version,
+        company_id=request.company_id,
+        source_reference_id=request.source_reference_id,
+        source_checksum_sha256=request.source_checksum_sha256,
+        source_organization=request.source_organization,
+        document_type=request.document_type,
+        unit=request.unit,
+        period=request.period,
+        reporting_basis=request.reporting_basis,
+        model_run=ModelRunProvenance(
+            provider="registry-schema-test-provider",
+            model_id="perfect-proposal",
+            model_version="1",
+            prompt_version="onboarding-prompt-v1",
+            schema_version="onboarding-proposal-v1",
+            generated_at=_REVIEWED_AT,
+        ),
+        mappings=tuple(
+            MappingCandidate(
+                candidate_id=f"mapping-{expected.evidence_id}",
+                evidence_id=expected.evidence_id,
+                reported_label=labels[expected.evidence_id],
+                metric_id=expected.metric_id,
+                sign_multiplier=expected.sign_multiplier,
+                confidence=ConfidenceLevel.HIGH,
+                rationale="Synthetic golden mapping.",
+            )
+            for expected in fixture.expected_mappings
+        ),
+        aggregations=tuple(
+            MetricAggregationCandidate(
+                candidate_id=f"aggregation-{expected.metric_id.value}",
+                metric_id=expected.metric_id,
+                components=expected.components,
+                confidence=ConfidenceLevel.HIGH,
+                rationale="Synthetic golden aggregation.",
+            )
+            for expected in fixture.expected_aggregations
+        ),
+        exclusions=tuple(
+            ExclusionCandidate(
+                evidence_id=expected.evidence_id,
+                confidence=ConfidenceLevel.HIGH,
+                rationale="Synthetic golden exclusion.",
+            )
+            for expected in fixture.expected_exclusions
+        ),
+        abstentions=tuple(
+            AbstentionCandidate(
+                candidate_id=f"abstention-{expected.evidence_id}",
+                evidence_id=expected.evidence_id,
+                confidence=ConfidenceLevel.LOW,
+                rationale="Synthetic golden abstention.",
+            )
+            for expected in fixture.expected_abstentions
         ),
     )
 
@@ -427,3 +503,91 @@ def test_approved_corpus_cli_rejects_a_case_still_waiting_for_ca_review(tmp_path
                 str(proposal_path),
             ]
         )
+
+
+def test_provisional_corpus_evaluator_passes_internal_policy_but_blocks_live_models() -> None:
+    provisional = _entry(status="provisional_internal_review")
+
+    report = ProvisionalCorpusEvaluator().evaluate(
+        (provisional,),
+        (_perfect_proposal(provisional),),
+        run_id="provisional-summary-v1",
+        policy=ProvisionalCorpusEvaluationPolicy(
+            policy_version="internal-summary-v1",
+            minimum_case_count=1,
+            minimum_distinct_company_count=1,
+            minimum_pass_rate="1",
+            maximum_failed_case_count=0,
+        ),
+        evaluated_at=_REVIEWED_AT,
+    )
+
+    assert report.internal_gate_passed is True
+    assert report.passed_case_count == 1
+    assert report.failed_case_count == 0
+    assert str(report.pass_rate) == "1.000000"
+    assert report.live_model_eligible is False
+    assert report.live_model_blockers == (
+        "provisional internal review cannot authorize a live model",
+    )
+
+
+def test_provisional_corpus_evaluator_reports_failed_cases_against_policy() -> None:
+    provisional = _entry(status="provisional_internal_review")
+
+    report = ProvisionalCorpusEvaluator().evaluate(
+        (provisional,),
+        (_empty_proposal(provisional),),
+        run_id="provisional-summary-failure-v1",
+        policy=ProvisionalCorpusEvaluationPolicy(
+            policy_version="internal-summary-v1",
+            minimum_case_count=1,
+            minimum_distinct_company_count=1,
+            minimum_pass_rate="1",
+            maximum_failed_case_count=0,
+        ),
+        evaluated_at=_REVIEWED_AT,
+    )
+
+    assert report.internal_gate_passed is False
+    assert report.failed_case_count == 1
+    assert "pass rate 0.000000 is below required 1" in report.internal_failure_reasons
+    assert "failed case count 1 exceeds permitted 0" in report.internal_failure_reasons
+
+
+def test_provisional_corpus_summary_cli_persists_an_internal_only_report(tmp_path: Path) -> None:
+    provisional = _entry(status="provisional_internal_review")
+    catalog_root = tmp_path / "catalog"
+    proposal_path = tmp_path / "proposal.json"
+    report_path = tmp_path / "summary.json"
+    LocalEvaluationCorpusCatalog(catalog_root).register(provisional)
+    proposal_path.write_text(
+        _perfect_proposal(provisional).model_dump_json(indent=2), encoding="utf-8"
+    )
+
+    exit_code = main(
+        [
+            "evaluate-provisional-corpus-set",
+            "--catalog-root",
+            str(catalog_root),
+            "--entry-id",
+            provisional.entry_id,
+            "--corpus-version",
+            provisional.corpus_version,
+            "--proposal",
+            str(proposal_path),
+            "--run-id",
+            "provisional-summary-cli-v1",
+            "--policy-version",
+            "internal-summary-v1",
+            "--evaluated-at",
+            _REVIEWED_AT.isoformat(),
+            "--output",
+            str(report_path),
+        ]
+    )
+
+    assert exit_code == 0
+    persisted = report_path.read_text(encoding="utf-8")
+    assert '"internal_gate_passed": true' in persisted
+    assert '"live_model_eligible": false' in persisted
