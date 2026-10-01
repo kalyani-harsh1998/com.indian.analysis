@@ -34,6 +34,10 @@ from indian_company_analysis.data.onboarding.evaluation import (
     OnboardingEvaluationFixture,
     OnboardingProposalEvaluator,
 )
+from indian_company_analysis.data.onboarding.model_input import (
+    OnboardingModelInputPolicy,
+    PromptIsolatedOnboardingInputBuilder,
+)
 from indian_company_analysis.data.onboarding.models import (
     ApprovedOnboardingConfiguration,
     DocumentOnboardingProposal,
@@ -105,6 +109,17 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     evaluation.add_argument("--proposal", type=Path, required=True)
     evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
     evaluation.add_argument("--output", type=Path)
+    model_input = subparsers.add_parser(
+        "prepare-onboarding-model-input",
+        help="prepare a minimal prompt-isolated local input packet for a future provider",
+    )
+    model_input.add_argument("--request", type=Path, required=True)
+    model_input.add_argument("--input-id", required=True)
+    model_input.add_argument("--policy-version", required=True)
+    model_input.add_argument("--maximum-evidence-rows", type=int, default=200)
+    model_input.add_argument("--maximum-reported-label-characters", type=int, default=500)
+    model_input.add_argument("--maximum-raw-value-characters", type=int, default=100)
+    model_input.add_argument("--output", type=Path)
     approve = subparsers.add_parser(
         "approve-onboarding",
         help="record human approval and register its reviewed onboarding configuration",
@@ -337,6 +352,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         status = "passed" if report.passed else "failed"
         print(f"Evaluated proposal {proposal.proposal_id} to {output}; result {status}")
         return 0 if report.passed else 1
+    if args.command == "prepare-onboarding-model-input":
+        onboarding_request = DocumentOnboardingRequest.model_validate_json(
+            args.request.read_text(encoding="utf-8")
+        )
+        input_policy = OnboardingModelInputPolicy(
+            policy_version=args.policy_version,
+            maximum_evidence_rows=args.maximum_evidence_rows,
+            maximum_reported_label_characters=args.maximum_reported_label_characters,
+            maximum_raw_value_characters=args.maximum_raw_value_characters,
+        )
+        builder = PromptIsolatedOnboardingInputBuilder()
+        input_packet = builder.build(
+            onboarding_request,
+            input_id=args.input_id,
+            policy=input_policy,
+        )
+        output = args.output or (
+            settings.data_directory / "interim" / "model-inputs" / f"{input_packet.input_id}.json"
+        )
+        builder.persist(input_packet, output)
+        print(
+            f"Prepared {len(input_packet.untrusted_evidence_rows)} prompt-isolated evidence rows "
+            f"to {output}; no provider was called."
+        )
+        return 0
     if args.command == "register-evaluation-corpus":
         entry = EvaluationCorpusEntry.model_validate_json(args.entry.read_text(encoding="utf-8"))
         evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
@@ -460,7 +500,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             DocumentOnboardingProposal.model_validate_json(path.read_text(encoding="utf-8"))
             for path in args.proposal
         )
-        policy = ProvisionalCorpusEvaluationPolicy(
+        corpus_policy = ProvisionalCorpusEvaluationPolicy(
             policy_version=args.policy_version,
             minimum_case_count=args.minimum_case_count,
             minimum_distinct_company_count=args.minimum_distinct_company_count,
@@ -472,7 +512,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             entries,
             proposals,
             run_id=args.run_id,
-            policy=policy,
+            policy=corpus_policy,
             evaluated_at=args.evaluated_at or datetime.now(UTC),
         )
         output = args.output or (

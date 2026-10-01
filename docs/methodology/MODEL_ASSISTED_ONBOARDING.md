@@ -15,6 +15,9 @@ review-ready PDF extraction
 checksummed onboarding request + source row locators
         |
         v
+minimal prompt-isolated provider input
+        |
+        v
 provider-neutral proposal interface
         |
         v
@@ -28,6 +31,23 @@ explicit human approval + versioned configuration
 ```
 
 `StaticProposalProvider` supplies a frozen proposal for tests and local evaluation. A future live adapter must implement the same `OnboardingProposalProvider` protocol and return the same strict `DocumentOnboardingProposal` schema.
+
+## Prompt-isolated model input
+
+`PromptIsolatedOnboardingInputBuilder` converts an onboarding request into the only packet that a future mapping provider should receive. It includes the request identity, company/period/unit/basis context, source checksum, and bounded evidence rows with their locators, labels, and raw values. It deliberately excludes local filesystem paths, raw PDF bytes, original filenames, and arbitrary document text.
+
+The rows are named `untrusted_evidence_rows`: a label or value may contain instruction-like text, but it is source data rather than an instruction. The future adapter must send the static `ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS` in a trusted developer/system channel and `provider_user_payload()` as a separate data-only user message. It must never interpolate a reported label, raw value, or source snippet into trusted instructions.
+
+The policy versions and enforces evidence-row, label-length, and value-length limits; unsupported control characters fail preparation rather than being silently truncated. A SHA-256 checksum binds the exact evidence rows included in the packet. The local command persists the packet without calling a provider:
+
+```bash
+uv run python -m indian_company_analysis prepare-onboarding-model-input \
+  --request /path/to/onboarding-request.json \
+  --input-id company-fy2026-profit-loss-input-v1 \
+  --policy-version prompt-isolation-v1
+```
+
+This is an input-boundary control, not a complete prompt-injection solution. Provider role separation, structured-output enforcement, retries, and error handling remain required before an LLM is connected.
 
 ## Proposal provenance
 
@@ -115,6 +135,6 @@ The synthetic adversarial suite covers changed labels, duplicate evidence, inven
 - structured-output retries and provider error handling;
 - creation and CA approval of a representative permitted evaluation corpus, including expected-abstention cases, under the implemented local registry;
 - live provider comparison using captured accuracy, token, cost, and latency metadata;
-- prompt-injection isolation and evidence-minimization policy;
+- live-provider role separation, structured-output enforcement, retries, and error handling;
 - automatic statement-page/profile discovery; and
 - controlled policy for any future low-risk automatic approval.

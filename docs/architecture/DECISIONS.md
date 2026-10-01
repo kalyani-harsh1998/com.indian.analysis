@@ -409,3 +409,26 @@ Several internally reviewed real-company cases can exercise the onboarding workf
 - The team can compare several local cases under a transparent and reproducible internal threshold before a provider is connected.
 - A passing internal summary remains workflow evidence only; it cannot promote entries, create approved configurations, or authorize a live model.
 - A future CA-approved gate may reuse the reporting pattern but requires its own policy and review authority rather than relaxing this one.
+
+## ADR-017 — Isolate and minimize filing evidence before a future model call
+
+**Status:** Accepted for the POC
+**Date:** 1 October 2026
+
+### Context
+
+Filings can contain long, irrelevant, or instruction-like text. A future provider needs enough context to propose evidence-bound mappings, but sending local paths, raw PDFs, or arbitrary document content increases unnecessary disclosure and creates a prompt-injection risk. A static prompt string alone is insufficient if untrusted filing content is interpolated into the same instruction channel.
+
+### Decision
+
+- Convert an approved onboarding request into a versioned, bounded `PromptIsolatedOnboardingInput` before any future provider call.
+- Include only identity needed for proposal validation plus page/table/row/column locators, reported labels, and raw values; exclude local filesystem paths, raw PDF bytes, filenames, and arbitrary document text.
+- Classify every supplied row as `untrusted_evidence_rows`, checksum its canonical serialized content, and reject oversized fields or unsupported control characters rather than silently truncating them.
+- Keep fixed developer instructions as a constant and render dynamic source content only as a separate data-only user payload. A future provider adapter must preserve that role separation and return the existing strict proposal schema.
+- Do not call a model, add a provider dependency, claim complete prompt-injection prevention, or relax any deterministic validation or review gate in this slice.
+
+### Consequences
+
+- A future adapter receives a minimal, replayable, checksum-bound input packet instead of direct access to local source files.
+- Instruction-like filing text is visible for semantic interpretation but remains isolated from trusted instructions and is still subject to proposal validation and abstention rules.
+- Provider-specific role handling, structured-output enforcement, retries, error handling, privacy review, and model connection remain separate preconditions for live integration.
