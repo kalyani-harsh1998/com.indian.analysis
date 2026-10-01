@@ -514,3 +514,45 @@ def test_aligned_profile_extracts_and_normalizes_borderless_statement(
         "55",
         "165",
     ]
+
+
+def test_aligned_profile_passes_its_explicit_word_spacing_to_pdfplumber(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw_root = tmp_path / "raw"
+    source_manifest = _intake(
+        raw_root,
+        input_path=Path("tests/fixtures/documents/fictional_annual_report.pdf"),
+        document_id="fictionalco-fy26-word-spacing-source",
+        document_type=DocumentType.ANNUAL_REPORT,
+    )
+    captured: dict[str, object] = {}
+
+    class FakePage:
+        def extract_words(self, **kwargs: object) -> list[dict[str, object]]:
+            captured.update(kwargs)
+            return [
+                {"text": "Revenue", "x0": 72, "x1": 110, "top": 180},
+                {"text": "1000", "x0": 440, "x1": 465, "top": 180},
+            ]
+
+    class FakePdf:
+        pages = [FakePage(), FakePage()]
+
+        def __enter__(self) -> FakePdf:
+            return self
+
+        def __exit__(self, *_: object) -> None:
+            return None
+
+    monkeypatch.setattr(
+        "indian_company_analysis.data.extraction.aligned_pdf.pdfplumber.open",
+        lambda _: FakePdf(),
+    )
+    spec = _aligned_spec().model_copy(update={"word_x_tolerance": Decimal("4")})
+
+    result = AlignedPdfStatementExtractor().extract(source_manifest, raw_root, spec)
+
+    assert captured["x_tolerance"] == 4.0
+    assert [(row.reported_label, row.raw_value) for row in result.rows] == [("Revenue", "1000")]

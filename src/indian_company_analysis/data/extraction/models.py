@@ -50,6 +50,7 @@ class AlignedPdfTableExtractionSpec(PdfTableExtractionSpec):
     value_x0: Decimal = Field(ge=0)
     value_x1: Decimal = Field(gt=0)
     line_tolerance: Decimal = Field(default=Decimal("2"), gt=0, le=10)
+    word_x_tolerance: Decimal = Field(default=Decimal("3"), gt=0, le=10)
 
     @model_validator(mode="after")
     def coordinates_are_ordered(self) -> AlignedPdfTableExtractionSpec:

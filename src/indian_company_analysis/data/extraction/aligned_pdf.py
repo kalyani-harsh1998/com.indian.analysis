@@ -67,6 +67,7 @@ class AlignedPdfStatementExtractor:
             raw_words = pdf.pages[spec.page_number - 1].extract_words(
                 use_text_flow=False,
                 keep_blank_chars=False,
+                x_tolerance=float(spec.word_x_tolerance),
             )
 
         words = tuple(
