@@ -45,7 +45,7 @@ The extractor requires the user to state:
 
 `ruled-two-column-v1` accepts only a ruled table with exactly two columns. Missing tables, unexpected headers, extra cells, and empty labels or values are explicit extraction issues.
 
-`aligned-single-period-v1` groups PDF words into visual rows and applies explicit label/value column boundaries for one reporting period. It preserves Indian comma grouping and parentheses in the raw value. The normalization layer converts those formats deterministically to `Decimal`; dashes and ambiguous values remain explicit issues. Coordinates are configuration evidence, not universal company templates.
+`aligned-single-period-v1` groups PDF words into visual rows and applies explicit label/value column boundaries for one reporting period. Each profile may also set a bounded `word_x_tolerance` to join tightly spaced fragments from the same visual cell, such as a bold total rendered by the PDF as separate text fragments. It preserves Indian comma grouping and parentheses in the raw value. The normalization layer converts those formats deterministically to `Decimal`; dashes and ambiguous values remain explicit issues. Coordinates and word-spacing tolerance are configuration evidence, not universal company templates.
 
 A result from either profile with any extraction issue cannot be serialized as a review-ready controlled CSV.
 

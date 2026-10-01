@@ -1,4 +1,4 @@
-"""Tests for the local, CA-reviewed onboarding evaluation corpus registry."""
+"""Tests for the local controlled onboarding evaluation corpus registry."""
 
 from __future__ import annotations
 
@@ -17,13 +17,21 @@ from indian_company_analysis.data.extraction.models import (
 )
 from indian_company_analysis.data.ingestion.models import RawDocumentManifest
 from indian_company_analysis.data.onboarding import (
+    AbstentionCandidate,
     DocumentOnboardingProposal,
     EvaluationCorpusEntry,
+    ExclusionCandidate,
     LocalEvaluationCorpusCatalog,
+    MappingCandidate,
+    MetricAggregationCandidate,
     ModelRunProvenance,
     OnboardingEvaluationFixture,
+    ProvisionalCorpusEvaluationPolicy,
+    ProvisionalCorpusEvaluator,
+    provisionally_review_entry,
 )
 from indian_company_analysis.domain.enums import (
+    ConfidenceLevel,
     ExtractionReviewStatus,
     LicenceCategory,
     SourceKind,
@@ -103,7 +111,12 @@ def _link() -> DocumentExtractionLink:
 
 def _entry(
     *,
-    status: Literal["ready_for_ca_review", "approved_for_evaluation", "rejected"],
+    status: Literal[
+        "ready_for_ca_review",
+        "provisional_internal_review",
+        "approved_for_evaluation",
+        "rejected",
+    ],
     synthetic: bool = False,
 ) -> EvaluationCorpusEntry:
     fixture = _fixture()
@@ -129,6 +142,16 @@ def _entry(
             **common,
             fixture=fixture,
             fixture_checksum_sha256=_fixture_checksum(fixture),
+        )
+    if status == "provisional_internal_review":
+        return EvaluationCorpusEntry(
+            **common,
+            fixture=fixture,
+            fixture_checksum_sha256=_fixture_checksum(fixture),
+            reviewed_by="internal-reviewer@example.test",
+            reviewed_at=_REVIEWED_AT,
+            review_policy_version="internal-review-v1",
+            review_notes=("Internal reviewer checked deterministic extraction and fixture.",),
         )
     return EvaluationCorpusEntry(
         **common,
@@ -168,6 +191,75 @@ def _empty_proposal(entry: EvaluationCorpusEntry) -> DocumentOnboardingProposal:
     )
 
 
+def _perfect_proposal(entry: EvaluationCorpusEntry) -> DocumentOnboardingProposal:
+    fixture = entry.fixture
+    assert fixture is not None
+    request = fixture.request
+    labels = {row.evidence_id: row.reported_label for row in request.evidence_rows}
+    return DocumentOnboardingProposal(
+        proposal_id="registry-schema-perfect-proposal-v1",
+        request_id=request.request_id,
+        document_id=request.document_id,
+        extraction_id=request.extraction_id,
+        extraction_profile_version=request.extraction_profile_version,
+        company_id=request.company_id,
+        source_reference_id=request.source_reference_id,
+        source_checksum_sha256=request.source_checksum_sha256,
+        source_organization=request.source_organization,
+        document_type=request.document_type,
+        unit=request.unit,
+        period=request.period,
+        reporting_basis=request.reporting_basis,
+        model_run=ModelRunProvenance(
+            provider="registry-schema-test-provider",
+            model_id="perfect-proposal",
+            model_version="1",
+            prompt_version="onboarding-prompt-v1",
+            schema_version="onboarding-proposal-v1",
+            generated_at=_REVIEWED_AT,
+        ),
+        mappings=tuple(
+            MappingCandidate(
+                candidate_id=f"mapping-{expected.evidence_id}",
+                evidence_id=expected.evidence_id,
+                reported_label=labels[expected.evidence_id],
+                metric_id=expected.metric_id,
+                sign_multiplier=expected.sign_multiplier,
+                confidence=ConfidenceLevel.HIGH,
+                rationale="Synthetic golden mapping.",
+            )
+            for expected in fixture.expected_mappings
+        ),
+        aggregations=tuple(
+            MetricAggregationCandidate(
+                candidate_id=f"aggregation-{expected.metric_id.value}",
+                metric_id=expected.metric_id,
+                components=expected.components,
+                confidence=ConfidenceLevel.HIGH,
+                rationale="Synthetic golden aggregation.",
+            )
+            for expected in fixture.expected_aggregations
+        ),
+        exclusions=tuple(
+            ExclusionCandidate(
+                evidence_id=expected.evidence_id,
+                confidence=ConfidenceLevel.HIGH,
+                rationale="Synthetic golden exclusion.",
+            )
+            for expected in fixture.expected_exclusions
+        ),
+        abstentions=tuple(
+            AbstentionCandidate(
+                candidate_id=f"abstention-{expected.evidence_id}",
+                evidence_id=expected.evidence_id,
+                confidence=ConfidenceLevel.LOW,
+                rationale="Synthetic golden abstention.",
+            )
+            for expected in fixture.expected_abstentions
+        ),
+    )
+
+
 def test_ready_case_retains_candidate_fixture_but_is_not_evaluable(tmp_path: Path) -> None:
     entry = _entry(status="ready_for_ca_review")
     catalog = LocalEvaluationCorpusCatalog(tmp_path / "corpus")
@@ -194,6 +286,57 @@ def test_approved_case_requires_real_permitted_source_and_ca_signoff(tmp_path: P
     )
     with pytest.raises(ValueError, match="only permitted_real"):
         _entry(status="approved_for_evaluation", synthetic=True)
+
+
+def test_provisional_case_is_available_only_to_the_internal_evaluator(tmp_path: Path) -> None:
+    provisional = _entry(status="provisional_internal_review")
+    catalog = LocalEvaluationCorpusCatalog(tmp_path / "corpus")
+    catalog.register(provisional)
+
+    assert provisional.is_approved_for_evaluation is False
+    assert provisional.is_provisionally_reviewed_for_internal_evaluation is True
+    assert (
+        catalog.get_provisionally_reviewed_for_internal_evaluation(
+            entry_id=provisional.entry_id,
+            corpus_version=provisional.corpus_version,
+        )
+        == provisional
+    )
+    with pytest.raises(ValueError, match="has not received CA approval"):
+        catalog.get_approved(
+            entry_id=provisional.entry_id,
+            corpus_version=provisional.corpus_version,
+        )
+    with pytest.raises(ValueError, match="only permitted_real"):
+        _entry(status="provisional_internal_review", synthetic=True)
+
+
+def test_provisional_review_creates_a_new_version_only_from_a_candidate(tmp_path: Path) -> None:
+    candidate = _entry(status="ready_for_ca_review")
+    provisional = provisionally_review_entry(
+        candidate,
+        corpus_version="provisional-v1",
+        reviewed_by="internal-reviewer@example.test",
+        reviewed_at=_REVIEWED_AT,
+        review_policy_version="internal-review-v1",
+        review_notes=("Internal review; this is not CA approval.",),
+    )
+    catalog = LocalEvaluationCorpusCatalog(tmp_path / "corpus")
+
+    assert candidate.review_status == "ready_for_ca_review"
+    assert provisional.corpus_version == "provisional-v1"
+    assert provisional.review_status == "provisional_internal_review"
+    assert catalog.register(candidate) is True
+    assert catalog.register(provisional) is True
+    with pytest.raises(ValueError, match="only a ready_for_ca_review"):
+        provisionally_review_entry(
+            provisional,
+            corpus_version="provisional-v2",
+            reviewed_by="internal-reviewer@example.test",
+            reviewed_at=_REVIEWED_AT,
+            review_policy_version="internal-review-v1",
+            review_notes=("This must not overwrite or promote an existing review.",),
+        )
 
 
 def test_registry_rejects_changed_fixture_contents_or_unreviewed_extraction() -> None:
@@ -238,6 +381,40 @@ def test_registry_cli_persists_an_append_only_local_case(tmp_path: Path) -> None
     assert stored == entry
 
 
+def test_provisional_review_cli_creates_a_new_catalog_version(tmp_path: Path) -> None:
+    candidate = _entry(status="ready_for_ca_review")
+    candidate_path = tmp_path / "candidate.json"
+    catalog_root = tmp_path / "catalog"
+    candidate_path.write_text(candidate.model_dump_json(indent=2), encoding="utf-8")
+
+    exit_code = main(
+        [
+            "provisionally-review-evaluation-corpus",
+            "--entry",
+            str(candidate_path),
+            "--catalog-root",
+            str(catalog_root),
+            "--corpus-version",
+            "provisional-v1",
+            "--reviewed-by",
+            "internal-reviewer@example.test",
+            "--reviewed-at",
+            _REVIEWED_AT.isoformat(),
+            "--review-policy-version",
+            "internal-review-v1",
+            "--review-note",
+            "Internal review; this is not CA approval.",
+        ]
+    )
+
+    assert exit_code == 0
+    stored = EvaluationCorpusEntry.model_validate_json(
+        (catalog_root / candidate.entry_id / "provisional-v1.json").read_text(encoding="utf-8")
+    )
+    assert stored.review_status == "provisional_internal_review"
+    assert stored.corpus_version == "provisional-v1"
+
+
 def test_approved_corpus_cli_evaluates_only_a_ca_approved_entry(tmp_path: Path) -> None:
     approved = _entry(status="approved_for_evaluation")
     proposal = _empty_proposal(approved)
@@ -267,6 +444,42 @@ def test_approved_corpus_cli_evaluates_only_a_ca_approved_entry(tmp_path: Path) 
 
     assert exit_code == 1
     assert '"case_id": "fictional-tax-onboarding"' in report_path.read_text(encoding="utf-8")
+    assert '"evaluation_qualification": "ca_approved_real"' in report_path.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_provisional_corpus_cli_writes_a_clearly_labelled_internal_report(tmp_path: Path) -> None:
+    provisional = _entry(status="provisional_internal_review")
+    proposal = _empty_proposal(provisional)
+    catalog_root = tmp_path / "catalog"
+    proposal_path = tmp_path / "proposal.json"
+    report_path = tmp_path / "report.json"
+    LocalEvaluationCorpusCatalog(catalog_root).register(provisional)
+    proposal_path.write_text(proposal.model_dump_json(indent=2), encoding="utf-8")
+
+    exit_code = main(
+        [
+            "evaluate-provisional-corpus",
+            "--catalog-root",
+            str(catalog_root),
+            "--entry-id",
+            provisional.entry_id,
+            "--corpus-version",
+            provisional.corpus_version,
+            "--proposal",
+            str(proposal_path),
+            "--evaluated-at",
+            _REVIEWED_AT.isoformat(),
+            "--output",
+            str(report_path),
+        ]
+    )
+
+    assert exit_code == 1
+    assert '"evaluation_qualification": "provisional_internal_review"' in report_path.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_approved_corpus_cli_rejects_a_case_still_waiting_for_ca_review(tmp_path: Path) -> None:
@@ -290,3 +503,91 @@ def test_approved_corpus_cli_rejects_a_case_still_waiting_for_ca_review(tmp_path
                 str(proposal_path),
             ]
         )
+
+
+def test_provisional_corpus_evaluator_passes_internal_policy_but_blocks_live_models() -> None:
+    provisional = _entry(status="provisional_internal_review")
+
+    report = ProvisionalCorpusEvaluator().evaluate(
+        (provisional,),
+        (_perfect_proposal(provisional),),
+        run_id="provisional-summary-v1",
+        policy=ProvisionalCorpusEvaluationPolicy(
+            policy_version="internal-summary-v1",
+            minimum_case_count=1,
+            minimum_distinct_company_count=1,
+            minimum_pass_rate="1",
+            maximum_failed_case_count=0,
+        ),
+        evaluated_at=_REVIEWED_AT,
+    )
+
+    assert report.internal_gate_passed is True
+    assert report.passed_case_count == 1
+    assert report.failed_case_count == 0
+    assert str(report.pass_rate) == "1.000000"
+    assert report.live_model_eligible is False
+    assert report.live_model_blockers == (
+        "provisional internal review cannot authorize a live model",
+    )
+
+
+def test_provisional_corpus_evaluator_reports_failed_cases_against_policy() -> None:
+    provisional = _entry(status="provisional_internal_review")
+
+    report = ProvisionalCorpusEvaluator().evaluate(
+        (provisional,),
+        (_empty_proposal(provisional),),
+        run_id="provisional-summary-failure-v1",
+        policy=ProvisionalCorpusEvaluationPolicy(
+            policy_version="internal-summary-v1",
+            minimum_case_count=1,
+            minimum_distinct_company_count=1,
+            minimum_pass_rate="1",
+            maximum_failed_case_count=0,
+        ),
+        evaluated_at=_REVIEWED_AT,
+    )
+
+    assert report.internal_gate_passed is False
+    assert report.failed_case_count == 1
+    assert "pass rate 0.000000 is below required 1" in report.internal_failure_reasons
+    assert "failed case count 1 exceeds permitted 0" in report.internal_failure_reasons
+
+
+def test_provisional_corpus_summary_cli_persists_an_internal_only_report(tmp_path: Path) -> None:
+    provisional = _entry(status="provisional_internal_review")
+    catalog_root = tmp_path / "catalog"
+    proposal_path = tmp_path / "proposal.json"
+    report_path = tmp_path / "summary.json"
+    LocalEvaluationCorpusCatalog(catalog_root).register(provisional)
+    proposal_path.write_text(
+        _perfect_proposal(provisional).model_dump_json(indent=2), encoding="utf-8"
+    )
+
+    exit_code = main(
+        [
+            "evaluate-provisional-corpus-set",
+            "--catalog-root",
+            str(catalog_root),
+            "--entry-id",
+            provisional.entry_id,
+            "--corpus-version",
+            provisional.corpus_version,
+            "--proposal",
+            str(proposal_path),
+            "--run-id",
+            "provisional-summary-cli-v1",
+            "--policy-version",
+            "internal-summary-v1",
+            "--evaluated-at",
+            _REVIEWED_AT.isoformat(),
+            "--output",
+            str(report_path),
+        ]
+    )
+
+    assert exit_code == 0
+    persisted = report_path.read_text(encoding="utf-8")
+    assert '"internal_gate_passed": true' in persisted
+    assert '"live_model_eligible": false' in persisted

@@ -363,3 +363,49 @@ Synthetic golden cases prove evaluator behavior but cannot substantiate accuracy
 - Synthetic cases remain useful for contract and adversarial tests but cannot be misrepresented as a real-model quality gate.
 - Real corpus population and reviewer judgment remain explicit local work, while versioned entries provide a reproducible audit foundation for later provider comparisons.
 - Privacy, prompt-isolation, corpus-level performance thresholds, cost/latency budgets, and review operations remain required future controls.
+
+## ADR-015 — Separate provisional internal evaluation from CA-approved model gates
+
+**Status:** Accepted for the POC
+**Date:** 1 October 2026
+
+### Context
+
+The first permitted real-company corpus case can be useful to exercise the local onboarding and evaluator workflow before a qualified CA is available. Calling that work CA approval, or allowing it to enter the same evaluation route as CA-approved cases, would overstate the reliability of the golden fixture and weaken the live-model gate.
+
+### Decision
+
+- Add the append-only corpus state `provisional_internal_review` for a permitted real case with the exact fixture checksum, named internal reviewer, timezone-aware timestamp, internal-policy version, and nonblank notes. A local command creates it only as a new version from a `ready_for_ca_review` candidate.
+- Keep `approved_for_evaluation` unchanged: it remains the only state returned by `get_approved` and the only source accepted by `evaluate-approved-corpus`.
+- Add `evaluate-provisional-corpus`, which retrieves only a provisional entry and writes a report with `evaluation_qualification: provisional_internal_review` to a separate default location.
+- Do not permit synthetic, unassessed, or restricted cases to receive provisional internal review.
+- Treat provisional results as local workflow-testing evidence only. They cannot authorize a live provider, create an approved configuration, demonstrate real-model readiness, or substitute for CA review.
+
+### Consequences
+
+- The team can find integration and evaluation defects using a locally reviewed permitted case without mislabelling the review authority.
+- Consumers can distinguish provisional and CA-approved reports directly from persisted artifacts, not only from a command name or file path.
+- A later CA review requires a new append-only corpus version; it cannot overwrite or silently promote the provisional record.
+
+## ADR-016 — Summarize provisional corpus quality without creating a live-model gate
+
+**Status:** Accepted for the POC
+**Date:** 1 October 2026
+
+### Context
+
+Several internally reviewed real-company cases can exercise the onboarding workflow more meaningfully than a single case. A simple collection of individual reports, however, does not state whether a declared internal policy was met. Treating an internal aggregate pass as permission to connect a live provider would wrongly convert non-CA review into a production-quality claim.
+
+### Decision
+
+- Add a `ProvisionalCorpusEvaluator` that accepts only entries already marked `provisional_internal_review` and evaluates one saved proposal per entry.
+- Make a versioned policy declare minimum case count, distinct-company count, pass rate, and maximum failed cases.
+- Persist all individual reports, aggregate counts, pass rate, policy failures, and an `internal_gate_passed` result in a non-overwriting report.
+- Hard-code the report qualification as `provisional_internal_review`, require `live_model_eligible: false`, and retain an explicit live-model blocker regardless of the internal outcome.
+- Keep CA-approved corpus policy, privacy controls, prompt isolation, provider reliability, cost/latency budgets, and live-provider admission as separate future work.
+
+### Consequences
+
+- The team can compare several local cases under a transparent and reproducible internal threshold before a provider is connected.
+- A passing internal summary remains workflow evidence only; it cannot promote entries, create approved configurations, or authorize a live model.
+- A future CA-approved gate may reuse the reporting pattern but requires its own policy and review authority rather than relaxing this one.

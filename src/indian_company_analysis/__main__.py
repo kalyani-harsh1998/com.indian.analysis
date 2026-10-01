@@ -24,6 +24,11 @@ from indian_company_analysis.data.onboarding.catalog import (
 from indian_company_analysis.data.onboarding.corpus import (
     EvaluationCorpusEntry,
     LocalEvaluationCorpusCatalog,
+    provisionally_review_entry,
+)
+from indian_company_analysis.data.onboarding.corpus_evaluation import (
+    ProvisionalCorpusEvaluationPolicy,
+    ProvisionalCorpusEvaluator,
 )
 from indian_company_analysis.data.onboarding.evaluation import (
     OnboardingEvaluationFixture,
@@ -133,6 +138,22 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     )
     corpus.add_argument("--entry", type=Path, required=True)
     corpus.add_argument("--catalog-root", type=Path)
+    provisional_review = subparsers.add_parser(
+        "provisionally-review-evaluation-corpus",
+        help="create a separately labelled internal-review version of a candidate corpus entry",
+    )
+    provisional_review.add_argument("--entry", type=Path, required=True)
+    provisional_review.add_argument("--catalog-root", type=Path)
+    provisional_review.add_argument("--corpus-version", required=True)
+    provisional_review.add_argument("--reviewed-by", required=True)
+    provisional_review.add_argument("--reviewed-at", type=datetime.fromisoformat, required=True)
+    provisional_review.add_argument("--review-policy-version", required=True)
+    provisional_review.add_argument(
+        "--review-note",
+        action="append",
+        required=True,
+        help="repeat for each internal-review note",
+    )
     approved_evaluation = subparsers.add_parser(
         "evaluate-approved-corpus",
         help="evaluate a proposal only against a CA-approved real-corpus fixture",
@@ -143,6 +164,39 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     approved_evaluation.add_argument("--proposal", type=Path, required=True)
     approved_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
     approved_evaluation.add_argument("--output", type=Path)
+    provisional_evaluation = subparsers.add_parser(
+        "evaluate-provisional-corpus",
+        help="evaluate a proposal only against a provisional internal-review fixture",
+    )
+    provisional_evaluation.add_argument("--catalog-root", type=Path)
+    provisional_evaluation.add_argument("--entry-id", required=True)
+    provisional_evaluation.add_argument("--corpus-version", required=True)
+    provisional_evaluation.add_argument("--proposal", type=Path, required=True)
+    provisional_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
+    provisional_evaluation.add_argument("--output", type=Path)
+    provisional_corpus_evaluation = subparsers.add_parser(
+        "evaluate-provisional-corpus-set",
+        help=(
+            "evaluate multiple provisional cases under an internal-only corpus policy; "
+            "never authorizes a live model"
+        ),
+    )
+    provisional_corpus_evaluation.add_argument("--catalog-root", type=Path)
+    provisional_corpus_evaluation.add_argument("--entry-id", action="append", required=True)
+    provisional_corpus_evaluation.add_argument("--corpus-version", action="append", required=True)
+    provisional_corpus_evaluation.add_argument(
+        "--proposal", type=Path, action="append", required=True
+    )
+    provisional_corpus_evaluation.add_argument("--run-id", required=True)
+    provisional_corpus_evaluation.add_argument("--policy-version", required=True)
+    provisional_corpus_evaluation.add_argument("--minimum-case-count", type=int, default=1)
+    provisional_corpus_evaluation.add_argument(
+        "--minimum-distinct-company-count", type=int, default=1
+    )
+    provisional_corpus_evaluation.add_argument("--minimum-pass-rate", default="1")
+    provisional_corpus_evaluation.add_argument("--maximum-failed-case-count", type=int, default=0)
+    provisional_corpus_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
+    provisional_corpus_evaluation.add_argument("--output", type=Path)
     return parser
 
 
@@ -292,6 +346,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         action = "registered" if registered else "already registered"
         print(f"Evaluation corpus entry {action}: {entry.entry_id} ({entry.corpus_version})")
         return 0
+    if args.command == "provisionally-review-evaluation-corpus":
+        candidate = EvaluationCorpusEntry.model_validate_json(
+            args.entry.read_text(encoding="utf-8")
+        )
+        entry = provisionally_review_entry(
+            candidate,
+            corpus_version=args.corpus_version,
+            reviewed_by=args.reviewed_by,
+            reviewed_at=args.reviewed_at,
+            review_policy_version=args.review_policy_version,
+            review_notes=tuple(args.review_note),
+        )
+        evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
+            args.catalog_root or settings.data_directory / "interim" / "evaluation-corpus"
+        )
+        registered = evaluation_corpus_catalog.register(entry)
+        action = "registered" if registered else "already registered"
+        print(
+            f"Provisional internal-review corpus entry {action}: "
+            f"{entry.entry_id} ({entry.corpus_version}); not CA-approved."
+        )
+        return 0
     if args.command == "evaluate-approved-corpus":
         evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
             args.catalog_root or settings.data_directory / "interim" / "evaluation-corpus"
@@ -310,6 +386,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             entry.fixture,
             StaticProposalProvider(proposal),
             evaluated_at=args.evaluated_at or datetime.now(UTC),
+            evaluation_qualification="ca_approved_real",
         )
         output = args.output or (
             settings.data_directory
@@ -327,6 +404,91 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"to {output}; result {status}"
         )
         return 0 if report.passed else 1
+    if args.command == "evaluate-provisional-corpus":
+        evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
+            args.catalog_root or settings.data_directory / "interim" / "evaluation-corpus"
+        )
+        entry = evaluation_corpus_catalog.get_provisionally_reviewed_for_internal_evaluation(
+            entry_id=args.entry_id,
+            corpus_version=args.corpus_version,
+        )
+        if entry.fixture is None:
+            raise RuntimeError("provisional evaluation corpus entry is missing its fixture")
+        proposal = DocumentOnboardingProposal.model_validate_json(
+            args.proposal.read_text(encoding="utf-8")
+        )
+        evaluator = OnboardingProposalEvaluator()
+        report = evaluator.evaluate(
+            entry.fixture,
+            StaticProposalProvider(proposal),
+            evaluated_at=args.evaluated_at or datetime.now(UTC),
+            evaluation_qualification="provisional_internal_review",
+        )
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "evaluations"
+            / "provisional-internal-corpus"
+            / entry.entry_id
+            / entry.corpus_version
+            / f"{proposal.proposal_id}.json"
+        )
+        evaluator.persist(report, output)
+        status = "passed" if report.passed else "failed"
+        print(
+            f"Evaluated provisionally reviewed corpus entry {entry.entry_id} "
+            f"({entry.corpus_version}) to {output}; result {status}. "
+            "This result is not CA-approved or a live-model quality gate."
+        )
+        return 0 if report.passed else 1
+    if args.command == "evaluate-provisional-corpus-set":
+        if not (len(args.entry_id) == len(args.corpus_version) == len(args.proposal)):
+            raise ValueError(
+                "provide matching counts of --entry-id, --corpus-version, and --proposal"
+            )
+        evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
+            args.catalog_root or settings.data_directory / "interim" / "evaluation-corpus"
+        )
+        entries = tuple(
+            evaluation_corpus_catalog.get_provisionally_reviewed_for_internal_evaluation(
+                entry_id=entry_id,
+                corpus_version=corpus_version,
+            )
+            for entry_id, corpus_version in zip(args.entry_id, args.corpus_version, strict=True)
+        )
+        proposals = tuple(
+            DocumentOnboardingProposal.model_validate_json(path.read_text(encoding="utf-8"))
+            for path in args.proposal
+        )
+        policy = ProvisionalCorpusEvaluationPolicy(
+            policy_version=args.policy_version,
+            minimum_case_count=args.minimum_case_count,
+            minimum_distinct_company_count=args.minimum_distinct_company_count,
+            minimum_pass_rate=args.minimum_pass_rate,
+            maximum_failed_case_count=args.maximum_failed_case_count,
+        )
+        corpus_evaluator = ProvisionalCorpusEvaluator()
+        corpus_report = corpus_evaluator.evaluate(
+            entries,
+            proposals,
+            run_id=args.run_id,
+            policy=policy,
+            evaluated_at=args.evaluated_at or datetime.now(UTC),
+        )
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "evaluations"
+            / "provisional-internal-corpus-summary"
+            / f"{args.run_id}.json"
+        )
+        corpus_evaluator.persist(corpus_report, output)
+        status = "passed" if corpus_report.internal_gate_passed else "failed"
+        print(
+            f"Evaluated {corpus_report.total_case_count} provisional corpus cases to {output}; "
+            f"internal policy result {status}. This never authorizes a live model."
+        )
+        return 0 if corpus_report.internal_gate_passed else 1
     if args.command in {"approve-onboarding", "reject-onboarding"}:
         onboarding_request = DocumentOnboardingRequest.model_validate_json(
             args.request.read_text(encoding="utf-8")
