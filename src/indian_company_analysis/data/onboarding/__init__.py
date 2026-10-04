@@ -73,6 +73,10 @@ from indian_company_analysis.data.onboarding.normalization_workflow import (
     OnboardingNormalizationIssue,
     OnboardingNormalizationWorkflow,
 )
+from indian_company_analysis.data.onboarding.openai_provider import (
+    OpenAIOnboardingProposalProvider,
+    OpenAIProviderError,
+)
 from indian_company_analysis.data.onboarding.request_builder import build_onboarding_request
 from indian_company_analysis.data.onboarding.reuse import (
     DecisionReuseAssessment,
@@ -127,6 +131,8 @@ __all__ = [
     "OnboardingNormalizationIssue",
     "OnboardingNormalizationWorkflow",
     "OnboardingProposalProvider",
+    "OpenAIOnboardingProposalProvider",
+    "OpenAIProviderError",
     "OnboardingProposalEvaluator",
     "OnboardingReviewDecision",
     "OnboardingReuseAssessment",

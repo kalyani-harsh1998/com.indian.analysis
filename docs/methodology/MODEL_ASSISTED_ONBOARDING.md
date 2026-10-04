@@ -2,7 +2,7 @@
 
 ## Purpose and current boundary
 
-Phase 2D begins the provider-neutral boundary through which a future LLM can reduce the manual work of interpreting a new company or filing layout. The implemented foundation does not call an LLM, add an API dependency, or approve a financial fact automatically. It defines the strict request, proposal, validation, and human-approval records that any later provider adapter must use.
+Phase 2D begins the provider-neutral boundary through which an LLM can reduce the manual work of interpreting a new company or filing layout. It defines strict request, proposal, validation, and human-approval records. The optional OpenAI adapter is the first concrete implementation: it remains non-authoritative, has no raw-PDF access, and is callable only through the CA-approved corpus-evaluation route.
 
 The first implementation starts after a deterministic PDF profile has produced a review-ready extraction. `build_onboarding_request` converts those rows into checksummed evidence records with stable evidence IDs and page/table/row/column locators. Automatic discovery of statement pages and extraction coordinates remains future work.
 
@@ -30,13 +30,66 @@ deterministic proposal validation
 explicit human approval + versioned configuration
 ```
 
-`StaticProposalProvider` supplies a frozen proposal for tests and local evaluation. A future live adapter must implement the same `OnboardingProposalProvider` protocol and return the same strict `DocumentOnboardingProposal` schema.
+`StaticProposalProvider` supplies a frozen proposal for tests and local evaluation. The optional OpenAI adapter implements the same `OnboardingProposalProvider` protocol and returns the same strict `DocumentOnboardingProposal` schema. Any later provider must meet that contract as well.
+
+## Optional OpenAI adapter
+
+`OpenAIOnboardingProposalProvider` is an opt-in dependency (`uv sync --extra openai`), not part
+of the normal POC install. It reads `OPENAI_API_KEY` from the local environment only when the
+caller invokes it; no key is accepted through a command argument, stored in an artifact, or
+committed to the repository.
+
+For each request it makes one call to the Responses API with `store=False`, a fixed developer
+message, the packet's data-only user payload, and a strict JSON schema. The model returns only
+semantic candidate content. Python binds request identity, model provenance, token counts when
+supplied, response-derived model version, a local timestamp, and a response-derived proposal ID
+afterwards. It does not estimate cost, retry automatically, or relax an error into an approval.
+
+The adapter provides separate corpus-gated live commands. The provisional command is for a single
+technical E2E test and always emits a non-CA report:
+
+```bash
+uv run python -m indian_company_analysis evaluate-openai-provisional-corpus \
+  --entry-id company-fy2026-income-statement \
+  --corpus-version provisional-internal-v1 \
+  --model gpt-6-astra
+```
+
+It accepts only `provisional_internal_review`, not a candidate, rejected, approved, or synthetic
+entry. Its report cannot approve a mapping, authorize broader live use, or satisfy a quality gate.
+
+The CA-approved command is the quality-evaluation route:
+
+```bash
+uv run python -m indian_company_analysis evaluate-openai-approved-corpus \
+  --entry-id permitted-ca-reviewed-case \
+  --corpus-version v1 \
+  --model gpt-6-astra
+```
+
+It first retrieves an `approved_for_evaluation` entry from the local corpus registry; candidate,
+provisional, rejected, and synthetic entries are rejected before this CA-quality route is invoked.
+Every persisted report remains an evaluation artifact, not an approved mapping or normalization
+input.
 
 ## Prompt-isolated model input
 
 `PromptIsolatedOnboardingInputBuilder` converts an onboarding request into the only packet that a future mapping provider should receive. It includes the request identity, company/period/unit/basis context, source checksum, and bounded evidence rows with their locators, labels, and raw values. It deliberately excludes local filesystem paths, raw PDF bytes, original filenames, and arbitrary document text.
 
 The rows are named `untrusted_evidence_rows`: a label or value may contain instruction-like text, but it is source data rather than an instruction. The future adapter must send the static `ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS` in a trusted developer/system channel and `provider_user_payload()` as a separate data-only user message. It must never interpolate a reported label, raw value, or source snippet into trusted instructions.
+
+Prompt contract v2 adds the initial aggregation policy: a direct mapping must represent the full
+canonical metric; a component cannot stand in for the total. Where relevant components are
+present, the provider should propose one signed aggregation and explicitly exclude a duplicated
+subtotal or reported total. This is a versioned onboarding policy, not a change to parsed values;
+the deterministic validator, evaluator, and human review still decide whether the proposal is
+acceptable.
+
+The first provisional APSEZ v2 evaluation improved finance-cost completeness, but the model also
+constructed profit-before-tax and profit-after-tax aggregates despite explicit full reported rows,
+then reused evidence across decisions. Deterministic validation rejected the proposal. The next
+prompt-policy revision must distinguish an explicitly labelled full canonical total from a metric
+that is available only as components; no automatic configuration was created.
 
 The policy versions and enforces evidence-row, label-length, and value-length limits; unsupported control characters fail preparation rather than being silently truncated. A SHA-256 checksum binds the exact evidence rows included in the packet. The local command persists the packet without calling a provider:
 
@@ -131,10 +184,9 @@ The synthetic adversarial suite covers changed labels, duplicate evidence, inven
 
 - additional aggregation operators only when a reviewed accounting use case requires them;
 - multi-user review queue, review amendments, and an approved configuration-migration policy across filings;
-- real provider selection and adapter implementation;
-- structured-output retries and provider error handling;
+- provider comparison and model-selection policy;
+- bounded structured-output retry policy and provider error handling based on observed failures;
 - creation and CA approval of a representative permitted evaluation corpus, including expected-abstention cases, under the implemented local registry;
 - live provider comparison using captured accuracy, token, cost, and latency metadata;
-- live-provider role separation, structured-output enforcement, retries, and error handling;
 - automatic statement-page/profile discovery; and
 - controlled policy for any future low-risk automatic approval.

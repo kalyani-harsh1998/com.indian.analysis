@@ -109,7 +109,7 @@ A derived table is not the same evidence object as its source filing. Treating a
 
 ## ADR-005 — Hybrid interpretation with deterministic numerical authority
 
-**Status:** Accepted as the target architecture
+**Status:** Accepted as the target architecture; runtime-dependency limit superseded in part by ADR-018
 **Date:** 27 September 2026
 
 ### Context
@@ -126,7 +126,7 @@ Listed-company filings vary by format, layout, terminology, period presentation,
 - Keep number parsing, unit transformations, duplicate handling, period/basis checks, accounting reconciliation, and acceptance status in deterministic Python.
 - Preserve model/provider, model version, prompt/schema version, source evidence/locators, suggestion, rationale, confidence, validation results, and review decision when LLM assistance is introduced.
 - Persist accepted suggestions as versioned reusable configurations so compatible later filings can run deterministically; do not require repeated model interpretation when an approved profile applies.
-- Add no LLM or OpenAI runtime dependency during the current POC.
+- Initially add no LLM or OpenAI runtime dependency during the current POC. ADR-018 later permits a narrowly scoped optional OpenAI evaluation adapter without changing the numerical or review boundaries above.
 
 ### Consequences
 
@@ -366,7 +366,7 @@ Synthetic golden cases prove evaluator behavior but cannot substantiate accuracy
 
 ## ADR-015 — Separate provisional internal evaluation from CA-approved model gates
 
-**Status:** Accepted for the POC
+**Status:** Accepted for the POC; live-call prohibition superseded narrowly by ADR-019
 **Date:** 1 October 2026
 
 ### Context
@@ -379,7 +379,7 @@ The first permitted real-company corpus case can be useful to exercise the local
 - Keep `approved_for_evaluation` unchanged: it remains the only state returned by `get_approved` and the only source accepted by `evaluate-approved-corpus`.
 - Add `evaluate-provisional-corpus`, which retrieves only a provisional entry and writes a report with `evaluation_qualification: provisional_internal_review` to a separate default location.
 - Do not permit synthetic, unassessed, or restricted cases to receive provisional internal review.
-- Treat provisional results as local workflow-testing evidence only. They cannot authorize a live provider, create an approved configuration, demonstrate real-model readiness, or substitute for CA review.
+- Treat provisional results as local workflow-testing evidence only. They cannot create an approved configuration, demonstrate real-model readiness, authorize broader live use, or substitute for CA review. ADR-019 later permits one separately labelled technical provider call against such an entry.
 
 ### Consequences
 
@@ -432,3 +432,79 @@ Filings can contain long, irrelevant, or instruction-like text. A future provide
 - A future adapter receives a minimal, replayable, checksum-bound input packet instead of direct access to local source files.
 - Instruction-like filing text is visible for semantic interpretation but remains isolated from trusted instructions and is still subject to proposal validation and abstention rules.
 - Provider-specific role handling, structured-output enforcement, retries, error handling, privacy review, and model connection remain separate preconditions for live integration.
+
+## ADR-018 — Permit a corpus-gated optional OpenAI evaluation adapter
+
+**Status:** Accepted for the POC
+**Date:** 4 October 2026
+
+### Context
+
+The provider-neutral contract, prompt-isolated evidence packet, deterministic validator, and CA-reviewed corpus gate are implemented. The project owner approved a narrowly scoped OpenAI integration to evaluate that contract without sending raw PDFs or allowing a model to create approved financial facts.
+
+### Decision
+
+- Add OpenAI as an optional dependency, with a lazy import and `OPENAI_API_KEY` read only from the local environment at invocation time.
+- Send only `PromptIsolatedOnboardingInput` through a fixed developer message plus a separate data-only user message; do not upload, transmit, or name a local raw PDF.
+- Require Responses structured output with a strict JSON schema, `store=False`, a finite output-token limit, and no automatic retry in the initial slice.
+- Bind proposal identity, request identity, source identity, timestamp, returned model version, and usage metadata locally; the provider may return only mapping, aggregation, exclusion, and abstention candidates.
+- Initially make `evaluate-openai-approved-corpus` the sole live call path. ADR-019 later adds a separately labelled provisional technical-evaluation path without changing the CA quality gate.
+- Preserve deterministic validation, accounting evaluation, review requirements, and the prohibition on direct model-created facts.
+
+### Consequences
+
+- The normal local workflow remains usable without the SDK, an API key, network access, or a paid account.
+- A CA-approved quality evaluation can be run reproducibly once a permitted CA-reviewed corpus exists, while raw evidence and secrets remain local.
+- The current corpus has only provisional internal entries, so it can support only the limited technical route defined in ADR-019.
+- Retries, provider comparison, cost budgeting, and broader production use remain later, separately governed work.
+
+## ADR-019 — Permit one provisional internal OpenAI technical evaluation
+
+**Status:** Accepted for the POC
+**Date:** 4 October 2026
+
+### Context
+
+The project needs to verify the complete optional adapter path with an actual local API key: bounded input creation, provider authentication, strict structured output, model provenance, deterministic proposal validation, reconciliation, and report persistence. The available permitted real cases have internal review only, not CA approval.
+
+### Decision
+
+- Permit `evaluate-openai-provisional-corpus` to retrieve only a `provisional_internal_review` entry and make one explicit OpenAI adapter call.
+- Preserve `evaluation_qualification: provisional_internal_review`, separate output storage, `live_model_eligible: false`, and all deterministic validation and accounting checks.
+- Continue to reject candidate, rejected, approved, and synthetic entries from this command.
+- Keep the raw PDF local; send only the same bounded prompt-isolated packet with `store=False`.
+- Do not allow this technical result to approve a mapping, normalise facts, promote an entry, establish model accuracy, or authorize broader live use.
+
+### Consequences
+
+- The team can test actual credentials and provider behavior without misrepresenting internal review as CA approval.
+- A failing report is useful integration evidence; a passing report is only a provisional technical result.
+- CA-approved corpus evaluation, quality thresholds, cost/latency policy, and any broader onboarding use remain separate gates.
+
+## ADR-020 — Make full-metric and component-aggregation policy explicit in prompt contract v2
+
+**Status:** Accepted for the POC
+**Date:** 4 October 2026
+
+### Context
+
+The first APSEZ provisional OpenAI evaluation was structurally valid and reconciled, but the model
+mapped an interest-only row to full finance cost, abstained on other finance-cost components, and
+used an explicit tax total where the reviewed POC fixture expects component aggregation. The
+original trusted instructions did not state whether a component, a total, or a signed aggregation
+should be preferred.
+
+### Decision
+
+- Version the trusted prompt contract as `onboarding-model-input-v2`, while retaining v1 parsing compatibility for existing local packets.
+- State that a direct mapping must represent the full canonical metric and that one component must not stand in for the total.
+- Direct the provider to propose one signed aggregation when relevant components are available and explicitly exclude a duplicated subtotal or reported total.
+- Supply an initial general finance-cost interpretation for interest/bank charges, derivative losses, and foreign-exchange losses presented as statement expenses, while preserving abstention for contradicting or unresolved evidence.
+- Treat this as an evaluation policy to be measured on the corpus, not an automatic accounting rule or fact-approval path.
+
+### Consequences
+
+- Later evaluations identify the exact prompt-policy version that shaped a proposal.
+- The policy can improve complete evidence use without allowing the model to perform arithmetic or bypass deterministic validation.
+- The current APSEZ v1 fixture remains immutable; a change to its expected tax treatment would require a new reviewed fixture version.
+- The first provisional APSEZ v2 evaluation completed the full adapter path and correctly formed finance cost, but deterministically failed because it also formed PBT and PAT aggregates from component rows and reused evidence. A narrower successor policy is required before another evaluation.

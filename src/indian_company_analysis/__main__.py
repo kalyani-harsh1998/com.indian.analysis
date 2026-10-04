@@ -46,6 +46,9 @@ from indian_company_analysis.data.onboarding.models import (
 from indian_company_analysis.data.onboarding.normalization_workflow import (
     OnboardingNormalizationWorkflow,
 )
+from indian_company_analysis.data.onboarding.openai_provider import (
+    OpenAIOnboardingProposalProvider,
+)
 from indian_company_analysis.data.onboarding.reuse import OnboardingReuseAssessor
 from indian_company_analysis.data.onboarding.review import approve_proposal, reject_proposal
 from indian_company_analysis.data.onboarding.static_provider import StaticProposalProvider
@@ -179,6 +182,48 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     approved_evaluation.add_argument("--proposal", type=Path, required=True)
     approved_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
     approved_evaluation.add_argument("--output", type=Path)
+    openai_approved_evaluation = subparsers.add_parser(
+        "evaluate-openai-approved-corpus",
+        help=(
+            "call the optional OpenAI adapter only for one CA-approved real-corpus entry "
+            "and persist its evaluation report"
+        ),
+    )
+    openai_approved_evaluation.add_argument("--catalog-root", type=Path)
+    openai_approved_evaluation.add_argument("--entry-id", required=True)
+    openai_approved_evaluation.add_argument("--corpus-version", required=True)
+    openai_approved_evaluation.add_argument("--model", default="gpt-6-astra")
+    openai_approved_evaluation.add_argument("--policy-version", default="prompt-isolation-v1")
+    openai_approved_evaluation.add_argument("--maximum-evidence-rows", type=int, default=200)
+    openai_approved_evaluation.add_argument(
+        "--maximum-reported-label-characters", type=int, default=500
+    )
+    openai_approved_evaluation.add_argument("--maximum-raw-value-characters", type=int, default=100)
+    openai_approved_evaluation.add_argument("--maximum-output-tokens", type=int, default=4_000)
+    openai_approved_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
+    openai_approved_evaluation.add_argument("--output", type=Path)
+    openai_provisional_evaluation = subparsers.add_parser(
+        "evaluate-openai-provisional-corpus",
+        help=(
+            "call the optional OpenAI adapter for one provisional internal-review corpus entry "
+            "and persist a non-CA evaluation report"
+        ),
+    )
+    openai_provisional_evaluation.add_argument("--catalog-root", type=Path)
+    openai_provisional_evaluation.add_argument("--entry-id", required=True)
+    openai_provisional_evaluation.add_argument("--corpus-version", required=True)
+    openai_provisional_evaluation.add_argument("--model", default="gpt-6-astra")
+    openai_provisional_evaluation.add_argument("--policy-version", default="prompt-isolation-v1")
+    openai_provisional_evaluation.add_argument("--maximum-evidence-rows", type=int, default=200)
+    openai_provisional_evaluation.add_argument(
+        "--maximum-reported-label-characters", type=int, default=500
+    )
+    openai_provisional_evaluation.add_argument(
+        "--maximum-raw-value-characters", type=int, default=100
+    )
+    openai_provisional_evaluation.add_argument("--maximum-output-tokens", type=int, default=4_000)
+    openai_provisional_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
+    openai_provisional_evaluation.add_argument("--output", type=Path)
     provisional_evaluation = subparsers.add_parser(
         "evaluate-provisional-corpus",
         help="evaluate a proposal only against a provisional internal-review fixture",
@@ -442,6 +487,92 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             f"Evaluated approved corpus entry {entry.entry_id} ({entry.corpus_version}) "
             f"to {output}; result {status}"
+        )
+        return 0 if report.passed else 1
+    if args.command == "evaluate-openai-approved-corpus":
+        evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
+            args.catalog_root or settings.data_directory / "interim" / "evaluation-corpus"
+        )
+        entry = evaluation_corpus_catalog.get_approved(
+            entry_id=args.entry_id,
+            corpus_version=args.corpus_version,
+        )
+        if entry.fixture is None:
+            raise RuntimeError("approved evaluation corpus entry is missing its fixture")
+        provider = OpenAIOnboardingProposalProvider(
+            model_id=args.model,
+            input_policy=OnboardingModelInputPolicy(
+                policy_version=args.policy_version,
+                maximum_evidence_rows=args.maximum_evidence_rows,
+                maximum_reported_label_characters=args.maximum_reported_label_characters,
+                maximum_raw_value_characters=args.maximum_raw_value_characters,
+            ),
+            maximum_output_tokens=args.maximum_output_tokens,
+        )
+        evaluator = OnboardingProposalEvaluator()
+        report = evaluator.evaluate(
+            entry.fixture,
+            provider,
+            evaluated_at=args.evaluated_at or datetime.now(UTC),
+            evaluation_qualification="ca_approved_real",
+        )
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "evaluations"
+            / "approved-corpus"
+            / entry.entry_id
+            / entry.corpus_version
+            / f"{report.proposal.proposal_id}.json"
+        )
+        evaluator.persist(report, output)
+        status = "passed" if report.passed else "failed"
+        print(
+            f"Evaluated optional OpenAI proposal for approved corpus entry {entry.entry_id} "
+            f"({entry.corpus_version}) to {output}; result {status}."
+        )
+        return 0 if report.passed else 1
+    if args.command == "evaluate-openai-provisional-corpus":
+        evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
+            args.catalog_root or settings.data_directory / "interim" / "evaluation-corpus"
+        )
+        entry = evaluation_corpus_catalog.get_provisionally_reviewed_for_internal_evaluation(
+            entry_id=args.entry_id,
+            corpus_version=args.corpus_version,
+        )
+        if entry.fixture is None:
+            raise RuntimeError("provisional evaluation corpus entry is missing its fixture")
+        provider = OpenAIOnboardingProposalProvider(
+            model_id=args.model,
+            input_policy=OnboardingModelInputPolicy(
+                policy_version=args.policy_version,
+                maximum_evidence_rows=args.maximum_evidence_rows,
+                maximum_reported_label_characters=args.maximum_reported_label_characters,
+                maximum_raw_value_characters=args.maximum_raw_value_characters,
+            ),
+            maximum_output_tokens=args.maximum_output_tokens,
+        )
+        evaluator = OnboardingProposalEvaluator()
+        report = evaluator.evaluate(
+            entry.fixture,
+            provider,
+            evaluated_at=args.evaluated_at or datetime.now(UTC),
+            evaluation_qualification="provisional_internal_review",
+        )
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "evaluations"
+            / "provisional-internal-corpus"
+            / entry.entry_id
+            / entry.corpus_version
+            / f"{report.proposal.proposal_id}.json"
+        )
+        evaluator.persist(report, output)
+        status = "passed" if report.passed else "failed"
+        print(
+            f"Evaluated optional OpenAI proposal for provisional corpus entry {entry.entry_id} "
+            f"({entry.corpus_version}) to {output}; result {status}. This is not CA-approved."
         )
         return 0 if report.passed else 1
     if args.command == "evaluate-provisional-corpus":
