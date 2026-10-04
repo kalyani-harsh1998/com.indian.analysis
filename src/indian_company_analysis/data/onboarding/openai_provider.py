@@ -14,6 +14,7 @@ from typing import Literal, Protocol, cast
 
 from pydantic import Field, ValidationError
 
+from indian_company_analysis.data.onboarding.metric_catalog import build_onboarding_metric_catalog
 from indian_company_analysis.data.onboarding.model_input import (
     ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS,
     OnboardingModelInputPolicy,
@@ -34,7 +35,7 @@ from indian_company_analysis.domain.metrics import MetricId
 from indian_company_analysis.domain.models import DomainModel
 
 _PROVIDER_NAME = "openai"
-_SCHEMA_VERSION = "openai-onboarding-proposal-v1"
+_SCHEMA_VERSION = "openai-onboarding-proposal-v2"
 
 
 class OpenAIProviderError(RuntimeError):
@@ -130,9 +131,10 @@ class OpenAIOnboardingProposalProvider:
 
         input_packet = PromptIsolatedOnboardingInputBuilder().build(
             request,
-            input_id=f"{request.request_id}-openai-input-v1",
+            input_id=f"{request.request_id}-openai-input-v3",
             policy=self._input_policy,
         )
+        user_payload = input_packet.provider_user_payload()
         started = time.monotonic()
         response = self._client_factory().responses.create(
             model=self._model_id,
@@ -140,14 +142,14 @@ class OpenAIOnboardingProposalProvider:
             max_output_tokens=self._maximum_output_tokens,
             input=[
                 {"role": "developer", "content": ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS},
-                {"role": "user", "content": input_packet.provider_user_payload()},
+                {"role": "user", "content": user_payload},
             ],
             text={
                 "format": {
                     "type": "json_schema",
                     "name": "onboarding_proposal_content",
                     "strict": True,
-                    "schema": _OpenAIProposalContent.model_json_schema(),
+                    "schema": _proposal_response_schema(),
                 }
             },
         )
@@ -184,6 +186,10 @@ class OpenAIOnboardingProposalProvider:
                     usage, "output_tokens", "completion_tokens"
                 ),
                 latency_milliseconds=latency_milliseconds,
+                input_checksum_sha256=hashlib.sha256(user_payload.encode("utf-8")).hexdigest(),
+                instructions_checksum_sha256=hashlib.sha256(
+                    ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS.encode("utf-8")
+                ).hexdigest(),
             ),
             mappings=tuple(
                 MappingCandidate.model_validate(candidate.model_dump(mode="json"))
@@ -224,7 +230,17 @@ def _create_openai_client() -> _OpenAIClient:
             "OpenAI support is optional. Install it with `uv sync --extra openai` before "
             "requesting a live onboarding proposal."
         ) from error
-    return cast(_OpenAIClient, OpenAI())
+    return cast(_OpenAIClient, OpenAI(max_retries=0))
+
+
+def _proposal_response_schema() -> dict[str, object]:
+    """Advertise only eligible fact targets, using the same catalog as the input packet."""
+
+    schema = _OpenAIProposalContent.model_json_schema()
+    schema["$defs"]["MetricId"]["enum"] = [
+        item.metric_id.value for item in build_onboarding_metric_catalog().definitions
+    ]
+    return schema
 
 
 def _parse_proposal_content(response: object) -> _OpenAIProposalContent:
@@ -235,11 +251,17 @@ def _parse_proposal_content(response: object) -> _OpenAIProposalContent:
     if output_text is None:
         raise OpenAIProviderError("OpenAI response contained no structured text output")
     try:
-        return _OpenAIProposalContent.model_validate_json(output_text)
+        content = _OpenAIProposalContent.model_validate_json(output_text)
     except ValidationError as error:
         raise OpenAIProviderError(
             "OpenAI response did not match the onboarding proposal schema"
         ) from error
+    eligible_ids = {item.metric_id for item in build_onboarding_metric_catalog().definitions}
+    proposed_ids = [item.metric_id for item in content.mappings]
+    proposed_ids.extend(item.metric_id for item in content.aggregations)
+    if any(metric_id not in eligible_ids for metric_id in proposed_ids):
+        raise OpenAIProviderError("OpenAI response targets a metric outside the onboarding catalog")
+    return content
 
 
 def _string_field(value: object, field_name: str) -> str | None:

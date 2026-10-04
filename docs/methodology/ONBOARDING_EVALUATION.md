@@ -48,6 +48,28 @@ The committed synthetic suite proves that the deterministic boundary detects or 
 
 These cases demonstrate the local contract only. They are not a real-company accuracy benchmark and do not replace future provider-side prompt-isolation, privacy, or security tests.
 
+### V3 prompt-policy regression cases
+
+`fictional_reported_totals_onboarding.json` adds direct reported tax/finance/PBT/PAT amounts,
+equivalent labels, a deferred-tax credit, a duplicate tax note, and an interest subtotal that already
+includes lease interest. `fictional_uncertain_finance_onboarding.json` expects finance-cost
+abstentions when only interest, FX losses, and derivative losses are available without scope evidence.
+The existing `fictional_tax_onboarding.json` still tests components-only aggregation and the negative
+deferred-tax sign. All are fictional and remain outside the real-company corpus registry.
+
+Frozen fake responses traverse the v3 OpenAI adapter, deterministic validation, and evaluator.
+Negative variants show that matching PAT does not excuse reused evidence, nested components do
+not justify double counting, and uncertain finance components cannot pass by being confidently
+mapped or summed. These tests verify contracts and scoring, **not** live prompt effectiveness.
+Additional tests verify catalog integrity, legacy input parsing, source-text isolation, derived-target
+rejection in both decision types, exact prompt/input hashes, and explicit SDK retry disabling.
+
+Exact-decision precision/recall and numerical comparisons remain separate diagnostics. In
+particular, a model selecting a reported tax total can match the number but fail a fixture that
+requires its components. The v3 change does not automatically accept alternative routes, change
+any real fixture, or lower thresholds. Reviewed alternative evidence routes, precision-aware
+rounding, and richer context scenarios remain follow-up work.
+
 ## Local evaluation
 
 Use a frozen proposal so the run has no network or API dependency. `evaluate-onboarding` remains useful for synthetic fixtures and local contract development:

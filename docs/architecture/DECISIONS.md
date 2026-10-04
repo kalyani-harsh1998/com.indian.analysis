@@ -483,7 +483,7 @@ The project needs to verify the complete optional adapter path with an actual lo
 
 ## ADR-020 — Make full-metric and component-aggregation policy explicit in prompt contract v2
 
-**Status:** Accepted for the POC
+**Status:** Superseded by ADR-021; retained as the historical v2 evaluation policy
 **Date:** 4 October 2026
 
 ### Context
@@ -507,4 +507,46 @@ should be preferred.
 - Later evaluations identify the exact prompt-policy version that shaped a proposal.
 - The policy can improve complete evidence use without allowing the model to perform arithmetic or bypass deterministic validation.
 - The current APSEZ v1 fixture remains immutable; a change to its expected tax treatment would require a new reviewed fixture version.
-- The first provisional APSEZ v2 evaluation completed the full adapter path and correctly formed finance cost, but deterministically failed because it also formed PBT and PAT aggregates from component rows and reused evidence. A narrower successor policy is required before another evaluation.
+- The first provisional APSEZ v2 evaluation completed the full adapter path and matched the fixture's finance-cost amount, but deterministically failed because it also formed PBT and PAT aggregates from component rows and reused evidence. Numerical agreement did not establish the accounting scope independently. ADR-021 replaces this policy.
+
+## ADR-021 — Prefer supported reported totals and supply versioned metric context
+
+**Status:** Accepted for the POC
+**Date:** 4 October 2026
+
+### Context
+
+The v2 aggregation-first instruction encouraged needless PBT/PAT reconstruction. Its general
+FX/derivative finance-cost assumption was stronger than the supplied row context supported.
+The provider also received metric identifiers without the dictionary's definitions, and its wire
+schema offered derived targets that deterministic validation later rejected.
+
+### Decision
+
+- Build new input packets under `onboarding-model-input-v3`, including the checksummed
+  `onboarding-metric-catalog-v1` snapshot of eligible non-derived definitions and generic scope
+  guidance. Preserve legacy v1/v2 parsing without pretending to replay their instructions.
+- Prefer reported amounts only when their accounting scope fits; permit complete signed component
+  aggregations when needed, equivalent labels, explicit exclusions, and targeted abstentions.
+  Describe row roles relative to the target, not through a universal total/component classification.
+- Remove the blanket classification of statement FX/derivative losses as finance costs. Require
+  supporting evidence; preserve uncertainty when notes or scope definitions are unavailable.
+- Keep the existing single-disposition, one-target, deterministic arithmetic and human-review
+  contracts. Do not introduce partial approval, model certification, or automatic semantic checks
+  that claim to understand accounting merely from matching numbers.
+- Restrict both mapping and aggregation enums in `openai-onboarding-proposal-v2` to the same
+  catalog; reject out-of-catalog targets locally too. Bind the exact input and instruction hashes
+  to new model runs. Existing corpus requests, expected answers, and thresholds remain unchanged.
+- Explicitly set `max_retries=0` to implement ADR-018's intended no-retry boundary; relying on the
+  SDK default in the first adapter did not enforce that intent.
+- Test with synthetic fixtures and frozen provider responses. Do not make paid API calls or claim
+  improved live accuracy as part of this implementation slice.
+
+### Consequences
+
+- Source evidence and calculation rules remain immutable; prompt/catalog/schema changes have
+  explicit versions and exact content hashes for new calls.
+- Exact-route evaluation can still reject a legitimate alternative evidence route. Alternatives
+  require separately reviewed fixture/policy versioning, not lower thresholds or rewritten history.
+- Missing source-note context, fine-grained review, and real model effectiveness remain future
+  work. The catalog exposes eligible metrics, not a required list or CA-approved interpretations.

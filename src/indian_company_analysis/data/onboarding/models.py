@@ -80,6 +80,8 @@ class ModelRunProvenance(DomainModel):
     latency_milliseconds: int | None = Field(default=None, ge=0)
     estimated_cost: Decimal | None = Field(default=None, ge=0)
     cost_currency: str | None = Field(default=None, min_length=3, max_length=3)
+    input_checksum_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    instructions_checksum_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
 
     @model_validator(mode="after")
     def provenance_is_consistent(self) -> ModelRunProvenance:

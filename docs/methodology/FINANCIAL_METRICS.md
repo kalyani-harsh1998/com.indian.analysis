@@ -10,6 +10,13 @@ This document defines the accounting contract used by deterministic calculations
 
 The engine is designed for ordinary non-financial companies. It is not appropriate for banks, NBFCs, insurers, or other financial institutions.
 
+Phase 2D prompt contract v3 supplies these canonical definitions to the model through a versioned
+onboarding catalog, with additional scope/uncertainty guidance. This does not change the formulas,
+sign conventions, or review status below. A subtotal may be the full amount for its own target;
+equivalent labels need not be exact aliases. Missing notes or competing profit/expense scopes
+remain review questions, not permission to infer a value. See
+[model-assisted onboarding](MODEL_ASSISTED_ONBOARDING.md#current-contract-v3).
+
 ## 2. Phase 1 boundaries
 
 - Consolidated and standalone observations are stored separately and never combined.

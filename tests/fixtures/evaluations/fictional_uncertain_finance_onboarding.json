@@ -1,0 +1,31 @@
+{
+  "case_id": "fictional-uncertain-finance-onboarding",
+  "fixture_version": "1.0.0",
+  "description": "Synthetic incomplete finance-cost context: no reported finance total or note establishes the scope of interest, FX and derivative losses. Do not infer completeness. Not real-company evidence.",
+  "request": {
+    "request_id": "fictional-finance-fy2026-v1",
+    "document_id": "fictional-finance-synthetic-report",
+    "extraction_id": "fictional-finance-profit-loss",
+    "extraction_profile_version": "synthetic-profile-v1",
+    "company_id": "fictional-finance",
+    "source_reference_id": "synthetic-finance-source",
+    "source_checksum_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "source_organization": "Synthetic evaluation fixture",
+    "document_type": "annual_report",
+    "unit": "INR crore",
+    "period": {"label": "FY2026", "period_type": "annual", "start_date": "2025-04-01", "end_date": "2026-03-31"},
+    "reporting_basis": "consolidated",
+    "evidence_rows": [
+      {"evidence_id": "revenue", "source_locator": {"page_number": 1, "table_id": "profit_loss", "row_number": 1, "column_name": "FY2026"}, "reported_label": "Revenue from operations", "raw_value": "1,000"},
+      {"evidence_id": "interest", "source_locator": {"page_number": 1, "table_id": "profit_loss", "row_number": 2, "column_name": "FY2026"}, "reported_label": "Interest and bank charges", "raw_value": "30"},
+      {"evidence_id": "fx", "source_locator": {"page_number": 1, "table_id": "profit_loss", "row_number": 3, "column_name": "FY2026"}, "reported_label": "Foreign exchange loss", "raw_value": "5"},
+      {"evidence_id": "derivative", "source_locator": {"page_number": 1, "table_id": "profit_loss", "row_number": 4, "column_name": "FY2026"}, "reported_label": "Loss on derivatives", "raw_value": "7"}
+    ]
+  },
+  "expected_mappings": [{"evidence_id": "revenue", "metric_id": "revenue", "sign_multiplier": "1"}],
+  "expected_aggregations": [],
+  "expected_exclusions": [],
+  "expected_abstentions": [{"evidence_id": "interest"}, {"evidence_id": "fx"}, {"evidence_id": "derivative"}],
+  "expected_metric_values": [{"metric_id": "revenue", "value": "1000"}],
+  "reconciliation_expectations": []
+}
