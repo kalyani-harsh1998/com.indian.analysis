@@ -5,6 +5,7 @@ from indian_company_analysis.data.normalization.models import SourceFactLocator
 from indian_company_analysis.data.onboarding.models import (
     DocumentOnboardingRequest,
     OnboardingEvidenceRow,
+    OnboardingTargetScope,
 )
 from indian_company_analysis.domain.enums import DocumentType
 from indian_company_analysis.domain.models import ReportingPeriod
@@ -18,6 +19,7 @@ def build_onboarding_request(
     source_reference_id: str,
     source_organization: str,
     document_type: DocumentType,
+    target_scope: OnboardingTargetScope | None = None,
 ) -> DocumentOnboardingRequest:
     """Convert successful extraction rows into checksummed model input evidence."""
 
@@ -43,6 +45,7 @@ def build_onboarding_request(
             end_date=spec.period_end_date,
         ),
         reporting_basis=spec.reporting_basis,
+        target_scope=target_scope,
         evidence_rows=tuple(
             OnboardingEvidenceRow(
                 evidence_id=f"row-{row.page_number}-{row.row_number}",

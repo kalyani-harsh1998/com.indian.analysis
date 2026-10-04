@@ -8,10 +8,14 @@ from pathlib import Path
 import pytest
 
 from indian_company_analysis.__main__ import main
+from indian_company_analysis.data.normalization.models import SourceFactLocator
 from indian_company_analysis.data.onboarding import (
     ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS,
     DocumentOnboardingRequest,
+    LocatorBoundContextBundle,
+    LocatorBoundContextSnippet,
     OnboardingModelInputPolicy,
+    OnboardingTargetScope,
     PromptIsolatedOnboardingInputBuilder,
 )
 from indian_company_analysis.data.onboarding.metric_catalog import build_onboarding_metric_catalog
@@ -116,8 +120,9 @@ def test_cli_persists_an_idempotent_prompt_isolated_packet(tmp_path: Path) -> No
     assert main(args) == 0
     assert main(args) == 0
     persisted = json.loads(output_path.read_text(encoding="utf-8"))
-    assert persisted["prompt_contract_version"] == "onboarding-model-input-v3"
+    assert persisted["prompt_contract_version"] == "onboarding-model-input-v4"
     assert len(persisted["untrusted_evidence_rows"]) == len(_request().evidence_rows)
+    assert persisted["locator_bound_context"]["snippets"] == []
 
 
 @pytest.mark.parametrize("version", ["onboarding-model-input-v1", "onboarding-model-input-v2"])
@@ -128,12 +133,14 @@ def test_legacy_packets_are_readable_without_inventing_new_context(version: str)
     payload = packet.model_dump(mode="json")
     payload["prompt_contract_version"] = version
     del payload["metric_catalog"]
+    del payload["target_scope"]
+    del payload["locator_bound_context"]
     restored = PromptIsolatedOnboardingInput.model_validate(payload)
     assert restored.prompt_contract_version == version
     assert restored.metric_catalog is None
 
 
-def test_v3_rejects_missing_or_tampered_metric_context() -> None:
+def test_v4_rejects_missing_or_tampered_metric_context() -> None:
     packet = PromptIsolatedOnboardingInputBuilder().build(
         _request(), input_id="catalog", policy=OnboardingModelInputPolicy(policy_version="v1")
     )
@@ -160,3 +167,140 @@ def test_evidence_changes_do_not_change_the_application_metric_context() -> None
     )
     assert original.metric_catalog == changed.metric_catalog
     assert original.evidence_checksum_sha256 != changed.evidence_checksum_sha256
+
+
+def test_explicit_target_scope_and_locator_bound_context_are_payload_bound() -> None:
+    request = _request()
+    scope = OnboardingTargetScope(
+        scope_id="fictional-finance-review-v1",
+        metric_ids=(MetricId.REVENUE, MetricId.FINANCE_COST),
+        purpose="Review revenue and finance-cost evidence before candidate onboarding.",
+    )
+    scoped_request = request.model_copy(update={"target_scope": scope})
+    context_text = "Finance-cost note: derivative losses relate to qualifying borrowings."
+    context = LocatorBoundContextBundle.for_request(
+        scoped_request,
+        bundle_id="fictional-finance-context-v1",
+        snippets=(
+            LocatorBoundContextSnippet(
+                context_id="finance-note",
+                source_locator=SourceFactLocator(
+                    page_number=2,
+                    table_id="finance_cost_note",
+                    row_number=1,
+                    column_name="FY2026",
+                ),
+                metric_ids=(MetricId.FINANCE_COST,),
+                text=context_text,
+            ),
+        ),
+    )
+
+    packet = PromptIsolatedOnboardingInputBuilder().build(
+        scoped_request,
+        input_id="fictional-finance-input-v1",
+        policy=OnboardingModelInputPolicy(policy_version="prompt-isolation-v1"),
+        context_bundle=context,
+    )
+    payload = json.loads(packet.provider_user_payload())
+
+    assert payload["target_scope"] == scope.model_dump(mode="json")
+    assert (
+        payload["locator_bound_context"]["context_checksum_sha256"]
+        == context.context_checksum_sha256
+    )
+    assert context_text in packet.provider_user_payload()
+    assert context_text not in ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS
+
+    tampered = packet.model_dump(mode="json")
+    tampered["locator_bound_context"]["snippets"][0]["text"] = "Different context"
+    with pytest.raises(ValueError, match="context checksum"):
+        PromptIsolatedOnboardingInput.model_validate(tampered)
+
+
+def test_context_must_match_request_and_selected_targets() -> None:
+    request = _request()
+    scope = OnboardingTargetScope(
+        scope_id="fictional-revenue-only-v1",
+        metric_ids=(MetricId.REVENUE,),
+        purpose="Review the reported revenue total only.",
+    )
+    scoped_request = request.model_copy(update={"target_scope": scope})
+    invalid_context = LocatorBoundContextBundle.for_request(
+        scoped_request,
+        bundle_id="fictional-invalid-context-v1",
+        snippets=(
+            LocatorBoundContextSnippet(
+                context_id="tax-note",
+                source_locator=SourceFactLocator(
+                    page_number=2,
+                    table_id="tax_note",
+                    row_number=1,
+                    column_name="FY2026",
+                ),
+                metric_ids=(MetricId.TAX_EXPENSE,),
+                text="Current tax and deferred tax are separately disclosed.",
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="outside the target metric scope"):
+        PromptIsolatedOnboardingInputBuilder().build(
+            scoped_request,
+            input_id="fictional-invalid-context-input-v1",
+            policy=OnboardingModelInputPolicy(policy_version="prompt-isolation-v1"),
+            context_bundle=invalid_context,
+        )
+
+
+def test_cli_accepts_a_checksummed_locator_bound_context_bundle(tmp_path: Path) -> None:
+    scope = OnboardingTargetScope(
+        scope_id="fictional-tax-scope-v1",
+        metric_ids=(MetricId.TAX_EXPENSE,),
+        purpose="Review tax evidence only.",
+    )
+    request = _request().model_copy(update={"target_scope": scope})
+    context = LocatorBoundContextBundle.for_request(
+        request,
+        bundle_id="fictional-tax-context-v1",
+        snippets=(
+            LocatorBoundContextSnippet(
+                context_id="tax-context",
+                source_locator=SourceFactLocator(
+                    page_number=3,
+                    table_id="tax_note",
+                    row_number=2,
+                    column_name="FY2026",
+                ),
+                metric_ids=(MetricId.TAX_EXPENSE,),
+                text="Deferred tax credit is presented within tax expense.",
+            ),
+        ),
+    )
+    request_path = tmp_path / "request.json"
+    context_path = tmp_path / "context.json"
+    output_path = tmp_path / "model-input.json"
+    request_path.write_text(request.model_dump_json(indent=2), encoding="utf-8")
+    context_path.write_text(context.model_dump_json(indent=2), encoding="utf-8")
+
+    assert (
+        main(
+            [
+                "prepare-onboarding-model-input",
+                "--request",
+                str(request_path),
+                "--input-id",
+                "fictional-tax-context-input-v1",
+                "--policy-version",
+                "prompt-isolation-v1",
+                "--context-bundle",
+                str(context_path),
+                "--output",
+                str(output_path),
+            ]
+        )
+        == 0
+    )
+    persisted = json.loads(output_path.read_text(encoding="utf-8"))
+    assert persisted["target_scope"]["scope_id"] == scope.scope_id
+    assert persisted["locator_bound_context"] == context.model_dump(mode="json")

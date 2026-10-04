@@ -90,13 +90,17 @@ The proposal boundary also includes unit, period, and reporting basis. Synthetic
 
 ## Boundaries and dependency direction
 
-The optional adapter currently builds prompt contract v3 with a checksummed snapshot of the
-canonical non-derived metric definitions and company-independent interpretation notes. Both the
-wire schema and local provider-response check use that eligible set. Source rows stay in the user
-data channel, never in the developer instructions; the model run records exact input/instruction
-hashes. Reported-total preference, complete component aggregation, and explicit uncertainty are
-prompt guidance; deterministic validation cannot by itself establish semantic correctness.
-Source-note retrieval and alternative evidence-route evaluation are not implemented by this slice.
+The optional adapter currently builds prompt contract v4 with a checksummed snapshot of the
+canonical non-derived metric definitions and company-independent interpretation notes. A
+caller-selected target scope is part of the request and narrows both the wire-schema enum and local
+proposal validation. An optional checksummed locator-bound context bundle may add small source
+excerpts for selected targets only; it must match the request and source checksum, remains in the
+untrusted data channel, and is not raw-PDF access or independent evidence. Source rows and context
+stay in the user data channel, never in developer instructions; the model run records exact
+input/instruction hashes. Reported-total preference, complete component aggregation, and explicit
+uncertainty are prompt guidance; deterministic validation cannot by itself establish semantic
+correctness. Automatic source-note retrieval and alternative evidence-route evaluation are not
+implemented by this slice.
 
 Dependencies point inward toward `domain` and deterministic functions:
 

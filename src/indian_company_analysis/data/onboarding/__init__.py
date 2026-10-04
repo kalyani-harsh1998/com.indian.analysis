@@ -43,6 +43,8 @@ from indian_company_analysis.data.onboarding.evaluation import (
 )
 from indian_company_analysis.data.onboarding.model_input import (
     ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS,
+    LocatorBoundContextBundle,
+    LocatorBoundContextSnippet,
     OnboardingModelInputIdentity,
     OnboardingModelInputPolicy,
     PromptIsolatedEvidenceRow,
@@ -65,6 +67,7 @@ from indian_company_analysis.data.onboarding.models import (
     ModelRunProvenance,
     OnboardingEvidenceRow,
     OnboardingReviewDecision,
+    OnboardingTargetScope,
     ProposalValidationIssue,
     ProposalValidationResult,
 )
@@ -121,6 +124,8 @@ __all__ = [
     "LocalOnboardingConfigurationCatalog",
     "LocalEvaluationCorpusCatalog",
     "LocalOnboardingReviewCatalog",
+    "LocatorBoundContextBundle",
+    "LocatorBoundContextSnippet",
     "ModelRunProvenance",
     "OnboardingEvidenceRow",
     "OnboardingEvaluationFixture",
@@ -135,6 +140,7 @@ __all__ = [
     "OpenAIProviderError",
     "OnboardingProposalEvaluator",
     "OnboardingReviewDecision",
+    "OnboardingTargetScope",
     "OnboardingReuseAssessment",
     "OnboardingReuseAssessor",
     "ProposalAccuracyMetrics",

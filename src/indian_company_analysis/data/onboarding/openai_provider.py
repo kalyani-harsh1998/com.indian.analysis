@@ -14,9 +14,9 @@ from typing import Literal, Protocol, cast
 
 from pydantic import Field, ValidationError
 
-from indian_company_analysis.data.onboarding.metric_catalog import build_onboarding_metric_catalog
 from indian_company_analysis.data.onboarding.model_input import (
     ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS,
+    LocatorBoundContextBundle,
     OnboardingModelInputPolicy,
     PromptIsolatedOnboardingInputBuilder,
 )
@@ -35,7 +35,7 @@ from indian_company_analysis.domain.metrics import MetricId
 from indian_company_analysis.domain.models import DomainModel
 
 _PROVIDER_NAME = "openai"
-_SCHEMA_VERSION = "openai-onboarding-proposal-v2"
+_SCHEMA_VERSION = "openai-onboarding-proposal-v3"
 
 
 class OpenAIProviderError(RuntimeError):
@@ -116,6 +116,7 @@ class OpenAIOnboardingProposalProvider:
         *,
         model_id: str,
         input_policy: OnboardingModelInputPolicy,
+        context_bundle: LocatorBoundContextBundle | None = None,
         client_factory: Callable[[], _OpenAIClient] | None = None,
         maximum_output_tokens: int = 4_000,
     ) -> None:
@@ -123,6 +124,7 @@ class OpenAIOnboardingProposalProvider:
             raise ValueError("maximum_output_tokens must be positive")
         self._model_id = model_id
         self._input_policy = input_policy
+        self._context_bundle = context_bundle
         self._client_factory = client_factory or _create_openai_client
         self._maximum_output_tokens = maximum_output_tokens
 
@@ -131,9 +133,13 @@ class OpenAIOnboardingProposalProvider:
 
         input_packet = PromptIsolatedOnboardingInputBuilder().build(
             request,
-            input_id=f"{request.request_id}-openai-input-v3",
+            input_id=f"{request.request_id}-openai-input-v4",
             policy=self._input_policy,
+            context_bundle=self._context_bundle,
         )
+        target_scope = input_packet.target_scope
+        if target_scope is None:
+            raise RuntimeError("v4 onboarding input unexpectedly has no target scope")
         user_payload = input_packet.provider_user_payload()
         started = time.monotonic()
         response = self._client_factory().responses.create(
@@ -149,12 +155,14 @@ class OpenAIOnboardingProposalProvider:
                     "type": "json_schema",
                     "name": "onboarding_proposal_content",
                     "strict": True,
-                    "schema": _proposal_response_schema(),
+                    "schema": _proposal_response_schema(target_scope.metric_ids),
                 }
             },
         )
         latency_milliseconds = int((time.monotonic() - started) * 1_000)
-        proposal_content = _parse_proposal_content(response)
+        proposal_content = _parse_proposal_content(
+            response, eligible_metric_ids=set(target_scope.metric_ids)
+        )
         model_version = _string_field(response, "model") or self._model_id
         response_id = _string_field(response, "id") or "response-without-id"
         proposal_id = _proposal_id(request.request_id, response_id)
@@ -191,6 +199,7 @@ class OpenAIOnboardingProposalProvider:
                     ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS.encode("utf-8")
                 ).hexdigest(),
             ),
+            target_scope=request.target_scope,
             mappings=tuple(
                 MappingCandidate.model_validate(candidate.model_dump(mode="json"))
                 for candidate in proposal_content.mappings
@@ -233,17 +242,17 @@ def _create_openai_client() -> _OpenAIClient:
     return cast(_OpenAIClient, OpenAI(max_retries=0))
 
 
-def _proposal_response_schema() -> dict[str, object]:
-    """Advertise only eligible fact targets, using the same catalog as the input packet."""
+def _proposal_response_schema(metric_ids: tuple[MetricId, ...]) -> dict[str, object]:
+    """Advertise only caller-requested, eligible targets from the input packet."""
 
     schema = _OpenAIProposalContent.model_json_schema()
-    schema["$defs"]["MetricId"]["enum"] = [
-        item.metric_id.value for item in build_onboarding_metric_catalog().definitions
-    ]
+    schema["$defs"]["MetricId"]["enum"] = [metric_id.value for metric_id in metric_ids]
     return schema
 
 
-def _parse_proposal_content(response: object) -> _OpenAIProposalContent:
+def _parse_proposal_content(
+    response: object, *, eligible_metric_ids: set[MetricId]
+) -> _OpenAIProposalContent:
     status = _string_field(response, "status")
     if status in {"failed", "incomplete", "cancelled"}:
         raise OpenAIProviderError(f"OpenAI response did not complete successfully: {status}")
@@ -256,11 +265,10 @@ def _parse_proposal_content(response: object) -> _OpenAIProposalContent:
         raise OpenAIProviderError(
             "OpenAI response did not match the onboarding proposal schema"
         ) from error
-    eligible_ids = {item.metric_id for item in build_onboarding_metric_catalog().definitions}
     proposed_ids = [item.metric_id for item in content.mappings]
     proposed_ids.extend(item.metric_id for item in content.aggregations)
-    if any(metric_id not in eligible_ids for metric_id in proposed_ids):
-        raise OpenAIProviderError("OpenAI response targets a metric outside the onboarding catalog")
+    if any(metric_id not in eligible_metric_ids for metric_id in proposed_ids):
+        raise OpenAIProviderError("OpenAI response targets a metric outside the requested scope")
     return content
 
 

@@ -35,6 +35,7 @@ from indian_company_analysis.data.onboarding.evaluation import (
     OnboardingProposalEvaluator,
 )
 from indian_company_analysis.data.onboarding.model_input import (
+    LocatorBoundContextBundle,
     OnboardingModelInputPolicy,
     PromptIsolatedOnboardingInputBuilder,
 )
@@ -122,6 +123,11 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     model_input.add_argument("--maximum-evidence-rows", type=int, default=200)
     model_input.add_argument("--maximum-reported-label-characters", type=int, default=500)
     model_input.add_argument("--maximum-raw-value-characters", type=int, default=100)
+    model_input.add_argument(
+        "--context-bundle",
+        type=Path,
+        help="optional checksummed locator-bound context JSON for the same onboarding request",
+    )
     model_input.add_argument("--output", type=Path)
     approve = subparsers.add_parser(
         "approve-onboarding",
@@ -200,6 +206,11 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     )
     openai_approved_evaluation.add_argument("--maximum-raw-value-characters", type=int, default=100)
     openai_approved_evaluation.add_argument("--maximum-output-tokens", type=int, default=4_000)
+    openai_approved_evaluation.add_argument(
+        "--context-bundle",
+        type=Path,
+        help="optional checksummed locator-bound context JSON for this corpus request",
+    )
     openai_approved_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
     openai_approved_evaluation.add_argument("--output", type=Path)
     openai_provisional_evaluation = subparsers.add_parser(
@@ -222,6 +233,11 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
         "--maximum-raw-value-characters", type=int, default=100
     )
     openai_provisional_evaluation.add_argument("--maximum-output-tokens", type=int, default=4_000)
+    openai_provisional_evaluation.add_argument(
+        "--context-bundle",
+        type=Path,
+        help="optional checksummed locator-bound context JSON for this corpus request",
+    )
     openai_provisional_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
     openai_provisional_evaluation.add_argument("--output", type=Path)
     provisional_evaluation = subparsers.add_parser(
@@ -407,11 +423,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             maximum_reported_label_characters=args.maximum_reported_label_characters,
             maximum_raw_value_characters=args.maximum_raw_value_characters,
         )
+        context_bundle = (
+            LocatorBoundContextBundle.model_validate_json(
+                args.context_bundle.read_text(encoding="utf-8")
+            )
+            if args.context_bundle is not None
+            else None
+        )
         builder = PromptIsolatedOnboardingInputBuilder()
         input_packet = builder.build(
             onboarding_request,
             input_id=args.input_id,
             policy=input_policy,
+            context_bundle=context_bundle,
         )
         output = args.output or (
             settings.data_directory / "interim" / "model-inputs" / f"{input_packet.input_id}.json"
@@ -507,6 +531,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 maximum_reported_label_characters=args.maximum_reported_label_characters,
                 maximum_raw_value_characters=args.maximum_raw_value_characters,
             ),
+            context_bundle=(
+                LocatorBoundContextBundle.model_validate_json(
+                    args.context_bundle.read_text(encoding="utf-8")
+                )
+                if args.context_bundle is not None
+                else None
+            ),
             maximum_output_tokens=args.maximum_output_tokens,
         )
         evaluator = OnboardingProposalEvaluator()
@@ -549,6 +580,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 maximum_evidence_rows=args.maximum_evidence_rows,
                 maximum_reported_label_characters=args.maximum_reported_label_characters,
                 maximum_raw_value_characters=args.maximum_raw_value_characters,
+            ),
+            context_bundle=(
+                LocatorBoundContextBundle.model_validate_json(
+                    args.context_bundle.read_text(encoding="utf-8")
+                )
+                if args.context_bundle is not None
+                else None
             ),
             maximum_output_tokens=args.maximum_output_tokens,
         )

@@ -48,7 +48,7 @@ The committed synthetic suite proves that the deterministic boundary detects or 
 
 These cases demonstrate the local contract only. They are not a real-company accuracy benchmark and do not replace future provider-side prompt-isolation, privacy, or security tests.
 
-### V3 prompt-policy regression cases
+### V3 and v4 prompt-policy regression cases
 
 `fictional_reported_totals_onboarding.json` adds direct reported tax/finance/PBT/PAT amounts,
 equivalent labels, a deferred-tax credit, a duplicate tax note, and an interest subtotal that already
@@ -57,12 +57,18 @@ abstentions when only interest, FX losses, and derivative losses are available w
 The existing `fictional_tax_onboarding.json` still tests components-only aggregation and the negative
 deferred-tax sign. All are fictional and remain outside the real-company corpus registry.
 
-Frozen fake responses traverse the v3 OpenAI adapter, deterministic validation, and evaluator.
+Frozen fake responses traverse the v4 OpenAI adapter, deterministic validation, and evaluator.
 Negative variants show that matching PAT does not excuse reused evidence, nested components do
 not justify double counting, and uncertain finance components cannot pass by being confidently
 mapped or summed. These tests verify contracts and scoring, **not** live prompt effectiveness.
 Additional tests verify catalog integrity, legacy input parsing, source-text isolation, derived-target
-rejection in both decision types, exact prompt/input hashes, and explicit SDK retry disabling.
+rejection in both decision types, exact prompt/input hashes, explicit caller-selected metric scope,
+locator-bound context checksum/identity controls, and explicit SDK retry disabling.
+
+The v4 scope is supplied in the onboarding request rather than copied from expected fixture
+decisions. Tests reject a mapping or aggregation target outside that scope. Context snippets are
+only a bounded, untrusted source aid; the current evaluator does not treat their text as a
+CA-reviewed route or allow it to bypass evidence, arithmetic, reconciliation, or human approval.
 
 Exact-decision precision/recall and numerical comparisons remain separate diagnostics. In
 particular, a model selecting a reported tax total can match the number but fail a fixture that

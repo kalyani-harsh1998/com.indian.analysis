@@ -80,7 +80,34 @@ input.
 
 The rows are named `untrusted_evidence_rows`: a label or value may contain instruction-like text, but it is source data rather than an instruction. The future adapter must send the static `ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS` in a trusted developer/system channel and `provider_user_payload()` as a separate data-only user message. It must never interpolate a reported label, raw value, or source snippet into trusted instructions.
 
-### Current contract: v3
+### Current contract: v4
+
+`onboarding-model-input-v4` adds two bounded inputs to the v3 accounting policy:
+
+- `target_scope` is a caller-selected, versioned set of non-derived canonical metrics plus a
+  purpose. It is part of the onboarding request and proposal identity. It is not derived from an
+  evaluation fixture, so the model never receives golden answers. A proposal targeting a metric
+  outside that scope is deterministically rejected. Older requests with no scope remain readable;
+  they are explicitly represented in v4 as a legacy all-eligible scope rather than silently
+  claiming that a subset was selected.
+- `locator_bound_context` is an optional, checksummed bundle of small source excerpts. Every
+  snippet has an exact page/table/row/column anchor and declares the selected metrics it may
+  inform. It must match the request ID and source-document checksum, stays in the untrusted user
+  payload, and has size/control-character limits. An empty, checksummed bundle makes the absence
+  of extra context explicit.
+
+The current implementation defines the artifact contract and accepts it through the local
+preparation and OpenAI-evaluation commands. It does **not** yet discover or extract note excerpts
+from a PDF automatically. A caller must prepare a permitted, source-verified snippet through a
+future deterministic context extractor; sending the whole PDF is not enabled.
+
+The OpenAI wire schema is `openai-onboarding-proposal-v3`. Its mapping and aggregation enums now
+contain only the selected target metrics, and Python independently enforces the same request
+scope. This narrows the model's semantic task without making it a numerical authority. Prompts,
+schemas, typed input objects, fixtures, and evaluation checks remain code-reviewed together, in
+line with [OpenAI's prompting guidance](https://developers.openai.com/api/docs/guides/prompting).
+
+### Historical v3 policy
 
 `onboarding-model-input-v3` replaces v2's aggregation-first rule and blanket inference that
 statement FX/derivative losses belong to finance cost. V2 matched the provisional APSEZ fixture's
@@ -113,20 +140,20 @@ evidence before classifying FX/derivative losses as finance costs. It does not i
 correct OCR, convert units, or force figures to reconcile. Existing abstentions still block approval
 of the entire proposal; partial approval is **not** introduced in this slice.
 
-The OpenAI wire schema is now `openai-onboarding-proposal-v2`. Its shared metric enum is restricted
-to the same eligible catalog for both mappings and aggregations. Python independently rejects a
-derived target even if a provider ignores that schema. The deterministic validator and thresholds
-are otherwise unchanged. Structured output constrains format, not accounting truth; see
-[OpenAI's structured-output guidance](https://developers.openai.com/api/docs/guides/structured-outputs).
+V3's OpenAI wire schema was `openai-onboarding-proposal-v2`. Its shared metric enum was restricted
+to the eligible catalog for both mappings and aggregations. V4 narrows that same enum further to
+the selected scope. The deterministic validator and thresholds remain authoritative. Structured
+output constrains format, not accounting truth; see [OpenAI's structured-output guidance](https://developers.openai.com/api/docs/guides/structured-outputs).
 
-Legacy v1/v2 packets remain readable without inventing a catalog, but new calls build v3 packets;
-legacy parsing does not replay old prompts. Use a new input ID/output path when preparing v3.
-Version changes to prompt instructions, catalog scope, and response schema explicitly. The new
-run's input/instruction hashes identify the exact serialized content, including the catalog snapshot.
+Legacy v1/v2/v3 packets remain readable without inventing new scope or context, but new calls
+build v4 packets; legacy parsing does not replay old prompts. Use a new input ID/output path when
+preparing v4. Version changes to prompt instructions, catalog scope, selected targets, context,
+and response schema are explicit. The run's input/instruction hashes identify the exact serialized
+content.
 
-The packet still contains flat rows and request-level context, not source note excerpts, row-level
-unit metadata, or a requested metric subset. Missing accounting context therefore still requires
-review. Targeted, locator-bound note retrieval is future work; sending the whole PDF is not enabled.
+The packet still does not infer note text, correct OCR, or turn a context excerpt into independently
+validated evidence. Missing accounting context therefore still requires review. Targeted,
+deterministic note retrieval and reviewed alternative evidence routes remain future work.
 
 One authorized APSEZ v3 technical call has now completed. Structural validation and the PBT/tax/PAT
 reconciliation passed, with no duplicate evidence, but full acceptance failed on finance-cost
@@ -139,6 +166,7 @@ The policy versions and enforces evidence-row, label-length, and value-length li
 uv run python -m indian_company_analysis prepare-onboarding-model-input \
   --request /path/to/onboarding-request.json \
   --input-id company-fy2026-profit-loss-input-v1 \
+  --context-bundle /path/to/optional-locator-bound-context.json \
   --policy-version prompt-isolation-v1
 ```
 
@@ -168,6 +196,7 @@ Before human review, the validator rejects proposals that:
 
 - do not match the request ID, document ID, checksum, source organization, or document type;
 - do not match the request's unit, reporting period, or reporting basis;
+- target a metric outside an explicit caller-selected target scope;
 - reference an evidence row that was not supplied;
 - change a reported label;
 - consume one evidence row more than once;

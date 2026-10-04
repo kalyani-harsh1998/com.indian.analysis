@@ -10,12 +10,15 @@ This repository is an early proof of concept. The Phase 1 engine loads five year
 > clearly labelled technical E2E OpenAI evaluation. It cannot approve mappings, demonstrate model
 > readiness, or replace the CA-approved quality-evaluation gate.
 
-The current onboarding prompt is v3: it prefers supported reported totals, accepts complete
+The current onboarding prompt is v4: it prefers supported reported totals, accepts complete
 component aggregations when needed, and flags missing accounting context. A versioned metric
-catalog supplies definitions and scope notes; the response schema excludes derived ratios.
-Offline synthetic tests exercise this contract. One provisional APSEZ v3 live test passed structural
-validation but failed full acceptance; see the [technical results](docs/methodology/OPENAI_ONBOARDING_TECHNICAL_RESULTS.md).
-See [the v3 policy and remaining work](docs/methodology/MODEL_ASSISTED_ONBOARDING.md#current-contract-v3).
+catalog supplies definitions and scope notes; callers can select a non-derived metric subset, which
+restricts the response schema and deterministic validation. Optional small source excerpts are
+checksummed and locator-bound to the same request; they are untrusted context, not raw-PDF access
+or evidence approval. Offline synthetic tests exercise these contracts. One provisional APSEZ v3
+live test passed structural validation but failed full acceptance; see the
+[technical results](docs/methodology/OPENAI_ONBOARDING_TECHNICAL_RESULTS.md).
+See [the v4 policy and remaining work](docs/methodology/MODEL_ASSISTED_ONBOARDING.md#current-contract-v4).
 
 ## Architecture
 

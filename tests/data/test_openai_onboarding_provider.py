@@ -18,6 +18,7 @@ from indian_company_analysis.data.onboarding import (
     OnboardingEvaluationFixture,
     OnboardingModelInputPolicy,
     OnboardingProposalEvaluator,
+    OnboardingTargetScope,
     OpenAIOnboardingProposalProvider,
     OpenAIProviderError,
     openai_provider,
@@ -148,8 +149,8 @@ def test_openai_provider_sends_only_bounded_data_and_binds_local_provenance() ->
     assert proposal.model_run.provider == "openai"
     assert proposal.model_run.model_id == "gpt-6-astra"
     assert proposal.model_run.model_version == "gpt-6-astra-2026-10-01"
-    assert proposal.model_run.prompt_version == "onboarding-model-input-v3"
-    assert proposal.model_run.schema_version == "openai-onboarding-proposal-v2"
+    assert proposal.model_run.prompt_version == "onboarding-model-input-v4"
+    assert proposal.model_run.schema_version == "openai-onboarding-proposal-v3"
     assert proposal.model_run.input_tokens == 123
     assert proposal.model_run.output_tokens == 45
     assert proposal.model_run.estimated_cost is None
@@ -191,6 +192,8 @@ def test_openai_provider_sends_only_bounded_data_and_binds_local_provenance() ->
     assert definitions["_OpenAIMappingCandidate"]["additionalProperties"] is False
     packet = json.loads(str(input_messages[1]["content"]))
     assert packet["metric_catalog"]["version"] == "onboarding-metric-catalog-v1"
+    assert packet["target_scope"]["scope_id"].endswith("legacy-all-eligible-v1")
+    assert packet["locator_bound_context"]["snippets"] == []
 
 
 def test_openai_provider_rejects_incomplete_or_unparseable_provider_output() -> None:
@@ -232,8 +235,52 @@ def test_derived_targets_are_rejected_locally_even_if_provider_ignores_schema(
     provider, _ = _provider(
         _FakeResponse(id="resp_derived", model="test", output_text=json.dumps(content))
     )
-    with pytest.raises(OpenAIProviderError, match="outside the onboarding catalog"):
+    with pytest.raises(OpenAIProviderError, match="outside the requested scope"):
         provider.propose(_request())
+
+
+def test_openai_provider_limits_schema_and_validation_to_explicit_target_scope() -> None:
+    scope = OnboardingTargetScope(
+        scope_id="fictional-tax-core-v1",
+        metric_ids=(
+            MetricId.REVENUE,
+            MetricId.PROFIT_BEFORE_TAX,
+            MetricId.TAX_EXPENSE,
+            MetricId.PROFIT_AFTER_TAX,
+        ),
+        purpose="Review only the PBT-to-PAT bridge and revenue for this request.",
+    )
+    request = _request().model_copy(update={"target_scope": scope})
+    provider, responses = _provider(
+        _FakeResponse(id="resp_scoped", model="test", output_text=_provider_content())
+    )
+
+    proposal = provider.propose(request)
+    call = responses.calls[0]
+    text = cast(dict[str, dict[str, object]], call["text"])
+    schema = cast(dict[str, object], text["format"]["schema"])
+    definitions = cast(dict[str, dict[str, object]], schema["$defs"])
+
+    assert proposal.target_scope == scope
+    assert definitions["MetricId"]["enum"] == [metric_id.value for metric_id in scope.metric_ids]
+    assert validate_onboarding_proposal(request, proposal).ready_for_review is True
+
+
+def test_openai_provider_rejects_an_eligible_metric_outside_explicit_target_scope() -> None:
+    scope = OnboardingTargetScope(
+        scope_id="fictional-revenue-only-v1",
+        metric_ids=(MetricId.REVENUE,),
+        purpose="Verify that the adapter cannot expand a narrow caller-selected scope.",
+    )
+    request = _request().model_copy(update={"target_scope": scope})
+    content = json.loads(_provider_content())
+    content["mappings"][1]["metric_id"] = MetricId.FINANCE_COST.value
+    provider, _ = _provider(
+        _FakeResponse(id="resp-outside-scope", model="test", output_text=json.dumps(content))
+    )
+
+    with pytest.raises(OpenAIProviderError, match="outside the requested scope"):
+        provider.propose(request)
 
 
 def test_untrusted_source_text_never_enters_developer_message_or_schema() -> None:

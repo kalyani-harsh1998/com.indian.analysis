@@ -32,24 +32,30 @@ The optional adapter may also run a single explicitly labelled technical E2E eva
 `provisional_internal_review` entry. That verifies the integration only; it cannot approve a
 configuration or substitute for the CA-approved quality gate.
 
-The current prompt contract is v3: prefer scope-compatible reported amounts, aggregate only
+The current prompt contract is v4: prefer scope-compatible reported amounts, aggregate only
 complete non-overlapping components when needed, and abstain on unresolved relevant classifications.
 It includes a versioned, checksummed catalog of eligible non-derived metric definitions and scope
-notes; the OpenAI response schema v2 advertises the same eligible targets. Source labels need not
-use fixed wording, but their exact evidence is preserved. New model runs hash the full input and
+notes; a caller-selected non-derived target scope is now persisted in the request and constrains
+both the OpenAI schema and deterministic validation. An optional checksummed locator-bound context
+bundle can carry small untrusted source excerpts for only those selected metrics; it must match the
+request and source checksum, and its text remains non-authoritative. Source labels need not use
+fixed wording, but their exact evidence is preserved. New model runs hash the full input and
 developer instructions; the SDK explicitly disables automatic retries. Synthetic mocked-provider
-tests cover totals, nested components, duplicate disclosures, tax credits, and uncertain finance
-costs. They do not demonstrate live model accuracy. Existing real fixtures and thresholds are
-unchanged; reviewed alternative evidence routes, source-note context, explicit metric subsets,
-rounding-policy improvements, and finer-grained review remain future work. See ADR-021.
+tests cover totals, nested components, duplicate disclosures, tax credits, uncertain finance costs,
+target-scope violations, and context identity/tampering. They do not demonstrate live model
+accuracy. Existing real fixtures and thresholds are unchanged; automatic note retrieval, reviewed
+alternative evidence routes, rounding-policy improvements, and finer-grained review remain future
+work. See ADR-022.
 
 One explicitly authorized APSEZ v3 technical run completed on 4 October 2026. It accounted for
 21/21 rows without duplicated or invented evidence, mapped reported PBT/PAT directly, matched
 five of six expected values, and reconciled PBT/tax/PAT. Full acceptance still failed: finance cost
 was unresolved, tax used a different evidence route, and three non-target expense rows were
-abstained for cost-of-revenue uncertainty. No approval or fixture change followed. Prioritize
-caller-selected metric scope, locator-backed finance-cost context, and reviewed alternative tax
-routes before another tuning cycle. See [technical results](methodology/OPENAI_ONBOARDING_TECHNICAL_RESULTS.md).
+abstained for cost-of-revenue uncertainty. No approval or fixture change followed. Caller-selected
+scope and locator-bound context artifacts are now implemented, but the APSEZ request itself has not
+been rewritten and no further provider call has been made. Automatic finance-note extraction and
+reviewed alternative tax routes remain before another tuning cycle. See
+[technical results](methodology/OPENAI_ONBOARDING_TECHNICAL_RESULTS.md).
 
 ## Analytical model
 

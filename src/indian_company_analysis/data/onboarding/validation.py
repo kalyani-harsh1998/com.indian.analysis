@@ -51,10 +51,22 @@ def validate_onboarding_proposal(
         _validate_reported_metric(
             mapping_candidate.metric_id, mapping_candidate.candidate_id, issues
         )
+        _validate_requested_target(
+            request,
+            mapping_candidate.metric_id,
+            mapping_candidate.candidate_id,
+            issues,
+        )
         target_users[mapping_candidate.metric_id].append(mapping_candidate.candidate_id)
 
     for aggregation_candidate in proposal.aggregations:
         _validate_reported_metric(
+            aggregation_candidate.metric_id,
+            aggregation_candidate.candidate_id,
+            issues,
+        )
+        _validate_requested_target(
+            request,
             aggregation_candidate.metric_id,
             aggregation_candidate.candidate_id,
             issues,
@@ -257,6 +269,7 @@ def _validate_identity(
         ("unit", request.unit, proposal.unit),
         ("period", request.period, proposal.period),
         ("reporting_basis", request.reporting_basis, proposal.reporting_basis),
+        ("target_scope", request.target_scope, proposal.target_scope),
     )
     for field_name, expected, actual in identity_fields:
         if actual != expected:
@@ -281,3 +294,25 @@ def _validate_reported_metric(
                 candidate_id=candidate_id,
             )
         )
+
+
+def _validate_requested_target(
+    request: DocumentOnboardingRequest,
+    metric_id: MetricId,
+    candidate_id: str,
+    issues: list[ProposalValidationIssue],
+) -> None:
+    """Reject a provider attempt to normalize a metric outside an explicit caller scope."""
+
+    if request.target_scope is None or metric_id in request.target_scope.metric_ids:
+        return
+    issues.append(
+        ProposalValidationIssue(
+            code="metric_outside_requested_scope",
+            message=(
+                f"canonical metric {metric_id.value} is outside requested target scope "
+                f"{request.target_scope.scope_id}"
+            ),
+            candidate_id=candidate_id,
+        )
+    )

@@ -550,3 +550,44 @@ schema offered derived targets that deterministic validation later rejected.
   require separately reviewed fixture/policy versioning, not lower thresholds or rewritten history.
 - Missing source-note context, fine-grained review, and real model effectiveness remain future
   work. The catalog exposes eligible metrics, not a required list or CA-approved interpretations.
+
+## ADR-022 — Bind hybrid onboarding to caller scope and locator-bound context
+
+**Status:** Accepted for the POC
+**Date:** 4 October 2026
+
+### Context
+
+The APSEZ v3 run safely abstained on finance-cost components because the flat profit-and-loss rows
+did not establish their accounting scope. It also abstained on rows relevant only to metrics that
+were not part of the intended narrow review, because the packet exposed every catalog metric as a
+possible target. The frozen fixture separately rejected a directly reported tax total even though
+it matched the component aggregation numerically. Prompt wording alone cannot resolve missing
+source context or encode reviewed route alternatives safely.
+
+### Decision
+
+- Add an optional explicit `OnboardingTargetScope` to an onboarding request and proposal. It has a
+  stable ID, non-derived metric IDs, and caller-stated purpose; it is never copied from fixture
+  expectations.
+- In prompt contract `onboarding-model-input-v4`, resolve an explicit scope into the data packet.
+  Older requests remain readable through an explicit legacy all-eligible scope, not a fabricated
+  caller selection.
+- Restrict `openai-onboarding-proposal-v3` mapping and aggregation enums to the resolved scope,
+  and deterministically reject candidates outside an explicit request scope.
+- Add a `LocatorBoundContextBundle` that binds each small untrusted source excerpt to request ID,
+  source-document checksum, exact source locator, selected target metrics, and a content checksum.
+  It may be passed through local preparation and live-evaluation commands, but it never grants raw
+  PDF access, invokes a provider automatically, or becomes authoritative evidence by itself.
+- Preserve all existing single-disposition, arithmetic, reconciliation, provider, and human-review
+  controls. Do not change APSEZ fixtures, accept alternative tax routes, or make a paid call in
+  this slice.
+
+### Consequences
+
+- New model calls can concentrate on caller-selected metrics and receive narrowly attributable
+  finance-note context without hardcoding issuer labels or exposing golden answers.
+- A model is still only a semantic proposal source: Python validates source identity, target scope,
+  evidence use, calculations, and reconciliations; a reviewer still decides approval.
+- The context bundle is a provenance contract, not a PDF-note extractor. Deterministic extraction
+  of targeted context and reviewed alternative evidence-route policy are the next separate slices.
