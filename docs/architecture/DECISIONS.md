@@ -591,3 +591,41 @@ source context or encode reviewed route alternatives safely.
   evidence use, calculations, and reconciliations; a reviewer still decides approval.
 - The context bundle is a provenance contract, not a PDF-note extractor. Deterministic extraction
   of targeted context and reviewed alternative evidence-route policy are the next separate slices.
+
+## ADR-023 — Require explicit, verified PDF regions for note-context extraction
+
+**Status:** Accepted for the POC
+**Date:** 13 October 2026
+
+### Context
+
+The v4 context contract can bind small excerpts to an onboarding request, but asking a caller to
+hand-write the text weakens reproducibility and leaves no deterministic proof that it came from the
+verified PDF. Conversely, automatic semantic discovery of finance notes across arbitrary filing
+layouts would reintroduce unvalidated layout and accounting inference before a representative
+reviewed corpus exists.
+
+### Decision
+
+- Add `PdfNoteContextExtractor` and versioned `PdfNoteContextExtractionSpec` for explicitly
+  configured rectangular text regions only.
+- Require a checksum-valid PDF manifest and exact request/source document, checksum, source ID,
+  organization, and document-type identity before extraction. Require an explicit target scope and
+  reject a snippet whose metrics fall outside it.
+- Preserve each configured page/table/row/column locator, context text checksum, bundle identity,
+  extraction-profile version and checksum, and PDF-tool version. Normalize PDF layout whitespace only so the
+  bounded text can satisfy the prompt-input control-character contract.
+- Expose a local `extract-onboarding-note-context` command that writes a non-overwriting bundle and
+  never calls a provider. Do not alter existing real fixtures, mappings, approval records, or PDF
+  files, and do not make a live model call in this slice.
+- Do not add heading search, coordinate inference, OCR, accounting classification, automated
+  context approval, or raw-PDF transmission. Those need separate evaluation and review decisions.
+
+### Consequences
+
+- A reviewed profile can reproducibly supply narrow note context to the existing v4 model-input
+  boundary without making the context authoritative evidence.
+- Each unfamiliar company/report layout still needs a configured and reviewed region profile; this
+  is deliberate evidence control, not a claim of universal PDF parsing.
+- The next work is to prepare and review a finance-note profile for a permitted corpus case, then
+  separately consider LLM-assisted page discovery and alternative evidence-route policy.

@@ -99,8 +99,17 @@ untrusted data channel, and is not raw-PDF access or independent evidence. Sourc
 stay in the user data channel, never in developer instructions; the model run records exact
 input/instruction hashes. Reported-total preference, complete component aggregation, and explicit
 uncertainty are prompt guidance; deterministic validation cannot by itself establish semantic
-correctness. Automatic source-note retrieval and alternative evidence-route evaluation are not
-implemented by this slice.
+correctness. `PdfNoteContextExtractor` can now produce a context bundle only from explicit,
+versioned text-region coordinates after re-verifying the immutable PDF and matching request
+identity. It preserves source-document/profile/tool provenance, but it does not discover notes,
+call a provider, or make the excerpt authoritative. Automatic source-note discovery and alternative
+evidence-route evaluation are not implemented by this slice.
+
+The planned automation path keeps those controls intact: a model will propose pages only from a
+bounded, verified page index; a reviewer will select the exact rectangle in a visual tool; the tool
+will save a versioned profile; deterministic Python will re-extract and validate it; and a reviewer
+will approve or reject that profile. Neither a proposed page nor proposed coordinates can directly
+produce an approved fact.
 
 Dependencies point inward toward `domain` and deterministic functions:
 
@@ -138,7 +147,7 @@ All values use `Decimal`. Missing, zero-denominator, or incomparable cases produ
 
 ## Deliberate omissions
 
-Role-specific agent implementations, live NSE/BSE adapters, general PDF/HTML/OCR/XBRL extraction, automated profile selection, databases, forecasts, valuation, recommendations, charts, PowerPoint, API, and web UI are deferred. The optional OpenAI onboarding adapter is limited to corpus-gated technical and CA-approved quality evaluation, has no raw-PDF access, and cannot approve or normalize facts. The ruled and explicitly configured aligned profiles are not represented as general filing parsing. A future LLM may suggest document classes, profiles, semantic mappings, and aggregation rules, but deterministic extraction, normalization, reconciliation, provenance, and review gates remain authoritative. Adapter filenames are not created as empty promises. Banks, NBFCs, and insurers require separate future sector modules.
+Role-specific agent implementations, live NSE/BSE adapters, general PDF/HTML/OCR/XBRL extraction, automated profile selection, databases, forecasts, valuation, recommendations, charts, PowerPoint, API, and web UI are deferred. The optional OpenAI onboarding adapter is limited to corpus-gated technical and CA-approved quality evaluation, has no raw-PDF access, and cannot approve or normalize facts. The ruled, explicitly configured aligned, and explicitly configured note-text-region profiles are not represented as general filing parsing. A future LLM may suggest document classes, profiles, semantic mappings, and aggregation rules, but deterministic extraction, normalization, reconciliation, provenance, and review gates remain authoritative. Adapter filenames are not created as empty promises. Banks, NBFCs, and insurers require separate future sector modules.
 
 The research blueprint's possible IT-services-plus-cement MVP is broader than this assignment. This slice uses only fictional IT-services-shaped records; cement becomes useful after ingestion and financial-statement foundations are proven.
 

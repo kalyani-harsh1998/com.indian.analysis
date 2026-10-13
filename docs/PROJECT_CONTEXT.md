@@ -43,9 +43,16 @@ fixed wording, but their exact evidence is preserved. New model runs hash the fu
 developer instructions; the SDK explicitly disables automatic retries. Synthetic mocked-provider
 tests cover totals, nested components, duplicate disclosures, tax credits, uncertain finance costs,
 target-scope violations, and context identity/tampering. They do not demonstrate live model
-accuracy. Existing real fixtures and thresholds are unchanged; automatic note retrieval, reviewed
-alternative evidence routes, rounding-policy improvements, and finer-grained review remain future
-work. See ADR-022.
+accuracy. Existing real fixtures and thresholds are unchanged. A deterministic
+`extract-onboarding-note-context` command now reads only configured rectangular text regions from a
+checksum-verified PDF, verifies request/source identity and explicit target scope, and writes a
+checksummed context bundle with extractor/profile provenance and a profile checksum. It does not
+discover notes, send a raw PDF, call a provider, or approve evidence. Automatic note discovery, reviewed alternative
+evidence routes, rounding-policy improvements, and finer-grained review remain future work. The
+planned guided profile workflow is model-proposed pages from a bounded verified page index, visual
+reviewer selection of a rectangle, versioned profile creation, deterministic re-extraction and
+validation, then explicit reviewer approval; a model suggestion never becomes evidence by itself. See
+ADR-023.
 
 One explicitly authorized APSEZ v3 technical run completed on 4 October 2026. It accounted for
 21/21 rows without duplicated or invented evidence, mapped reported PBT/PAT directly, matched
@@ -53,8 +60,9 @@ five of six expected values, and reconciled PBT/tax/PAT. Full acceptance still f
 was unresolved, tax used a different evidence route, and three non-target expense rows were
 abstained for cost-of-revenue uncertainty. No approval or fixture change followed. Caller-selected
 scope and locator-bound context artifacts are now implemented, but the APSEZ request itself has not
-been rewritten and no further provider call has been made. Automatic finance-note extraction and
-reviewed alternative tax routes remain before another tuning cycle. See
+been rewritten and no further provider call has been made. Configured finance-note context extraction
+is available, but automatic finance-note discovery and reviewed alternative tax routes remain before
+another tuning cycle. See
 [technical results](methodology/OPENAI_ONBOARDING_TECHNICAL_RESULTS.md).
 
 ## Analytical model

@@ -49,6 +49,32 @@ The extractor requires the user to state:
 
 A result from either profile with any extraction issue cannot be serialized as a review-ready controlled CSV.
 
+## Targeted note-context extraction
+
+`PdfNoteContextExtractor` is a separate, narrower Phase 2D producer for context that may help a
+model interpret an already extracted statement row. It accepts only a verified source-PDF manifest,
+the identity-matching onboarding request with an explicit target scope, and a versioned
+`PdfNoteContextExtractionSpec`. Each configured snippet uses an exact page/table/row/column
+locator plus an explicit PDF rectangle and text-size limit. The extractor re-verifies the raw PDF,
+extracts the configured region with `pdfplumber`, removes layout control whitespace, and returns a
+checksummed `LocatorBoundContextBundle` carrying profile-version/checksum and tool provenance.
+
+This is not a general note parser: it does not search a PDF for headings, infer the relevant note,
+perform OCR, decide the accounting classification, or call an LLM. The output is still untrusted
+source context, not a fact or approval. A profile must be separately prepared and reviewed for the
+applicable report layout; the model receives the small bundle, never the raw PDF.
+
+## Planned guided profile workflow
+
+The target is to reduce manual setup without allowing a model to create financial evidence. The
+planned workflow is: (1) an LLM proposes likely pages using a bounded, checksum-linked local page
+index; (2) a reviewer sees the proposed page in a visual tool and selects the relevant text/table
+rectangle; (3) that tool saves the selected coordinates as a new versioned profile; (4) Python
+re-extracts the region from the verified PDF and applies the ordinary identity, bounds, parsing,
+and validation controls; and (5) a reviewer approves or rejects the profile before it can be used
+for a production extraction. A future model may propose coordinates as an additional convenience,
+but they remain a review suggestion, not an executable profile or approved source evidence.
+
 ## Accuracy benchmark
 
 `benchmark_extraction` compares extracted label/value pairs at stable row numbers with a manually reviewed golden set. It records expected, actual, and matched row counts, an exact-match rate, required threshold, mismatches, benchmark version, and pass status.
@@ -92,7 +118,7 @@ Every model-assisted proposal must retain the source-document checksum, input lo
 ## Deferred work
 
 - PDF-to-CSV command-line workflow and review UI;
-- live LLM adapter and profile-discovery proposal schema;
+- bounded LLM-assisted page-discovery and guided visual profile-builder workflow;
 - representative reviewed evaluation corpus for proposal accuracy, abstention, reconciliation, cost, and latency;
 - automatic coordinate/profile discovery and multiple periods in one extraction run;
 - prompt-injection isolation, evidence minimization, privacy policy, and provider selection;

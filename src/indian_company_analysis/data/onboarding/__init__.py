@@ -44,6 +44,7 @@ from indian_company_analysis.data.onboarding.evaluation import (
 from indian_company_analysis.data.onboarding.model_input import (
     ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS,
     LocatorBoundContextBundle,
+    LocatorBoundContextProvenance,
     LocatorBoundContextSnippet,
     OnboardingModelInputIdentity,
     OnboardingModelInputPolicy,
@@ -125,6 +126,7 @@ __all__ = [
     "LocalEvaluationCorpusCatalog",
     "LocalOnboardingReviewCatalog",
     "LocatorBoundContextBundle",
+    "LocatorBoundContextProvenance",
     "LocatorBoundContextSnippet",
     "ModelRunProvenance",
     "OnboardingEvidenceRow",

@@ -12,6 +12,7 @@ from indian_company_analysis.data.extraction.linking import verify_extraction_li
 from indian_company_analysis.data.extraction.models import DocumentExtractionLink
 from indian_company_analysis.data.ingestion.models import RawDocumentManifest
 from indian_company_analysis.data.ingestion.verification import verify_raw_document
+from indian_company_analysis.data.locators import SourceFactLocator
 from indian_company_analysis.data.normalization.models import (
     ExtractionReference,
     MetricLabelMapping,
@@ -19,7 +20,6 @@ from indian_company_analysis.data.normalization.models import (
     NormalizationIssue,
     NormalizedFact,
     NormalizedFactBatch,
-    SourceFactLocator,
     normalize_reported_label,
 )
 from indian_company_analysis.data.normalization.numbers import parse_reported_decimal

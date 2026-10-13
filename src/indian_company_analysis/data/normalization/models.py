@@ -7,6 +7,7 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
+from indian_company_analysis.data.locators import SourceFactLocator as SourceFactLocator
 from indian_company_analysis.domain.enums import ConfidenceLevel, DocumentType
 from indian_company_analysis.domain.metrics import MetricId
 from indian_company_analysis.domain.models import DomainModel, MetricObservation, SourceReference
@@ -16,15 +17,6 @@ def normalize_reported_label(value: str) -> str:
     """Normalize spacing and case for deterministic exact-label matching."""
 
     return " ".join(value.casefold().split())
-
-
-class SourceFactLocator(DomainModel):
-    """Location of one reported value within its original document."""
-
-    page_number: int = Field(ge=1)
-    table_id: str = Field(min_length=1)
-    row_number: int = Field(ge=1)
-    column_name: str = Field(min_length=1)
 
 
 class MetricLabelMapping(DomainModel):

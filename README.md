@@ -13,10 +13,12 @@ This repository is an early proof of concept. The Phase 1 engine loads five year
 The current onboarding prompt is v4: it prefers supported reported totals, accepts complete
 component aggregations when needed, and flags missing accounting context. A versioned metric
 catalog supplies definitions and scope notes; callers can select a non-derived metric subset, which
-restricts the response schema and deterministic validation. Optional small source excerpts are
-checksummed and locator-bound to the same request; they are untrusted context, not raw-PDF access
-or evidence approval. Offline synthetic tests exercise these contracts. One provisional APSEZ v3
-live test passed structural validation but failed full acceptance; see the
+restricts the response schema and deterministic validation. `extract-onboarding-note-context` can
+deterministically extract only explicitly configured text regions from a checksum-verified PDF into
+small, locator-bound context bundles. These excerpts remain untrusted context, not raw-PDF access
+or evidence approval; the command neither discovers notes nor calls a provider. Offline synthetic
+tests exercise these contracts. One provisional APSEZ v3 live test passed structural validation but
+failed full acceptance; see the
 [technical results](docs/methodology/OPENAI_ONBOARDING_TECHNICAL_RESULTS.md).
 See [the v4 policy and remaining work](docs/methodology/MODEL_ASSISTED_ONBOARDING.md#current-contract-v4).
 

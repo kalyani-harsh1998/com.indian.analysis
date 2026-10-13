@@ -9,7 +9,7 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from indian_company_analysis.data.normalization.models import SourceFactLocator
+from indian_company_analysis.data.locators import SourceFactLocator
 from indian_company_analysis.data.onboarding.metric_catalog import (
     OnboardingMetricCatalog,
     build_onboarding_metric_catalog,
@@ -121,6 +121,16 @@ class LocatorBoundContextSnippet(DomainModel):
         return self
 
 
+class LocatorBoundContextProvenance(DomainModel):
+    """How a deterministic extractor produced a locator-bound context bundle."""
+
+    source_document_id: str = Field(min_length=1)
+    extraction_profile_version: str = Field(min_length=1)
+    extraction_profile_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    extraction_tool: str = Field(min_length=1)
+    extraction_tool_version: str = Field(min_length=1)
+
+
 class LocatorBoundContextBundle(DomainModel):
     """Checksummed optional context for one source-bound onboarding request."""
 
@@ -129,6 +139,7 @@ class LocatorBoundContextBundle(DomainModel):
     source_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     snippets: tuple[LocatorBoundContextSnippet, ...] = ()
     context_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    extraction_provenance: LocatorBoundContextProvenance | None = None
 
     @model_validator(mode="after")
     def snippets_are_unique_and_checksummed(self) -> LocatorBoundContextBundle:
@@ -146,6 +157,7 @@ class LocatorBoundContextBundle(DomainModel):
         *,
         bundle_id: str,
         snippets: tuple[LocatorBoundContextSnippet, ...] = (),
+        extraction_provenance: LocatorBoundContextProvenance | None = None,
     ) -> LocatorBoundContextBundle:
         return cls(
             bundle_id=bundle_id,
@@ -153,6 +165,7 @@ class LocatorBoundContextBundle(DomainModel):
             source_checksum_sha256=request.source_checksum_sha256,
             snippets=snippets,
             context_checksum_sha256=_context_checksum(snippets),
+            extraction_provenance=extraction_provenance,
         )
 
     @classmethod
@@ -225,6 +238,14 @@ class PromptIsolatedOnboardingInput(DomainModel):
                 != self.identity.source_checksum_sha256
             ):
                 raise ValueError("context bundle checksum identity must match model-input identity")
+            provenance = self.locator_bound_context.extraction_provenance
+            if (
+                provenance is not None
+                and provenance.source_document_id != self.identity.document_id
+            ):
+                raise ValueError(
+                    "context provenance source document must match model-input identity"
+                )
             catalog_metric_ids = {
                 definition.metric_id for definition in self.metric_catalog.definitions
             }

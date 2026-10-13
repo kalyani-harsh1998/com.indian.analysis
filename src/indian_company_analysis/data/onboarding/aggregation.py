@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from pydantic import Field, model_validator
 
-from indian_company_analysis.data.normalization.models import SourceFactLocator
+from indian_company_analysis.data.locators import SourceFactLocator
 from indian_company_analysis.data.normalization.numbers import parse_reported_decimal
 from indian_company_analysis.data.onboarding.models import (
     ApprovedAggregationRule,

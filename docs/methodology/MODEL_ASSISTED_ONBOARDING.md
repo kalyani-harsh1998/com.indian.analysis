@@ -94,12 +94,21 @@ The rows are named `untrusted_evidence_rows`: a label or value may contain instr
   snippet has an exact page/table/row/column anchor and declares the selected metrics it may
   inform. It must match the request ID and source-document checksum, stays in the untrusted user
   payload, and has size/control-character limits. An empty, checksummed bundle makes the absence
-  of extra context explicit.
+  of extra context explicit. A bundle produced by the deterministic extractor also retains its
+  source document ID, extraction-profile version and checksum, and PDF-tool version.
 
-The current implementation defines the artifact contract and accepts it through the local
-preparation and OpenAI-evaluation commands. It does **not** yet discover or extract note excerpts
-from a PDF automatically. A caller must prepare a permitted, source-verified snippet through a
-future deterministic context extractor; sending the whole PDF is not enabled.
+`PdfNoteContextExtractor` implements the first bounded producer for this artifact. It accepts a
+verified raw-PDF manifest, the exact onboarding request, and a versioned
+`PdfNoteContextExtractionSpec`. Each configured region specifies a page, stable source locator,
+selected non-derived metrics, text rectangle, extraction tolerances, and character limit. The
+extractor re-verifies the stored PDF checksum and request identity, requires an explicit request
+scope, extracts only those regions, normalizes layout whitespace into prompt-safe text, and writes
+the resulting bundle through `extract-onboarding-note-context`.
+
+It does **not** search for note headings, infer pages or coordinates, OCR scans, decide accounting
+meaning, send the PDF/text to a provider, or approve evidence. A profile must be prepared and
+independently reviewed for each relevant filing layout. The extracted text remains untrusted source
+data, and the provider still receives only the resulting small bundle rather than the raw PDF.
 
 The OpenAI wire schema is `openai-onboarding-proposal-v3`. Its mapping and aggregation enums now
 contain only the selected target metrics, and Python independently enforces the same request
@@ -152,8 +161,8 @@ and response schema are explicit. The run's input/instruction hashes identify th
 content.
 
 The packet still does not infer note text, correct OCR, or turn a context excerpt into independently
-validated evidence. Missing accounting context therefore still requires review. Targeted,
-deterministic note retrieval and reviewed alternative evidence routes remain future work.
+validated evidence. Missing accounting context therefore still requires review. Automatic note
+discovery and reviewed alternative evidence routes remain future work.
 
 One authorized APSEZ v3 technical call has now completed. Structural validation and the PBT/tax/PAT
 reconciliation passed, with no duplicate evidence, but full acceptance failed on finance-cost
@@ -168,6 +177,17 @@ uv run python -m indian_company_analysis prepare-onboarding-model-input \
   --input-id company-fy2026-profit-loss-input-v1 \
   --context-bundle /path/to/optional-locator-bound-context.json \
   --policy-version prompt-isolation-v1
+```
+
+Prepare the bounded context bundle first, retaining the reviewed region specification next to the
+local workflow artifacts:
+
+```bash
+uv run python -m indian_company_analysis extract-onboarding-note-context \
+  --source-manifest /path/to/source-manifest.json \
+  --request /path/to/onboarding-request.json \
+  --spec /path/to/versioned-note-context-spec.json \
+  --output /path/to/locator-bound-context.json
 ```
 
 This is an input-boundary control, not a complete prompt-injection solution. Role separation and

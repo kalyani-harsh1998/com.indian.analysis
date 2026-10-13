@@ -8,7 +8,11 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from indian_company_analysis.config import Settings
-from indian_company_analysis.data.extraction.models import DocumentExtractionLink
+from indian_company_analysis.data.extraction.models import (
+    DocumentExtractionLink,
+    PdfNoteContextExtractionSpec,
+)
+from indian_company_analysis.data.extraction.note_context import PdfNoteContextExtractor
 from indian_company_analysis.data.ingestion.local_intake import ImmutableRawDocumentStore
 from indian_company_analysis.data.ingestion.manifest_catalog import LocalManifestCatalog
 from indian_company_analysis.data.ingestion.models import (
@@ -129,6 +133,17 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
         help="optional checksummed locator-bound context JSON for the same onboarding request",
     )
     model_input.add_argument("--output", type=Path)
+    note_context = subparsers.add_parser(
+        "extract-onboarding-note-context",
+        help=(
+            "extract configured, locator-bound note text from one verified PDF without "
+            "calling a provider"
+        ),
+    )
+    note_context.add_argument("--source-manifest", type=Path, required=True)
+    note_context.add_argument("--request", type=Path, required=True)
+    note_context.add_argument("--spec", type=Path, required=True)
+    note_context.add_argument("--output", type=Path)
     approve = subparsers.add_parser(
         "approve-onboarding",
         help="record human approval and register its reviewed onboarding configuration",
@@ -444,6 +459,39 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             f"Prepared {len(input_packet.untrusted_evidence_rows)} prompt-isolated evidence rows "
             f"to {output}; no provider was called."
+        )
+        return 0
+    if args.command == "extract-onboarding-note-context":
+        source_manifest = RawDocumentManifest.model_validate_json(
+            args.source_manifest.read_text(encoding="utf-8")
+        )
+        onboarding_request = DocumentOnboardingRequest.model_validate_json(
+            args.request.read_text(encoding="utf-8")
+        )
+        context_spec = PdfNoteContextExtractionSpec.model_validate_json(
+            args.spec.read_text(encoding="utf-8")
+        )
+        context_bundle = PdfNoteContextExtractor().extract(
+            source_manifest,
+            settings.data_directory / "raw",
+            onboarding_request,
+            context_spec,
+        )
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "onboarding-context"
+            / onboarding_request.request_id
+            / f"{context_bundle.bundle_id}.json"
+        )
+        output.parent.mkdir(parents=True, exist_ok=True)
+        serialized = context_bundle.model_dump_json(indent=2) + "\n"
+        if output.exists() and output.read_text(encoding="utf-8") != serialized:
+            raise ValueError(f"refusing to overwrite different note-context bundle: {output}")
+        output.write_text(serialized, encoding="utf-8")
+        print(
+            f"Extracted {len(context_bundle.snippets)} locator-bound note-context snippets to "
+            f"{output}; no provider was called."
         )
         return 0
     if args.command == "register-evaluation-corpus":

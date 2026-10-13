@@ -8,10 +8,8 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from indian_company_analysis.data.normalization.models import (
-    MetricMappingSet,
-    SourceFactLocator,
-)
+from indian_company_analysis.data.locators import SourceFactLocator
+from indian_company_analysis.data.normalization.models import MetricMappingSet
 from indian_company_analysis.domain.enums import (
     ConfidenceLevel,
     DocumentType,
