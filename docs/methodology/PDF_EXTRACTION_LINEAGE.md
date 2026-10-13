@@ -75,6 +75,16 @@ and validation controls; and (5) a reviewer approves or rejects the profile befo
 for a production extraction. A future model may propose coordinates as an additional convenience,
 but they remain a review suggestion, not an executable profile or approved source evidence.
 
+### Implemented page-index foundation
+
+`PdfPageDiscoveryInputBuilder` now implements the first offline step of that workflow. It verifies
+the source PDF and onboarding-request identity, derives generic lexical terms from the explicit
+target scope and supplied evidence labels, ranks pages by distinct-term coverage, and selects a
+bounded excerpt around the densest local match. `prepare-onboarding-page-discovery-input` persists
+the resulting checksummed candidate-page packet with policy and PDF-tool provenance. It calls no
+provider and cannot create coordinates, a profile, or a fact. A later provider may only choose from
+these listed pages, subject to deterministic validation and human review.
+
 ## Accuracy benchmark
 
 `benchmark_extraction` compares extracted label/value pairs at stable row numbers with a manually reviewed golden set. It records expected, actual, and matched row counts, an exact-match rate, required threshold, mismatches, benchmark version, and pass status.

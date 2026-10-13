@@ -19,6 +19,12 @@ from indian_company_analysis.data.extraction.models import (
     PdfTableExtractionSpec,
 )
 from indian_company_analysis.data.extraction.note_context import PdfNoteContextExtractor
+from indian_company_analysis.data.extraction.page_discovery import (
+    PageDiscoveryCandidate,
+    PageDiscoveryInput,
+    PageDiscoveryPolicy,
+    PdfPageDiscoveryInputBuilder,
+)
 from indian_company_analysis.data.extraction.pdf_table import RuledPdfTableExtractor
 
 __all__ = [
@@ -33,6 +39,10 @@ __all__ = [
     "PdfNoteContextExtractionSpec",
     "PdfNoteContextExtractor",
     "PdfNoteContextSnippetSpec",
+    "PageDiscoveryCandidate",
+    "PageDiscoveryInput",
+    "PageDiscoveryPolicy",
+    "PdfPageDiscoveryInputBuilder",
     "PdfTableExtractionResult",
     "PdfTableExtractionSpec",
     "RuledPdfTableExtractor",

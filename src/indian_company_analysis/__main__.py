@@ -13,6 +13,10 @@ from indian_company_analysis.data.extraction.models import (
     PdfNoteContextExtractionSpec,
 )
 from indian_company_analysis.data.extraction.note_context import PdfNoteContextExtractor
+from indian_company_analysis.data.extraction.page_discovery import (
+    PageDiscoveryPolicy,
+    PdfPageDiscoveryInputBuilder,
+)
 from indian_company_analysis.data.ingestion.local_intake import ImmutableRawDocumentStore
 from indian_company_analysis.data.ingestion.manifest_catalog import LocalManifestCatalog
 from indian_company_analysis.data.ingestion.models import (
@@ -144,6 +148,17 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     note_context.add_argument("--request", type=Path, required=True)
     note_context.add_argument("--spec", type=Path, required=True)
     note_context.add_argument("--output", type=Path)
+    page_discovery = subparsers.add_parser(
+        "prepare-onboarding-page-discovery-input",
+        help="prepare bounded candidate PDF-page excerpts for a future discovery provider",
+    )
+    page_discovery.add_argument("--source-manifest", type=Path, required=True)
+    page_discovery.add_argument("--request", type=Path, required=True)
+    page_discovery.add_argument("--input-id", required=True)
+    page_discovery.add_argument("--policy-version", required=True)
+    page_discovery.add_argument("--maximum-candidates", type=int, default=12)
+    page_discovery.add_argument("--maximum-excerpt-characters", type=int, default=1_500)
+    page_discovery.add_argument("--output", type=Path)
     approve = subparsers.add_parser(
         "approve-onboarding",
         help="record human approval and register its reviewed onboarding configuration",
@@ -492,6 +507,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             f"Extracted {len(context_bundle.snippets)} locator-bound note-context snippets to "
             f"{output}; no provider was called."
+        )
+        return 0
+    if args.command == "prepare-onboarding-page-discovery-input":
+        source_manifest = RawDocumentManifest.model_validate_json(
+            args.source_manifest.read_text(encoding="utf-8")
+        )
+        onboarding_request = DocumentOnboardingRequest.model_validate_json(
+            args.request.read_text(encoding="utf-8")
+        )
+        policy = PageDiscoveryPolicy(
+            policy_version=args.policy_version,
+            maximum_candidates=args.maximum_candidates,
+            maximum_excerpt_characters=args.maximum_excerpt_characters,
+        )
+        discovery_input = PdfPageDiscoveryInputBuilder().build(
+            source_manifest,
+            settings.data_directory / "raw",
+            onboarding_request,
+            input_id=args.input_id,
+            policy=policy,
+        )
+        output = args.output or (
+            settings.data_directory / "interim" / "page-discovery-inputs" / f"{args.input_id}.json"
+        )
+        output.parent.mkdir(parents=True, exist_ok=True)
+        serialized = discovery_input.model_dump_json(indent=2) + "\n"
+        if output.exists() and output.read_text(encoding="utf-8") != serialized:
+            raise ValueError(f"refusing to overwrite different page-discovery input: {output}")
+        output.write_text(serialized, encoding="utf-8")
+        print(
+            f"Prepared {len(discovery_input.candidate_pages)} bounded candidate pages to {output}; "
+            "no provider was called."
         )
         return 0
     if args.command == "register-evaluation-corpus":

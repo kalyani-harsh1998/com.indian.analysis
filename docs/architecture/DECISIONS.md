@@ -629,3 +629,35 @@ reviewed corpus exists.
   is deliberate evidence control, not a claim of universal PDF parsing.
 - The next work is to prepare and review a finance-note profile for a permitted corpus case, then
   separately consider LLM-assisted page discovery and alternative evidence-route policy.
+
+## ADR-024 — Bound page discovery to a verified local candidate index
+
+**Status:** Accepted for the POC
+**Date:** 14 October 2026
+
+### Context
+
+An LLM may reduce manual search effort for a new filing, but giving it a raw PDF or accepting an
+arbitrary page locator would weaken the source boundary established for note-context extraction.
+The APSEZ and Infosys trials also show that report layouts vary and candidate-page retrieval needs
+to remain inspectable before any rectangle/profile is created.
+
+### Decision
+
+- Add a local `prepare-onboarding-page-discovery-input` command. It re-verifies the immutable PDF
+  and request identity, derives generic lexical terms from the selected target scope and supplied
+  evidence labels, and produces a checksummed, bounded list of page excerpts.
+- Rank pages by distinct request-term coverage, not repeated word frequency. Select the local
+  excerpt with the densest matching terms and retain its page number and score.
+- The packet is untrusted provider input only. It contains no local path or raw PDF bytes, has
+  fixed page/excerpt limits, and does not decide a note, rectangle, profile, mapping, or fact.
+- A later provider contract may select only a page already present in the packet. It must be
+  independently validated and reviewed before a visual profile-builder creates coordinates.
+
+### Consequences
+
+- The current slice makes page discovery testable and provider-neutral without a live model call.
+- Lexical retrieval can miss a differently worded note or return extra candidates; that is why it
+  proposes a bounded review set rather than asserting that a page is correct.
+- Coordinate proposals, visual selection, profile approval, and model-quality evaluation remain
+  separate work.

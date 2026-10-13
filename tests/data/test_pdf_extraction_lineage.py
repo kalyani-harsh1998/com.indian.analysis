@@ -31,6 +31,10 @@ from indian_company_analysis.data.extraction.models import (
     PdfTableExtractionSpec,
 )
 from indian_company_analysis.data.extraction.note_context import PdfNoteContextExtractor
+from indian_company_analysis.data.extraction.page_discovery import (
+    PageDiscoveryPolicy,
+    PdfPageDiscoveryInputBuilder,
+)
 from indian_company_analysis.data.extraction.pdf_table import RuledPdfTableExtractor
 from indian_company_analysis.data.ingestion.local_intake import ImmutableRawDocumentStore
 from indian_company_analysis.data.ingestion.models import (
@@ -371,6 +375,42 @@ def test_note_context_extraction_rejects_context_outside_the_selected_scope(tmp_
 
     with pytest.raises(ValueError, match="outside the onboarding target scope"):
         PdfNoteContextExtractor().extract(source, raw_root, request, _note_context_spec())
+
+
+def test_page_discovery_input_is_source_verified_scoped_and_bounded(tmp_path: Path) -> None:
+    source, _, extraction_result, _, _, raw_root = _linked_artifacts(tmp_path)
+    request = build_onboarding_request(
+        extraction_result,
+        request_id="fictionalco-fy25-tax-page-discovery-v1",
+        company_id=source.company_id,
+        source_reference_id=source.source_reference.source_id,
+        source_organization=source.source_reference.source_organization,
+        document_type=source.document_type,
+        target_scope=OnboardingTargetScope(
+            scope_id="fictionalco-fy25-tax-page-discovery-v1",
+            metric_ids=(MetricId.TAX_EXPENSE,),
+            purpose="Find a source page relevant to tax expense review.",
+        ),
+    )
+
+    discovery_input = PdfPageDiscoveryInputBuilder().build(
+        source,
+        raw_root,
+        request,
+        input_id="fictionalco-fy25-tax-page-input-v1",
+        policy=PageDiscoveryPolicy(
+            policy_version="synthetic-page-discovery-v1",
+            maximum_candidates=1,
+            maximum_excerpt_characters=500,
+        ),
+    )
+
+    assert discovery_input.request_id == request.request_id
+    assert discovery_input.source_checksum_sha256 == source.checksum_sha256
+    assert [candidate.page_number for candidate in discovery_input.candidate_pages] == [1]
+    assert "Tax expense" in discovery_input.candidate_pages[0].excerpt
+    assert len(discovery_input.candidate_pages_checksum_sha256) == 64
+    assert discovery_input.provenance.source_document_id == source.document_id
 
 
 def test_note_context_command_persists_a_checksummed_bundle(

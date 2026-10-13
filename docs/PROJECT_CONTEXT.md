@@ -48,7 +48,10 @@ accuracy. Existing real fixtures and thresholds are unchanged. A deterministic
 checksum-verified PDF, verifies request/source identity and explicit target scope, and writes a
 checksummed context bundle with extractor/profile provenance and a profile checksum. It does not
 discover notes, send a raw PDF, call a provider, or approve evidence. Automatic note discovery, reviewed alternative
-evidence routes, rounding-policy improvements, and finer-grained review remain future work. The
+evidence routes, rounding-policy improvements, and finer-grained review remain future work. A local
+page-index builder can now produce a bounded, checksummed candidate-page packet from the verified
+PDF and selected evidence/scope, but it makes no model call and cannot select a page or profile.
+The
 planned guided profile workflow is model-proposed pages from a bounded verified page index, visual
 reviewer selection of a rectangle, versioned profile creation, deterministic re-extraction and
 validation, then explicit reviewer approval; a model suggestion never becomes evidence by itself. See
