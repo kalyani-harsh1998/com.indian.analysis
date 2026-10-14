@@ -25,8 +25,18 @@ from indian_company_analysis.data.extraction.models import (
     ExpectedExtractionRow,
     ExtractionBenchmarkFixture,
     ExtractionBenchmarkResult,
+    PdfNoteContextExtractionSpec,
+    PdfNoteContextSnippetSpec,
     PdfTableExtractionResult,
     PdfTableExtractionSpec,
+)
+from indian_company_analysis.data.extraction.note_context import PdfNoteContextExtractor
+from indian_company_analysis.data.extraction.page_discovery import (
+    PageDiscoveryPolicy,
+    PageDiscoveryProposal,
+    PageDiscoverySelection,
+    PdfPageDiscoveryInputBuilder,
+    validate_page_discovery_proposal,
 )
 from indian_company_analysis.data.extraction.pdf_table import RuledPdfTableExtractor
 from indian_company_analysis.data.ingestion.local_intake import ImmutableRawDocumentStore
@@ -35,7 +45,7 @@ from indian_company_analysis.data.ingestion.models import (
     RawDocumentManifest,
 )
 from indian_company_analysis.data.normalization.csv_parser import ControlledCsvFinancialParser
-from indian_company_analysis.data.normalization.models import MetricMappingSet
+from indian_company_analysis.data.normalization.models import MetricMappingSet, SourceFactLocator
 from indian_company_analysis.data.onboarding import (
     ApprovedOnboardingConfiguration,
     DocumentOnboardingProposal,
@@ -45,8 +55,11 @@ from indian_company_analysis.data.onboarding import (
     MetricAggregationCandidate,
     MetricAggregationComponent,
     ModelRunProvenance,
+    OnboardingModelInputPolicy,
     OnboardingNormalizationBatch,
     OnboardingNormalizationWorkflow,
+    OnboardingTargetScope,
+    PromptIsolatedOnboardingInputBuilder,
     approve_onboarding_proposal,
     build_onboarding_request,
 )
@@ -137,6 +150,29 @@ def _expected_rows() -> tuple[ExpectedExtractionRow, ...]:
 def _aligned_benchmark_fixture() -> ExtractionBenchmarkFixture:
     fixture_path = Path("tests/fixtures/benchmarks/fictional_aligned_profit_loss_fy2026.json")
     return ExtractionBenchmarkFixture.model_validate_json(fixture_path.read_text(encoding="utf-8"))
+
+
+def _note_context_spec() -> PdfNoteContextExtractionSpec:
+    return PdfNoteContextExtractionSpec(
+        bundle_id="fictionalco-fy25-tax-context-v1",
+        profile_version="synthetic-note-context-v1",
+        snippets=(
+            PdfNoteContextSnippetSpec(
+                context_id="tax-statement-context",
+                source_locator=SourceFactLocator(
+                    page_number=1,
+                    table_id="profit_and_loss_context",
+                    row_number=1,
+                    column_name="text",
+                ),
+                metric_ids=(MetricId.TAX_EXPENSE,),
+                x0=Decimal("60"),
+                top=Decimal("170"),
+                x1=Decimal("540"),
+                bottom=Decimal("300"),
+            ),
+        ),
+    )
 
 
 def _linked_artifacts(
@@ -281,6 +317,217 @@ def test_pdf_extraction_matches_golden_rows_and_retains_both_checksums(
     assert link.source_checksum_sha256 == source.checksum_sha256
     assert link.extraction_checksum_sha256 == extraction.checksum_sha256
     assert verify_extraction_link(link, source, extraction, raw_root).valid is True
+
+
+def test_note_context_extraction_is_source_verified_scoped_and_prompt_compatible(
+    tmp_path: Path,
+) -> None:
+    source, _, extraction_result, _, _, raw_root = _linked_artifacts(tmp_path)
+    scope = OnboardingTargetScope(
+        scope_id="fictionalco-fy25-tax-only-v1",
+        metric_ids=(MetricId.TAX_EXPENSE,),
+        purpose="Review the reported tax expense with a small statement-context excerpt.",
+    )
+    request = build_onboarding_request(
+        extraction_result,
+        request_id="fictionalco-fy25-tax-context-onboarding-v1",
+        company_id=source.company_id,
+        source_reference_id=source.source_reference.source_id,
+        source_organization=source.source_reference.source_organization,
+        document_type=source.document_type,
+        target_scope=scope,
+    )
+
+    bundle = PdfNoteContextExtractor().extract(source, raw_root, request, _note_context_spec())
+
+    assert bundle.request_id == request.request_id
+    assert bundle.source_checksum_sha256 == source.checksum_sha256
+    assert bundle.snippets[0].source_locator.page_number == 1
+    assert bundle.snippets[0].metric_ids == (MetricId.TAX_EXPENSE,)
+    assert bundle.snippets[0].text == (
+        "Particulars FY2025 Revenue from operations 1000 Profit before tax 180 Tax expense 45"
+    )
+    assert bundle.extraction_provenance is not None
+    assert bundle.extraction_provenance.source_document_id == source.document_id
+    assert bundle.extraction_provenance.extraction_profile_version == "synthetic-note-context-v1"
+    assert len(bundle.extraction_provenance.extraction_profile_checksum_sha256) == 64
+    packet = PromptIsolatedOnboardingInputBuilder().build(
+        request,
+        input_id="fictionalco-fy25-tax-context-input-v1",
+        policy=OnboardingModelInputPolicy(policy_version="prompt-isolation-v1"),
+        context_bundle=bundle,
+    )
+    assert packet.locator_bound_context == bundle
+
+
+def test_note_context_extraction_rejects_context_outside_the_selected_scope(tmp_path: Path) -> None:
+    source, _, extraction_result, _, _, raw_root = _linked_artifacts(tmp_path)
+    request = build_onboarding_request(
+        extraction_result,
+        request_id="fictionalco-fy25-revenue-context-onboarding-v1",
+        company_id=source.company_id,
+        source_reference_id=source.source_reference.source_id,
+        source_organization=source.source_reference.source_organization,
+        document_type=source.document_type,
+        target_scope=OnboardingTargetScope(
+            scope_id="fictionalco-fy25-revenue-only-v1",
+            metric_ids=(MetricId.REVENUE,),
+            purpose="Review only the reported revenue amount.",
+        ),
+    )
+
+    with pytest.raises(ValueError, match="outside the onboarding target scope"):
+        PdfNoteContextExtractor().extract(source, raw_root, request, _note_context_spec())
+
+
+def test_page_discovery_input_is_source_verified_scoped_and_bounded(tmp_path: Path) -> None:
+    source, _, extraction_result, _, _, raw_root = _linked_artifacts(tmp_path)
+    request = build_onboarding_request(
+        extraction_result,
+        request_id="fictionalco-fy25-tax-page-discovery-v1",
+        company_id=source.company_id,
+        source_reference_id=source.source_reference.source_id,
+        source_organization=source.source_reference.source_organization,
+        document_type=source.document_type,
+        target_scope=OnboardingTargetScope(
+            scope_id="fictionalco-fy25-tax-page-discovery-v1",
+            metric_ids=(MetricId.TAX_EXPENSE,),
+            purpose="Find a source page relevant to tax expense review.",
+        ),
+    )
+
+    discovery_input = PdfPageDiscoveryInputBuilder().build(
+        source,
+        raw_root,
+        request,
+        input_id="fictionalco-fy25-tax-page-input-v1",
+        policy=PageDiscoveryPolicy(
+            policy_version="synthetic-page-discovery-v1",
+            maximum_candidates=1,
+            maximum_excerpt_characters=500,
+        ),
+    )
+
+    assert discovery_input.request_id == request.request_id
+    assert discovery_input.source_checksum_sha256 == source.checksum_sha256
+    assert [candidate.page_number for candidate in discovery_input.candidate_pages] == [1]
+    assert "Tax expense" in discovery_input.candidate_pages[0].excerpt
+    assert len(discovery_input.candidate_pages_checksum_sha256) == 64
+    assert discovery_input.provenance.source_document_id == source.document_id
+
+
+def test_page_discovery_proposal_rejects_pages_outside_the_bounded_packet(tmp_path: Path) -> None:
+    source, _, extraction_result, _, _, raw_root = _linked_artifacts(tmp_path)
+    request = build_onboarding_request(
+        extraction_result,
+        request_id="fictionalco-fy25-tax-page-proposal-v1",
+        company_id=source.company_id,
+        source_reference_id=source.source_reference.source_id,
+        source_organization=source.source_reference.source_organization,
+        document_type=source.document_type,
+        target_scope=OnboardingTargetScope(
+            scope_id="fictionalco-fy25-tax-page-proposal-v1",
+            metric_ids=(MetricId.TAX_EXPENSE,),
+            purpose="Find a source page relevant to tax expense review.",
+        ),
+    )
+    discovery_input = PdfPageDiscoveryInputBuilder().build(
+        source,
+        raw_root,
+        request,
+        input_id="fictionalco-fy25-tax-page-proposal-input-v1",
+        policy=PageDiscoveryPolicy(policy_version="synthetic-page-discovery-v1"),
+    )
+    proposal = PageDiscoveryProposal(
+        proposal_id="fictionalco-fy25-tax-page-proposal-v1",
+        input_id=discovery_input.input_id,
+        request_id=discovery_input.request_id,
+        document_id=discovery_input.document_id,
+        source_checksum_sha256=discovery_input.source_checksum_sha256,
+        candidate_pages_checksum_sha256=discovery_input.candidate_pages_checksum_sha256,
+        model_run=ModelRunProvenance(
+            provider="static-page-discovery",
+            model_id="static",
+            model_version="1",
+            prompt_version="page-discovery-v1",
+            schema_version="page-discovery-proposal-v1",
+            generated_at=_NOW,
+        ),
+        selections=(
+            PageDiscoverySelection(
+                page_number=1,
+                confidence=ConfidenceLevel.HIGH,
+                rationale="The supplied excerpt contains the tax expense row.",
+            ),
+        ),
+    )
+
+    assert validate_page_discovery_proposal(discovery_input, proposal).ready_for_review is True
+
+    invalid = proposal.model_copy(
+        update={
+            "selections": (
+                PageDiscoverySelection(
+                    page_number=99,
+                    confidence=ConfidenceLevel.HIGH,
+                    rationale="Invented page for validation testing.",
+                ),
+            )
+        }
+    )
+    result = validate_page_discovery_proposal(discovery_input, invalid)
+    assert result.ready_for_review is False
+    assert result.validated_page_numbers == ()
+    assert result.issues[0].code == "page_not_in_candidates"
+
+
+def test_note_context_command_persists_a_checksummed_bundle(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source, _, extraction_result, _, _, _ = _linked_artifacts(tmp_path)
+    request = build_onboarding_request(
+        extraction_result,
+        request_id="fictionalco-fy25-cli-context-onboarding-v1",
+        company_id=source.company_id,
+        source_reference_id=source.source_reference.source_id,
+        source_organization=source.source_reference.source_organization,
+        document_type=source.document_type,
+        target_scope=OnboardingTargetScope(
+            scope_id="fictionalco-fy25-cli-tax-only-v1",
+            metric_ids=(MetricId.TAX_EXPENSE,),
+            purpose="Extract a bounded tax-context excerpt without invoking a provider.",
+        ),
+    )
+    manifest_path = tmp_path / "source-manifest.json"
+    request_path = tmp_path / "request.json"
+    spec_path = tmp_path / "context-spec.json"
+    output = tmp_path / "context-bundle.json"
+    manifest_path.write_text(source.model_dump_json(indent=2), encoding="utf-8")
+    request_path.write_text(request.model_dump_json(indent=2), encoding="utf-8")
+    spec_path.write_text(_note_context_spec().model_dump_json(indent=2), encoding="utf-8")
+    monkeypatch.setenv("ICA_DATA_DIRECTORY", str(tmp_path))
+
+    assert (
+        main(
+            [
+                "extract-onboarding-note-context",
+                "--source-manifest",
+                str(manifest_path),
+                "--request",
+                str(request_path),
+                "--spec",
+                str(spec_path),
+                "--output",
+                str(output),
+            ]
+        )
+        == 0
+    )
+
+    persisted = output.read_text(encoding="utf-8")
+    assert "tax-statement-context" in persisted
+    assert "stored_relative_path" not in persisted
 
 
 def test_linked_normalization_uses_pdf_as_evidence_and_csv_as_derivation(

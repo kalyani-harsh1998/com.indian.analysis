@@ -24,9 +24,57 @@ Phase 2B adds a deterministic parser for verified, controlled financial-statemen
 
 Phase 2C adds benchmarked deterministic profiles for a ruled two-column table and a configured period column in a borderless aligned statement. It preserves the PDF and derived CSV as separate immutable artifacts, binds both checksums in an extraction link, records extraction tool/profile versions, and blocks linked facts until the benchmark passes and a human accepts the extraction. A local Infosys FY2026 test matched 19/19 manually checked profit-and-loss candidates and correctly parsed Indian comma grouping and parentheses; semantic mapping and aggregation remain unapproved.
 
-Phase 2D now provides the provider-neutral foundation for LLM-assisted document onboarding. It converts a review-ready extraction into checksummed, locator-backed evidence; accepts strict mapping, aggregation, exclusion, and explicit-abstention candidates through a replaceable proposal protocol; rejects hallucinated, duplicated, changed, omitted, identity-mismatched, and derived-metric candidates deterministically; and requires explicit human approval before producing a versioned configuration. Proposals must also preserve the request's unit, period, and reporting basis. An abstention is a visible request for human resolution, not a normalized fact and not an approval path. Local approval and rejection commands preserve reviewer rationale, policy, timestamp, validation outcome, and either an approved configuration or explicit rejection reasons. The configuration catalog is append-only and retrieves a configuration only for the exact matching request identity. A cross-filing reuse assessment can compare that approved configuration with a new request, but it reports deterministic candidates, changed labels, ambiguous matches, and new rows only; it never copies or applies the configuration. A deterministic static provider proves the boundary without a model or network dependency. Approved signed-sum rules execute with frozen component evidence and calculated-value classification; a synthetic tax aggregation passes the existing PBT-to-PAT reconciliation. The combined onboarding workflow re-verifies the PDF/CSV extraction link and exact rows, then persists reported direct facts, calculated aggregates, exclusions, issues, blockers, and complete configuration/review lineage in one non-overwriting batch. A versioned nominal and adversarial evaluator now measures mapping, aggregation, exclusion, and abstention precision/recall, evidence coverage and hallucination, expected canonical values, and accounting reconciliations; it also preserves optional token, latency, and cost metadata in the audit report. A separate append-only local corpus registry requires a reviewed extraction link plus exact source/request/fixture lineage. A named internal reviewer may place a permitted real case in `provisional_internal_review` and use the separately labelled internal evaluator; multiple such cases can be assessed by an explicit local pass-rate/failure-budget policy that always reports `live_model_eligible: false`. Only a CA reviewer may place a case in `approved_for_evaluation`, which `evaluate-approved-corpus` retrieves for that quality gate. Synthetic fixtures can test the mechanism but cannot enter that approved real-model gate.
+Phase 2D now provides the provider-neutral foundation for LLM-assisted document onboarding. It converts a review-ready extraction into checksummed, locator-backed evidence; creates a bounded prompt-isolated input packet that excludes local paths and raw PDFs while classifying filing rows as untrusted data; accepts strict mapping, aggregation, exclusion, and explicit-abstention candidates through a replaceable proposal protocol; rejects hallucinated, duplicated, changed, omitted, identity-mismatched, and derived-metric candidates deterministically; and requires explicit human approval before producing a versioned configuration. Proposals must also preserve the request's unit, period, and reporting basis. An abstention is a visible request for human resolution, not a normalized fact and not an approval path. Local approval and rejection commands preserve reviewer rationale, policy, timestamp, validation outcome, and either an approved configuration or explicit rejection reasons. The configuration catalog is append-only and retrieves a configuration only for the exact matching request identity. A cross-filing reuse assessment can compare that approved configuration with a new request, but it reports deterministic candidates, changed labels, ambiguous matches, and new rows only; it never copies or applies the configuration. A deterministic static provider proves the boundary without a model or network dependency. Approved signed-sum rules execute with frozen component evidence and calculated-value classification; a synthetic tax aggregation passes the existing PBT-to-PAT reconciliation. The combined onboarding workflow re-verifies the PDF/CSV extraction link and exact rows, then persists reported direct facts, calculated aggregates, exclusions, issues, blockers, and complete configuration/review lineage in one non-overwriting batch. A versioned nominal and adversarial evaluator now measures mapping, aggregation, exclusion, and abstention precision/recall, evidence coverage and hallucination, expected canonical values, and accounting reconciliations; it also preserves optional token, latency, and cost metadata in the audit report. A separate append-only local corpus registry requires a reviewed extraction link plus exact source/request/fixture lineage. A named internal reviewer may place a permitted real case in `provisional_internal_review` and use the separately labelled internal evaluator; multiple such cases can be assessed by an explicit local pass-rate/failure-budget policy that always reports `live_model_eligible: false`. Only a CA reviewer may place a case in `approved_for_evaluation`, which `evaluate-approved-corpus` retrieves for that quality gate. Synthetic fixtures can test the mechanism but cannot enter that approved real-model gate.
 
-The project does not retrieve live data, generally parse annual reports, perform OCR, parse XBRL, use an LLM at runtime, forecast, value securities, recommend investments, generate slides, or serve a UI. The Phase 1 formula baseline, every real-company mapping, every real-document extraction profile, and the future real-report evaluation corpus still require independent CA review before real-company conclusions. Phase 2D implements the model-facing safety and evaluation contracts, not a live provider integration or automatic mapping system.
+The project does not retrieve live data, generally parse annual reports, perform OCR, parse XBRL, forecast, value securities, recommend investments, generate slides, or serve a UI. Its one opt-in runtime LLM capability is the optional OpenAI onboarding adapter, restricted to corpus-gated evaluation through CA-approved or explicitly labelled provisional technical routes; it is not automatic mapping or approval. The Phase 1 formula baseline, every real-company mapping, every real-document extraction profile, and the real-report evaluation corpus still require independent CA review before real-company conclusions.
+
+The optional adapter may also run a single explicitly labelled technical E2E evaluation against a
+`provisional_internal_review` entry. That verifies the integration only; it cannot approve a
+configuration or substitute for the CA-approved quality gate.
+
+The current prompt contract is v4: prefer scope-compatible reported amounts, aggregate only
+complete non-overlapping components when needed, and abstain on unresolved relevant classifications.
+It includes a versioned, checksummed catalog of eligible non-derived metric definitions and scope
+notes; a caller-selected non-derived target scope is now persisted in the request and constrains
+both the OpenAI schema and deterministic validation. An optional checksummed locator-bound context
+bundle can carry small untrusted source excerpts for only those selected metrics; it must match the
+request and source checksum, and its text remains non-authoritative. Source labels need not use
+fixed wording, but their exact evidence is preserved. New model runs hash the full input and
+developer instructions; the SDK explicitly disables automatic retries. Synthetic mocked-provider
+tests cover totals, nested components, duplicate disclosures, tax credits, uncertain finance costs,
+target-scope violations, and context identity/tampering. They do not demonstrate live model
+accuracy. Existing real fixtures and thresholds are unchanged. A deterministic
+`extract-onboarding-note-context` command now reads only configured rectangular text regions from a
+checksum-verified PDF, verifies request/source identity and explicit target scope, and writes a
+checksummed context bundle with extractor/profile provenance and a profile checksum. It does not
+discover notes, send a raw PDF, call a provider, or approve evidence. Automatic note discovery, reviewed alternative
+evidence routes, rounding-policy improvements, and finer-grained review remain future work. A local
+page-index builder can now produce a bounded, checksummed candidate-page packet from the verified
+PDF and selected evidence/scope. A strict provider-neutral selection contract can choose only pages
+already in that packet and rejects invented pages or mismatched identity/checksums; the current
+static provider makes no model call and cannot create a profile or select a fact. The optional
+OpenAI page-discovery adapter now implements that exact selection contract with one non-retrying,
+non-stored structured request. It receives only the bounded untrusted packet (not raw-PDF bytes,
+local paths, or separately extracted/approved values), restricts its schema to the supplied page
+numbers, and creates a review-only proposal that Python validates again. Candidate excerpts may
+contain printed document values; they remain untrusted source text. No live page-discovery call or
+profile approval has occurred in this slice.
+The
+planned guided profile workflow is model-proposed pages from a bounded verified page index, visual
+reviewer selection of a rectangle, versioned profile creation, deterministic re-extraction and
+validation, then explicit reviewer approval; a model suggestion never becomes evidence by itself. See
+ADR-023.
+
+One explicitly authorized APSEZ v3 technical run completed on 4 October 2026. It accounted for
+21/21 rows without duplicated or invented evidence, mapped reported PBT/PAT directly, matched
+five of six expected values, and reconciled PBT/tax/PAT. Full acceptance still failed: finance cost
+was unresolved, tax used a different evidence route, and three non-target expense rows were
+abstained for cost-of-revenue uncertainty. No approval or fixture change followed. Caller-selected
+scope and locator-bound context artifacts are now implemented, but the APSEZ request itself has not
+been rewritten and no further provider call has been made. Configured finance-note context extraction
+is available, but automatic finance-note discovery and reviewed alternative tax routes remain before
+another tuning cycle. See
+[technical results](methodology/OPENAI_ONBOARDING_TECHNICAL_RESULTS.md).
 
 ## Analytical model
 

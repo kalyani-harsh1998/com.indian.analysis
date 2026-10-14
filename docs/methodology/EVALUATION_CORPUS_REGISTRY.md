@@ -74,7 +74,7 @@ uv run python -m indian_company_analysis evaluate-provisional-corpus \
   --proposal /path/to/local-provider-proposal.json
 ```
 
-Its persisted report is marked `evaluation_qualification: provisional_internal_review` and is stored separately by default. It is suitable for developing the local workflow and finding defects, but it does not demonstrate real-model accuracy, authorize a live provider, create an approved onboarding configuration, or substitute for CA approval. See [onboarding proposal evaluation](ONBOARDING_EVALUATION.md).
+Its persisted report is marked `evaluation_qualification: provisional_internal_review` and is stored separately by default. It is suitable for developing the local workflow and finding defects, but it does not demonstrate real-model accuracy, create an approved onboarding configuration, or substitute for CA approval. The optional OpenAI adapter may use the same provisional state for one explicitly labelled technical E2E test; that report still cannot authorize broader live use or become a quality gate. See [onboarding proposal evaluation](ONBOARDING_EVALUATION.md).
 
 ## Provisional corpus summary
 

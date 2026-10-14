@@ -4,7 +4,23 @@ A local-first, source-aware foundation for an agentic research platform covering
 
 ## Current status
 
-This repository is an early proof of concept. The Phase 1 engine loads five years of clearly labelled synthetic IT-services statements, validates provenance and revisions, reconciles core statement equations, calculates documented historical metrics, and writes structured results with explicit failure states. Phase 2A copies a manually supplied local document into immutable checksum-addressed storage and records its provenance and licence metadata. Phase 2B normalizes a verified controlled CSV through an explicit, versioned metric mapping while retaining field-level lineage. Phase 2C adds benchmarked ruled-table and aligned-column PDF profiles and cryptographically links the original PDF to its derived CSV. Phase 2D defines strict provider-neutral proposal and approval records, deterministic signed-sum aggregation, a local approval/rejection workflow, and a review-only cross-filing reuse assessment before persisting facts in a combined verified normalization batch. Approved configurations and reviewer decisions are append-only local artifacts and are source-identity bound; reuse assessments never apply a configuration automatically. Its nominal and adversarial golden-case evaluator measures proposal accuracy, evidence coverage, canonical values, accounting reconciliations, safe abstentions, context mismatches, and unsafe evidence handling while preserving model-run usage metadata. A local evaluation-corpus registry connects a permitted real filing's manifest, reviewed extraction link, and exact fixture checksum to either a separately labelled provisional internal review or CA sign-off. Only the latter can gate a future live model; provisional reports cannot be used as that quality gate. A static adapter and synthetic fixtures test this boundary; no live LLM dependency has been added. It does **not** fetch or scrape live sources, generally parse annual reports or XBRL, forecast, value securities, make recommendations, or generate presentations.
+This repository is an early proof of concept. The Phase 1 engine loads five years of clearly labelled synthetic IT-services statements, validates provenance and revisions, reconciles core statement equations, calculates documented historical metrics, and writes structured results with explicit failure states. Phase 2A copies a manually supplied local document into immutable checksum-addressed storage and records its provenance and licence metadata. Phase 2B normalizes a verified controlled CSV through an explicit, versioned metric mapping while retaining field-level lineage. Phase 2C adds benchmarked ruled-table and aligned-column PDF profiles and cryptographically links the original PDF to its derived CSV. Phase 2D defines strict provider-neutral proposal and approval records, deterministic signed-sum aggregation, a local approval/rejection workflow, and a review-only cross-filing reuse assessment before persisting facts in a combined verified normalization batch. Approved configurations and reviewer decisions are append-only local artifacts and are source-identity bound; reuse assessments never apply a configuration automatically. Its nominal and adversarial golden-case evaluator measures proposal accuracy, evidence coverage, canonical values, accounting reconciliations, safe abstentions, context mismatches, and unsafe evidence handling while preserving model-run usage metadata. A local evaluation-corpus registry connects a permitted real filing's manifest, reviewed extraction link, and exact fixture checksum to either a separately labelled provisional internal review or CA sign-off. An optional OpenAI adapter now sends only a bounded, prompt-isolated evidence packet with `store=False`, records an unapproved proposal artifact, and offers separate provisional technical and CA-approved quality-evaluation routes. It does **not** fetch or scrape live sources, generally parse annual reports or XBRL, forecast, value securities, make recommendations, or generate presentations.
+
+> **Current optional-provider boundary:** a provisional internal corpus entry may be used for one
+> clearly labelled technical E2E OpenAI evaluation. It cannot approve mappings, demonstrate model
+> readiness, or replace the CA-approved quality-evaluation gate.
+
+The current onboarding prompt is v4: it prefers supported reported totals, accepts complete
+component aggregations when needed, and flags missing accounting context. A versioned metric
+catalog supplies definitions and scope notes; callers can select a non-derived metric subset, which
+restricts the response schema and deterministic validation. `extract-onboarding-note-context` can
+deterministically extract only explicitly configured text regions from a checksum-verified PDF into
+small, locator-bound context bundles. These excerpts remain untrusted context, not raw-PDF access
+or evidence approval; the command neither discovers notes nor calls a provider. Offline synthetic
+tests exercise these contracts. One provisional APSEZ v3 live test passed structural validation but
+failed full acceptance; see the
+[technical results](docs/methodology/OPENAI_ONBOARDING_TECHNICAL_RESULTS.md).
+See [the v4 policy and remaining work](docs/methodology/MODEL_ASSISTED_ONBOARDING.md#current-contract-v4).
 
 ## Architecture
 
@@ -35,6 +51,18 @@ With `uv`:
 uv sync --extra dev
 uv run python -m indian_company_analysis demo
 ```
+
+Optional OpenAI onboarding evaluation is intentionally separate from the normal local install:
+
+```bash
+uv sync --extra dev --extra openai
+export OPENAI_API_KEY="your-new-local-key"
+```
+
+Never commit or share the key. Optional commands require either a CA-approved local corpus entry
+for quality evaluation or a separately labelled provisional entry for an explicitly requested
+technical run. They send a bounded model-input packet rather than a raw PDF, use `store=False`,
+and explicitly disable SDK retries. No model response can approve a mapping.
 
 With `venv` and `pip`:
 

@@ -13,7 +13,7 @@ Before substantial work, read `docs/PROJECT_CONTEXT.md`, this file, and the rele
 - Explicitly separate reported, calculated, estimated, forecast, management-guidance, and analyst-hypothesis values.
 - Explicitly label synthetic and demo data. Never present it as company evidence.
 - Do not make unsupported financial claims. Carry sources, dates, reporting basis, definitions, limitations, and confidence into findings.
-- During the POC, do not add paid APIs, questionable scraping, cloud-account requirements, live trading, or an OpenAI API dependency.
+- During the POC, do not add paid APIs, questionable scraping, cloud-account requirements, live trading, or an OpenAI API dependency, except for the explicitly approved, optional OpenAI onboarding adapter. That adapter must be opt-in, secret-free in the repository, limited to the prompt-isolated evidence packet, use `store=False`, and retain deterministic validation and human-review gates.
 - Never commit secrets, API keys, credentials, confidential data, or licensed source documents. Keep local raw evidence and generated outputs ignored.
 - Add tests for financial formulas, transformations, validation, provenance, and failure behavior.
 - Run `pytest`, `ruff check .`, `ruff format --check .`, and `mypy src tests` before committing.

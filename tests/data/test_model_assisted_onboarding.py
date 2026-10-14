@@ -29,6 +29,7 @@ from indian_company_analysis.data.onboarding import (
     OnboardingEvidenceRow,
     OnboardingProposalProvider,
     OnboardingReviewDecision,
+    OnboardingTargetScope,
     StaticProposalProvider,
     approve_onboarding_proposal,
     approve_proposal,
@@ -225,6 +226,22 @@ def test_valid_proposal_accounts_for_every_source_row() -> None:
     assert result.validated_aggregation_ids == ("aggregate-tax",)
     assert result.validated_exclusion_evidence_ids == ("row-4",)
     assert not result.issues
+
+
+def test_explicit_target_scope_rejects_a_candidate_outside_the_requested_metrics() -> None:
+    scope = OnboardingTargetScope(
+        scope_id="fictional-revenue-only-v1",
+        metric_ids=(MetricId.REVENUE,),
+        purpose="Review operating revenue only.",
+    )
+    request = _request().model_copy(update={"target_scope": scope})
+    proposal = _proposal().model_copy(update={"target_scope": scope})
+
+    result = validate_onboarding_proposal(request, proposal)
+
+    assert not result.ready_for_review
+    assert {issue.code for issue in result.issues} == {"metric_outside_requested_scope"}
+    assert result.issues[0].candidate_id == "aggregate-tax"
 
 
 def test_explicit_abstention_is_valid_but_cannot_be_approved() -> None:

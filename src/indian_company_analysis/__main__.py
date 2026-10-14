@@ -8,7 +8,20 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from indian_company_analysis.config import Settings
-from indian_company_analysis.data.extraction.models import DocumentExtractionLink
+from indian_company_analysis.data.extraction.models import (
+    DocumentExtractionLink,
+    PdfNoteContextExtractionSpec,
+)
+from indian_company_analysis.data.extraction.note_context import PdfNoteContextExtractor
+from indian_company_analysis.data.extraction.openai_page_discovery import (
+    OpenAIPageDiscoveryProposalProvider,
+)
+from indian_company_analysis.data.extraction.page_discovery import (
+    PageDiscoveryInput,
+    PageDiscoveryPolicy,
+    PdfPageDiscoveryInputBuilder,
+    validate_page_discovery_proposal,
+)
 from indian_company_analysis.data.ingestion.local_intake import ImmutableRawDocumentStore
 from indian_company_analysis.data.ingestion.manifest_catalog import LocalManifestCatalog
 from indian_company_analysis.data.ingestion.models import (
@@ -34,6 +47,11 @@ from indian_company_analysis.data.onboarding.evaluation import (
     OnboardingEvaluationFixture,
     OnboardingProposalEvaluator,
 )
+from indian_company_analysis.data.onboarding.model_input import (
+    LocatorBoundContextBundle,
+    OnboardingModelInputPolicy,
+    PromptIsolatedOnboardingInputBuilder,
+)
 from indian_company_analysis.data.onboarding.models import (
     ApprovedOnboardingConfiguration,
     DocumentOnboardingProposal,
@@ -41,6 +59,9 @@ from indian_company_analysis.data.onboarding.models import (
 )
 from indian_company_analysis.data.onboarding.normalization_workflow import (
     OnboardingNormalizationWorkflow,
+)
+from indian_company_analysis.data.onboarding.openai_provider import (
+    OpenAIOnboardingProposalProvider,
 )
 from indian_company_analysis.data.onboarding.reuse import OnboardingReuseAssessor
 from indian_company_analysis.data.onboarding.review import approve_proposal, reject_proposal
@@ -105,6 +126,57 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     evaluation.add_argument("--proposal", type=Path, required=True)
     evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
     evaluation.add_argument("--output", type=Path)
+    model_input = subparsers.add_parser(
+        "prepare-onboarding-model-input",
+        help="prepare a minimal prompt-isolated local input packet for a future provider",
+    )
+    model_input.add_argument("--request", type=Path, required=True)
+    model_input.add_argument("--input-id", required=True)
+    model_input.add_argument("--policy-version", required=True)
+    model_input.add_argument("--maximum-evidence-rows", type=int, default=200)
+    model_input.add_argument("--maximum-reported-label-characters", type=int, default=500)
+    model_input.add_argument("--maximum-raw-value-characters", type=int, default=100)
+    model_input.add_argument(
+        "--context-bundle",
+        type=Path,
+        help="optional checksummed locator-bound context JSON for the same onboarding request",
+    )
+    model_input.add_argument("--output", type=Path)
+    note_context = subparsers.add_parser(
+        "extract-onboarding-note-context",
+        help=(
+            "extract configured, locator-bound note text from one verified PDF without "
+            "calling a provider"
+        ),
+    )
+    note_context.add_argument("--source-manifest", type=Path, required=True)
+    note_context.add_argument("--request", type=Path, required=True)
+    note_context.add_argument("--spec", type=Path, required=True)
+    note_context.add_argument("--output", type=Path)
+    page_discovery = subparsers.add_parser(
+        "prepare-onboarding-page-discovery-input",
+        help="prepare bounded candidate PDF-page excerpts for a future discovery provider",
+    )
+    page_discovery.add_argument("--source-manifest", type=Path, required=True)
+    page_discovery.add_argument("--request", type=Path, required=True)
+    page_discovery.add_argument("--input-id", required=True)
+    page_discovery.add_argument("--policy-version", required=True)
+    page_discovery.add_argument("--maximum-candidates", type=int, default=12)
+    page_discovery.add_argument("--maximum-excerpt-characters", type=int, default=1_500)
+    page_discovery.add_argument("--output", type=Path)
+    openai_page_discovery = subparsers.add_parser(
+        "propose-openai-page-discovery",
+        help="request one bounded, review-only OpenAI page-selection proposal",
+    )
+    openai_page_discovery.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="checksummed page-discovery input produced locally from a verified PDF",
+    )
+    openai_page_discovery.add_argument("--model", required=True)
+    openai_page_discovery.add_argument("--maximum-output-tokens", type=int, default=1_000)
+    openai_page_discovery.add_argument("--output", type=Path)
     approve = subparsers.add_parser(
         "approve-onboarding",
         help="record human approval and register its reviewed onboarding configuration",
@@ -164,6 +236,58 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     approved_evaluation.add_argument("--proposal", type=Path, required=True)
     approved_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
     approved_evaluation.add_argument("--output", type=Path)
+    openai_approved_evaluation = subparsers.add_parser(
+        "evaluate-openai-approved-corpus",
+        help=(
+            "call the optional OpenAI adapter only for one CA-approved real-corpus entry "
+            "and persist its evaluation report"
+        ),
+    )
+    openai_approved_evaluation.add_argument("--catalog-root", type=Path)
+    openai_approved_evaluation.add_argument("--entry-id", required=True)
+    openai_approved_evaluation.add_argument("--corpus-version", required=True)
+    openai_approved_evaluation.add_argument("--model", default="gpt-6-astra")
+    openai_approved_evaluation.add_argument("--policy-version", default="prompt-isolation-v1")
+    openai_approved_evaluation.add_argument("--maximum-evidence-rows", type=int, default=200)
+    openai_approved_evaluation.add_argument(
+        "--maximum-reported-label-characters", type=int, default=500
+    )
+    openai_approved_evaluation.add_argument("--maximum-raw-value-characters", type=int, default=100)
+    openai_approved_evaluation.add_argument("--maximum-output-tokens", type=int, default=4_000)
+    openai_approved_evaluation.add_argument(
+        "--context-bundle",
+        type=Path,
+        help="optional checksummed locator-bound context JSON for this corpus request",
+    )
+    openai_approved_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
+    openai_approved_evaluation.add_argument("--output", type=Path)
+    openai_provisional_evaluation = subparsers.add_parser(
+        "evaluate-openai-provisional-corpus",
+        help=(
+            "call the optional OpenAI adapter for one provisional internal-review corpus entry "
+            "and persist a non-CA evaluation report"
+        ),
+    )
+    openai_provisional_evaluation.add_argument("--catalog-root", type=Path)
+    openai_provisional_evaluation.add_argument("--entry-id", required=True)
+    openai_provisional_evaluation.add_argument("--corpus-version", required=True)
+    openai_provisional_evaluation.add_argument("--model", default="gpt-6-astra")
+    openai_provisional_evaluation.add_argument("--policy-version", default="prompt-isolation-v1")
+    openai_provisional_evaluation.add_argument("--maximum-evidence-rows", type=int, default=200)
+    openai_provisional_evaluation.add_argument(
+        "--maximum-reported-label-characters", type=int, default=500
+    )
+    openai_provisional_evaluation.add_argument(
+        "--maximum-raw-value-characters", type=int, default=100
+    )
+    openai_provisional_evaluation.add_argument("--maximum-output-tokens", type=int, default=4_000)
+    openai_provisional_evaluation.add_argument(
+        "--context-bundle",
+        type=Path,
+        help="optional checksummed locator-bound context JSON for this corpus request",
+    )
+    openai_provisional_evaluation.add_argument("--evaluated-at", type=datetime.fromisoformat)
+    openai_provisional_evaluation.add_argument("--output", type=Path)
     provisional_evaluation = subparsers.add_parser(
         "evaluate-provisional-corpus",
         help="evaluate a proposal only against a provisional internal-review fixture",
@@ -337,6 +461,132 @@ def main(argv: Sequence[str] | None = None) -> int:
         status = "passed" if report.passed else "failed"
         print(f"Evaluated proposal {proposal.proposal_id} to {output}; result {status}")
         return 0 if report.passed else 1
+    if args.command == "prepare-onboarding-model-input":
+        onboarding_request = DocumentOnboardingRequest.model_validate_json(
+            args.request.read_text(encoding="utf-8")
+        )
+        input_policy = OnboardingModelInputPolicy(
+            policy_version=args.policy_version,
+            maximum_evidence_rows=args.maximum_evidence_rows,
+            maximum_reported_label_characters=args.maximum_reported_label_characters,
+            maximum_raw_value_characters=args.maximum_raw_value_characters,
+        )
+        context_bundle = (
+            LocatorBoundContextBundle.model_validate_json(
+                args.context_bundle.read_text(encoding="utf-8")
+            )
+            if args.context_bundle is not None
+            else None
+        )
+        builder = PromptIsolatedOnboardingInputBuilder()
+        input_packet = builder.build(
+            onboarding_request,
+            input_id=args.input_id,
+            policy=input_policy,
+            context_bundle=context_bundle,
+        )
+        output = args.output or (
+            settings.data_directory / "interim" / "model-inputs" / f"{input_packet.input_id}.json"
+        )
+        builder.persist(input_packet, output)
+        print(
+            f"Prepared {len(input_packet.untrusted_evidence_rows)} prompt-isolated evidence rows "
+            f"to {output}; no provider was called."
+        )
+        return 0
+    if args.command == "extract-onboarding-note-context":
+        source_manifest = RawDocumentManifest.model_validate_json(
+            args.source_manifest.read_text(encoding="utf-8")
+        )
+        onboarding_request = DocumentOnboardingRequest.model_validate_json(
+            args.request.read_text(encoding="utf-8")
+        )
+        context_spec = PdfNoteContextExtractionSpec.model_validate_json(
+            args.spec.read_text(encoding="utf-8")
+        )
+        context_bundle = PdfNoteContextExtractor().extract(
+            source_manifest,
+            settings.data_directory / "raw",
+            onboarding_request,
+            context_spec,
+        )
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "onboarding-context"
+            / onboarding_request.request_id
+            / f"{context_bundle.bundle_id}.json"
+        )
+        output.parent.mkdir(parents=True, exist_ok=True)
+        serialized = context_bundle.model_dump_json(indent=2) + "\n"
+        if output.exists() and output.read_text(encoding="utf-8") != serialized:
+            raise ValueError(f"refusing to overwrite different note-context bundle: {output}")
+        output.write_text(serialized, encoding="utf-8")
+        print(
+            f"Extracted {len(context_bundle.snippets)} locator-bound note-context snippets to "
+            f"{output}; no provider was called."
+        )
+        return 0
+    if args.command == "prepare-onboarding-page-discovery-input":
+        source_manifest = RawDocumentManifest.model_validate_json(
+            args.source_manifest.read_text(encoding="utf-8")
+        )
+        onboarding_request = DocumentOnboardingRequest.model_validate_json(
+            args.request.read_text(encoding="utf-8")
+        )
+        policy = PageDiscoveryPolicy(
+            policy_version=args.policy_version,
+            maximum_candidates=args.maximum_candidates,
+            maximum_excerpt_characters=args.maximum_excerpt_characters,
+        )
+        discovery_input = PdfPageDiscoveryInputBuilder().build(
+            source_manifest,
+            settings.data_directory / "raw",
+            onboarding_request,
+            input_id=args.input_id,
+            policy=policy,
+        )
+        output = args.output or (
+            settings.data_directory / "interim" / "page-discovery-inputs" / f"{args.input_id}.json"
+        )
+        output.parent.mkdir(parents=True, exist_ok=True)
+        serialized = discovery_input.model_dump_json(indent=2) + "\n"
+        if output.exists() and output.read_text(encoding="utf-8") != serialized:
+            raise ValueError(f"refusing to overwrite different page-discovery input: {output}")
+        output.write_text(serialized, encoding="utf-8")
+        print(
+            f"Prepared {len(discovery_input.candidate_pages)} bounded candidate pages to {output}; "
+            "no provider was called."
+        )
+        return 0
+    if args.command == "propose-openai-page-discovery":
+        discovery_input = PageDiscoveryInput.model_validate_json(
+            args.input.read_text(encoding="utf-8")
+        )
+        page_discovery_proposal = OpenAIPageDiscoveryProposalProvider(
+            model_id=args.model,
+            maximum_output_tokens=args.maximum_output_tokens,
+        ).propose(discovery_input)
+        validation = validate_page_discovery_proposal(discovery_input, page_discovery_proposal)
+        if not validation.ready_for_review:
+            raise RuntimeError("OpenAI page-discovery proposal did not pass local validation")
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "page-discovery-proposals"
+            / discovery_input.input_id
+            / f"{page_discovery_proposal.proposal_id}.json"
+        )
+        output.parent.mkdir(parents=True, exist_ok=True)
+        serialized = page_discovery_proposal.model_dump_json(indent=2) + "\n"
+        if output.exists() and output.read_text(encoding="utf-8") != serialized:
+            raise ValueError(f"refusing to overwrite different page-discovery proposal: {output}")
+        output.write_text(serialized, encoding="utf-8")
+        print(
+            f"Prepared a review-only OpenAI page-selection proposal at {output}; "
+            "no profile, coordinates, or facts were created."
+        )
+        return 0
     if args.command == "register-evaluation-corpus":
         entry = EvaluationCorpusEntry.model_validate_json(args.entry.read_text(encoding="utf-8"))
         evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
@@ -404,6 +654,106 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"to {output}; result {status}"
         )
         return 0 if report.passed else 1
+    if args.command == "evaluate-openai-approved-corpus":
+        evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
+            args.catalog_root or settings.data_directory / "interim" / "evaluation-corpus"
+        )
+        entry = evaluation_corpus_catalog.get_approved(
+            entry_id=args.entry_id,
+            corpus_version=args.corpus_version,
+        )
+        if entry.fixture is None:
+            raise RuntimeError("approved evaluation corpus entry is missing its fixture")
+        provider = OpenAIOnboardingProposalProvider(
+            model_id=args.model,
+            input_policy=OnboardingModelInputPolicy(
+                policy_version=args.policy_version,
+                maximum_evidence_rows=args.maximum_evidence_rows,
+                maximum_reported_label_characters=args.maximum_reported_label_characters,
+                maximum_raw_value_characters=args.maximum_raw_value_characters,
+            ),
+            context_bundle=(
+                LocatorBoundContextBundle.model_validate_json(
+                    args.context_bundle.read_text(encoding="utf-8")
+                )
+                if args.context_bundle is not None
+                else None
+            ),
+            maximum_output_tokens=args.maximum_output_tokens,
+        )
+        evaluator = OnboardingProposalEvaluator()
+        report = evaluator.evaluate(
+            entry.fixture,
+            provider,
+            evaluated_at=args.evaluated_at or datetime.now(UTC),
+            evaluation_qualification="ca_approved_real",
+        )
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "evaluations"
+            / "approved-corpus"
+            / entry.entry_id
+            / entry.corpus_version
+            / f"{report.proposal.proposal_id}.json"
+        )
+        evaluator.persist(report, output)
+        status = "passed" if report.passed else "failed"
+        print(
+            f"Evaluated optional OpenAI proposal for approved corpus entry {entry.entry_id} "
+            f"({entry.corpus_version}) to {output}; result {status}."
+        )
+        return 0 if report.passed else 1
+    if args.command == "evaluate-openai-provisional-corpus":
+        evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
+            args.catalog_root or settings.data_directory / "interim" / "evaluation-corpus"
+        )
+        entry = evaluation_corpus_catalog.get_provisionally_reviewed_for_internal_evaluation(
+            entry_id=args.entry_id,
+            corpus_version=args.corpus_version,
+        )
+        if entry.fixture is None:
+            raise RuntimeError("provisional evaluation corpus entry is missing its fixture")
+        provider = OpenAIOnboardingProposalProvider(
+            model_id=args.model,
+            input_policy=OnboardingModelInputPolicy(
+                policy_version=args.policy_version,
+                maximum_evidence_rows=args.maximum_evidence_rows,
+                maximum_reported_label_characters=args.maximum_reported_label_characters,
+                maximum_raw_value_characters=args.maximum_raw_value_characters,
+            ),
+            context_bundle=(
+                LocatorBoundContextBundle.model_validate_json(
+                    args.context_bundle.read_text(encoding="utf-8")
+                )
+                if args.context_bundle is not None
+                else None
+            ),
+            maximum_output_tokens=args.maximum_output_tokens,
+        )
+        evaluator = OnboardingProposalEvaluator()
+        report = evaluator.evaluate(
+            entry.fixture,
+            provider,
+            evaluated_at=args.evaluated_at or datetime.now(UTC),
+            evaluation_qualification="provisional_internal_review",
+        )
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "evaluations"
+            / "provisional-internal-corpus"
+            / entry.entry_id
+            / entry.corpus_version
+            / f"{report.proposal.proposal_id}.json"
+        )
+        evaluator.persist(report, output)
+        status = "passed" if report.passed else "failed"
+        print(
+            f"Evaluated optional OpenAI proposal for provisional corpus entry {entry.entry_id} "
+            f"({entry.corpus_version}) to {output}; result {status}. This is not CA-approved."
+        )
+        return 0 if report.passed else 1
     if args.command == "evaluate-provisional-corpus":
         evaluation_corpus_catalog = LocalEvaluationCorpusCatalog(
             args.catalog_root or settings.data_directory / "interim" / "evaluation-corpus"
@@ -460,7 +810,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             DocumentOnboardingProposal.model_validate_json(path.read_text(encoding="utf-8"))
             for path in args.proposal
         )
-        policy = ProvisionalCorpusEvaluationPolicy(
+        corpus_policy = ProvisionalCorpusEvaluationPolicy(
             policy_version=args.policy_version,
             minimum_case_count=args.minimum_case_count,
             minimum_distinct_company_count=args.minimum_distinct_company_count,
@@ -472,7 +822,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             entries,
             proposals,
             run_id=args.run_id,
-            policy=policy,
+            policy=corpus_policy,
             evaluated_at=args.evaluated_at or datetime.now(UTC),
         )
         output = args.output or (

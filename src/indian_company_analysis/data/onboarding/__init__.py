@@ -41,6 +41,17 @@ from indian_company_analysis.data.onboarding.evaluation import (
     ReconciliationExpectation,
     ReconciliationTerm,
 )
+from indian_company_analysis.data.onboarding.model_input import (
+    ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS,
+    LocatorBoundContextBundle,
+    LocatorBoundContextProvenance,
+    LocatorBoundContextSnippet,
+    OnboardingModelInputIdentity,
+    OnboardingModelInputPolicy,
+    PromptIsolatedEvidenceRow,
+    PromptIsolatedOnboardingInput,
+    PromptIsolatedOnboardingInputBuilder,
+)
 from indian_company_analysis.data.onboarding.models import (
     AbstentionCandidate,
     ApprovedAggregationComponent,
@@ -57,6 +68,7 @@ from indian_company_analysis.data.onboarding.models import (
     ModelRunProvenance,
     OnboardingEvidenceRow,
     OnboardingReviewDecision,
+    OnboardingTargetScope,
     ProposalValidationIssue,
     ProposalValidationResult,
 )
@@ -64,6 +76,10 @@ from indian_company_analysis.data.onboarding.normalization_workflow import (
     OnboardingNormalizationBatch,
     OnboardingNormalizationIssue,
     OnboardingNormalizationWorkflow,
+)
+from indian_company_analysis.data.onboarding.openai_provider import (
+    OpenAIOnboardingProposalProvider,
+    OpenAIProviderError,
 )
 from indian_company_analysis.data.onboarding.request_builder import build_onboarding_request
 from indian_company_analysis.data.onboarding.reuse import (
@@ -109,16 +125,24 @@ __all__ = [
     "LocalOnboardingConfigurationCatalog",
     "LocalEvaluationCorpusCatalog",
     "LocalOnboardingReviewCatalog",
+    "LocatorBoundContextBundle",
+    "LocatorBoundContextProvenance",
+    "LocatorBoundContextSnippet",
     "ModelRunProvenance",
     "OnboardingEvidenceRow",
     "OnboardingEvaluationFixture",
     "OnboardingEvaluationReport",
+    "OnboardingModelInputIdentity",
+    "OnboardingModelInputPolicy",
     "OnboardingNormalizationBatch",
     "OnboardingNormalizationIssue",
     "OnboardingNormalizationWorkflow",
     "OnboardingProposalProvider",
+    "OpenAIOnboardingProposalProvider",
+    "OpenAIProviderError",
     "OnboardingProposalEvaluator",
     "OnboardingReviewDecision",
+    "OnboardingTargetScope",
     "OnboardingReuseAssessment",
     "OnboardingReuseAssessor",
     "ProposalAccuracyMetrics",
@@ -128,11 +152,15 @@ __all__ = [
     "ProvisionalCorpusEvaluationPolicy",
     "ProvisionalCorpusEvaluationReport",
     "ProvisionalCorpusEvaluator",
+    "PromptIsolatedEvidenceRow",
+    "PromptIsolatedOnboardingInput",
+    "PromptIsolatedOnboardingInputBuilder",
     "ReconciliationEvaluationResult",
     "ReconciliationExpectation",
     "ReconciliationTerm",
     "ReuseContextDifference",
     "StaticProposalProvider",
+    "ONBOARDING_MODEL_DEVELOPER_INSTRUCTIONS",
     "approve_onboarding_proposal",
     "approve_proposal",
     "build_onboarding_request",

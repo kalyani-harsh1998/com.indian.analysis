@@ -7,12 +7,15 @@ from decimal import Decimal
 
 from pydantic import Field, model_validator
 
+from indian_company_analysis.data.locators import SourceFactLocator
 from indian_company_analysis.domain.enums import (
     DocumentType,
     ExtractionReviewStatus,
+    MetricNature,
     PeriodType,
     ReportingBasis,
 )
+from indian_company_analysis.domain.metrics import METRIC_DEFINITIONS, MetricId
 from indian_company_analysis.domain.models import DomainModel
 
 
@@ -60,6 +63,66 @@ class AlignedPdfTableExtractionSpec(PdfTableExtractionSpec):
             raise ValueError("column right boundaries must exceed left boundaries")
         if self.label_x1 >= self.value_x0:
             raise ValueError("label and value columns must not overlap")
+        return self
+
+
+class PdfNoteContextSnippetSpec(DomainModel):
+    """Explicit PDF rectangle used to collect one bounded note-context excerpt.
+
+    It identifies a text region; it does not discover a note or assign accounting meaning. The
+    accompanying source locator is the durable reference a reviewer uses to inspect the region.
+    """
+
+    context_id: str = Field(pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._:-]*$")
+    source_locator: SourceFactLocator
+    metric_ids: tuple[MetricId, ...] = Field(min_length=1)
+    x0: Decimal = Field(ge=0)
+    top: Decimal = Field(ge=0)
+    x1: Decimal = Field(gt=0)
+    bottom: Decimal = Field(gt=0)
+    x_tolerance: Decimal = Field(default=Decimal("3"), gt=0, le=10)
+    y_tolerance: Decimal = Field(default=Decimal("3"), gt=0, le=10)
+    maximum_characters: int = Field(default=2_000, ge=1, le=12_000)
+
+    @model_validator(mode="after")
+    def region_and_metrics_are_valid(self) -> PdfNoteContextSnippetSpec:
+        if self.x1 <= self.x0 or self.bottom <= self.top:
+            raise ValueError("note-context region right/bottom bounds must exceed left/top bounds")
+        if self.source_locator.page_number < 1:
+            raise ValueError("note-context source locator must use a positive page number")
+        if len(self.metric_ids) != len(set(self.metric_ids)):
+            raise ValueError("note-context snippet contains duplicate metric IDs")
+        if any(
+            METRIC_DEFINITIONS[metric_id].nature is MetricNature.DERIVED
+            for metric_id in self.metric_ids
+        ):
+            raise ValueError("note-context snippet cannot target derived metrics")
+        return self
+
+
+class PdfNoteContextExtractionSpec(DomainModel):
+    """Versioned explicit regions for deterministic PDF-note context extraction."""
+
+    bundle_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
+    profile_version: str = Field(default="pdf-note-context-v1", min_length=1)
+    snippets: tuple[PdfNoteContextSnippetSpec, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def snippets_are_unique(self) -> PdfNoteContextExtractionSpec:
+        context_ids = [snippet.context_id for snippet in self.snippets]
+        if len(context_ids) != len(set(context_ids)):
+            raise ValueError("note-context extraction spec contains duplicate context IDs")
+        locators = [
+            (
+                snippet.source_locator.page_number,
+                snippet.source_locator.table_id,
+                snippet.source_locator.row_number,
+                snippet.source_locator.column_name,
+            )
+            for snippet in self.snippets
+        ]
+        if len(locators) != len(set(locators)):
+            raise ValueError("note-context extraction spec contains duplicate source locators")
         return self
 
 

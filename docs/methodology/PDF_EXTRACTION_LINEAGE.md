@@ -49,6 +49,57 @@ The extractor requires the user to state:
 
 A result from either profile with any extraction issue cannot be serialized as a review-ready controlled CSV.
 
+## Targeted note-context extraction
+
+`PdfNoteContextExtractor` is a separate, narrower Phase 2D producer for context that may help a
+model interpret an already extracted statement row. It accepts only a verified source-PDF manifest,
+the identity-matching onboarding request with an explicit target scope, and a versioned
+`PdfNoteContextExtractionSpec`. Each configured snippet uses an exact page/table/row/column
+locator plus an explicit PDF rectangle and text-size limit. The extractor re-verifies the raw PDF,
+extracts the configured region with `pdfplumber`, removes layout control whitespace, and returns a
+checksummed `LocatorBoundContextBundle` carrying profile-version/checksum and tool provenance.
+
+This is not a general note parser: it does not search a PDF for headings, infer the relevant note,
+perform OCR, decide the accounting classification, or call an LLM. The output is still untrusted
+source context, not a fact or approval. A profile must be separately prepared and reviewed for the
+applicable report layout; the model receives the small bundle, never the raw PDF.
+
+## Planned guided profile workflow
+
+The target is to reduce manual setup without allowing a model to create financial evidence. The
+planned workflow is: (1) an LLM proposes likely pages using a bounded, checksum-linked local page
+index; (2) a reviewer sees the proposed page in a visual tool and selects the relevant text/table
+rectangle; (3) that tool saves the selected coordinates as a new versioned profile; (4) Python
+re-extracts the region from the verified PDF and applies the ordinary identity, bounds, parsing,
+and validation controls; and (5) a reviewer approves or rejects the profile before it can be used
+for a production extraction. A future model may propose coordinates as an additional convenience,
+but they remain a review suggestion, not an executable profile or approved source evidence.
+
+### Implemented page-index foundation
+
+`PdfPageDiscoveryInputBuilder` now implements the first offline step of that workflow. It verifies
+the source PDF and onboarding-request identity, derives generic lexical terms from the explicit
+target scope and supplied evidence labels, ranks pages by distinct-term coverage, and selects a
+bounded excerpt around the densest local match. `prepare-onboarding-page-discovery-input` persists
+the resulting checksummed candidate-page packet with policy and PDF-tool provenance. It calls no
+provider and cannot create coordinates, a profile, or a fact. A later provider may only choose from
+these listed pages, subject to deterministic validation and human review.
+
+`PageDiscoveryProposal` is the next completed contract: it records one to five unique page
+selections, rationale, confidence, and model-run provenance, all bound to the exact candidate-page
+packet. `validate_page_discovery_proposal` rejects mismatched identity/checksums and any page not
+present in that packet. The current static provider proves the contract without network access; a
+future live adapter must satisfy the same restriction.
+
+`OpenAIPageDiscoveryProposalProvider` is now the optional live adapter for that restricted role.
+`propose-openai-page-discovery` accepts one stored `PageDiscoveryInput`, sends its bounded packet
+in a separate untrusted user message, and asks for strict structured selections only from its page
+numbers. It makes one non-retrying, non-stored request and persists only a review-only proposal
+with local identity/model-run provenance. The provider receives no raw-PDF bytes or local path; a
+candidate excerpt can contain printed source values, but it is not a deterministic extraction or an
+approved fact. The adapter cannot create coordinates, a profile, normalized facts, or approval.
+The proposal is independently validated before it is written, and a reviewer must still inspect it.
+
 ## Accuracy benchmark
 
 `benchmark_extraction` compares extracted label/value pairs at stable row numbers with a manually reviewed golden set. It records expected, actual, and matched row counts, an exact-match rate, required threshold, mismatches, benchmark version, and pass status.
@@ -85,14 +136,14 @@ Phase 2D now defines the provider-neutral request, proposal, deterministic-valid
 - component-to-total aggregation rules, such as current tax plus deferred tax to tax expense; and
 - confidence, rationale, and alternatives for ambiguous proposals.
 
-No live LLM is connected. The static test provider proves that the same proposal can be replayed without network access. The validator checks source identity, labels, locators, evidence coverage, duplicate use, canonical targets, and explicit exclusions before human review. The LLM does not directly publish normalized facts and does not become the source of a number. Deterministic code parses the reported values, enforces period/unit/basis compatibility, executes approved signed-sum aggregation rules, and supplies calculated observations to the existing accounting reconciliations. Direct and aggregated facts can now be persisted together; broader operators and automatic handoff into the complete company-analysis workflow remain deferred.
+No live LLM is used by the PDF extraction workflow itself. The static test provider proves that the same proposal can be replayed without network access. A separate optional OpenAI adapter is limited to CA-gated corpus evaluation, receives only the bounded prompt-isolated packet rather than a raw PDF, and cannot publish normalized facts. The validator checks source identity, labels, locators, evidence coverage, duplicate use, canonical targets, and explicit exclusions before human review. Deterministic code parses the reported values, enforces period/unit/basis compatibility, executes approved signed-sum aggregation rules, and supplies calculated observations to the existing accounting reconciliations. Direct and aggregated facts can now be persisted together; broader operators and automatic handoff into the complete company-analysis workflow remain deferred.
 
 Every model-assisted proposal must retain the source-document checksum, input locators or evidence excerpts, provider and model identifier, model version, prompt/schema version, generation timestamp, proposed configuration, rationale, confidence, validation results, reviewer or policy decision, and the final approved profile/mapping version. Once approved, the saved configuration can be replayed without asking the model to reinterpret the same layout on every run.
 
 ## Deferred work
 
 - PDF-to-CSV command-line workflow and review UI;
-- live LLM adapter and profile-discovery proposal schema;
+- bounded LLM-assisted page-discovery and guided visual profile-builder workflow;
 - representative reviewed evaluation corpus for proposal accuracy, abstention, reconciliation, cost, and latency;
 - automatic coordinate/profile discovery and multiple periods in one extraction run;
 - prompt-injection isolation, evidence minimization, privacy policy, and provider selection;

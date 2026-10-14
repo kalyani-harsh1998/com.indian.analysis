@@ -109,7 +109,7 @@ A derived table is not the same evidence object as its source filing. Treating a
 
 ## ADR-005 — Hybrid interpretation with deterministic numerical authority
 
-**Status:** Accepted as the target architecture
+**Status:** Accepted as the target architecture; runtime-dependency limit superseded in part by ADR-018
 **Date:** 27 September 2026
 
 ### Context
@@ -126,7 +126,7 @@ Listed-company filings vary by format, layout, terminology, period presentation,
 - Keep number parsing, unit transformations, duplicate handling, period/basis checks, accounting reconciliation, and acceptance status in deterministic Python.
 - Preserve model/provider, model version, prompt/schema version, source evidence/locators, suggestion, rationale, confidence, validation results, and review decision when LLM assistance is introduced.
 - Persist accepted suggestions as versioned reusable configurations so compatible later filings can run deterministically; do not require repeated model interpretation when an approved profile applies.
-- Add no LLM or OpenAI runtime dependency during the current POC.
+- Initially add no LLM or OpenAI runtime dependency during the current POC. ADR-018 later permits a narrowly scoped optional OpenAI evaluation adapter without changing the numerical or review boundaries above.
 
 ### Consequences
 
@@ -366,7 +366,7 @@ Synthetic golden cases prove evaluator behavior but cannot substantiate accuracy
 
 ## ADR-015 — Separate provisional internal evaluation from CA-approved model gates
 
-**Status:** Accepted for the POC
+**Status:** Accepted for the POC; live-call prohibition superseded narrowly by ADR-019
 **Date:** 1 October 2026
 
 ### Context
@@ -379,7 +379,7 @@ The first permitted real-company corpus case can be useful to exercise the local
 - Keep `approved_for_evaluation` unchanged: it remains the only state returned by `get_approved` and the only source accepted by `evaluate-approved-corpus`.
 - Add `evaluate-provisional-corpus`, which retrieves only a provisional entry and writes a report with `evaluation_qualification: provisional_internal_review` to a separate default location.
 - Do not permit synthetic, unassessed, or restricted cases to receive provisional internal review.
-- Treat provisional results as local workflow-testing evidence only. They cannot authorize a live provider, create an approved configuration, demonstrate real-model readiness, or substitute for CA review.
+- Treat provisional results as local workflow-testing evidence only. They cannot create an approved configuration, demonstrate real-model readiness, authorize broader live use, or substitute for CA review. ADR-019 later permits one separately labelled technical provider call against such an entry.
 
 ### Consequences
 
@@ -409,3 +409,270 @@ Several internally reviewed real-company cases can exercise the onboarding workf
 - The team can compare several local cases under a transparent and reproducible internal threshold before a provider is connected.
 - A passing internal summary remains workflow evidence only; it cannot promote entries, create approved configurations, or authorize a live model.
 - A future CA-approved gate may reuse the reporting pattern but requires its own policy and review authority rather than relaxing this one.
+
+## ADR-017 — Isolate and minimize filing evidence before a future model call
+
+**Status:** Accepted for the POC
+**Date:** 1 October 2026
+
+### Context
+
+Filings can contain long, irrelevant, or instruction-like text. A future provider needs enough context to propose evidence-bound mappings, but sending local paths, raw PDFs, or arbitrary document content increases unnecessary disclosure and creates a prompt-injection risk. A static prompt string alone is insufficient if untrusted filing content is interpolated into the same instruction channel.
+
+### Decision
+
+- Convert an approved onboarding request into a versioned, bounded `PromptIsolatedOnboardingInput` before any future provider call.
+- Include only identity needed for proposal validation plus page/table/row/column locators, reported labels, and raw values; exclude local filesystem paths, raw PDF bytes, filenames, and arbitrary document text.
+- Classify every supplied row as `untrusted_evidence_rows`, checksum its canonical serialized content, and reject oversized fields or unsupported control characters rather than silently truncating them.
+- Keep fixed developer instructions as a constant and render dynamic source content only as a separate data-only user payload. A future provider adapter must preserve that role separation and return the existing strict proposal schema.
+- Do not call a model, add a provider dependency, claim complete prompt-injection prevention, or relax any deterministic validation or review gate in this slice.
+
+### Consequences
+
+- A future adapter receives a minimal, replayable, checksum-bound input packet instead of direct access to local source files.
+- Instruction-like filing text is visible for semantic interpretation but remains isolated from trusted instructions and is still subject to proposal validation and abstention rules.
+- Provider-specific role handling, structured-output enforcement, retries, error handling, privacy review, and model connection remain separate preconditions for live integration.
+
+## ADR-018 — Permit a corpus-gated optional OpenAI evaluation adapter
+
+**Status:** Accepted for the POC
+**Date:** 4 October 2026
+
+### Context
+
+The provider-neutral contract, prompt-isolated evidence packet, deterministic validator, and CA-reviewed corpus gate are implemented. The project owner approved a narrowly scoped OpenAI integration to evaluate that contract without sending raw PDFs or allowing a model to create approved financial facts.
+
+### Decision
+
+- Add OpenAI as an optional dependency, with a lazy import and `OPENAI_API_KEY` read only from the local environment at invocation time.
+- Send only `PromptIsolatedOnboardingInput` through a fixed developer message plus a separate data-only user message; do not upload, transmit, or name a local raw PDF.
+- Require Responses structured output with a strict JSON schema, `store=False`, a finite output-token limit, and no automatic retry in the initial slice.
+- Bind proposal identity, request identity, source identity, timestamp, returned model version, and usage metadata locally; the provider may return only mapping, aggregation, exclusion, and abstention candidates.
+- Initially make `evaluate-openai-approved-corpus` the sole live call path. ADR-019 later adds a separately labelled provisional technical-evaluation path without changing the CA quality gate.
+- Preserve deterministic validation, accounting evaluation, review requirements, and the prohibition on direct model-created facts.
+
+### Consequences
+
+- The normal local workflow remains usable without the SDK, an API key, network access, or a paid account.
+- A CA-approved quality evaluation can be run reproducibly once a permitted CA-reviewed corpus exists, while raw evidence and secrets remain local.
+- The current corpus has only provisional internal entries, so it can support only the limited technical route defined in ADR-019.
+- Retries, provider comparison, cost budgeting, and broader production use remain later, separately governed work.
+
+## ADR-019 — Permit one provisional internal OpenAI technical evaluation
+
+**Status:** Accepted for the POC
+**Date:** 4 October 2026
+
+### Context
+
+The project needs to verify the complete optional adapter path with an actual local API key: bounded input creation, provider authentication, strict structured output, model provenance, deterministic proposal validation, reconciliation, and report persistence. The available permitted real cases have internal review only, not CA approval.
+
+### Decision
+
+- Permit `evaluate-openai-provisional-corpus` to retrieve only a `provisional_internal_review` entry and make one explicit OpenAI adapter call.
+- Preserve `evaluation_qualification: provisional_internal_review`, separate output storage, `live_model_eligible: false`, and all deterministic validation and accounting checks.
+- Continue to reject candidate, rejected, approved, and synthetic entries from this command.
+- Keep the raw PDF local; send only the same bounded prompt-isolated packet with `store=False`.
+- Do not allow this technical result to approve a mapping, normalise facts, promote an entry, establish model accuracy, or authorize broader live use.
+
+### Consequences
+
+- The team can test actual credentials and provider behavior without misrepresenting internal review as CA approval.
+- A failing report is useful integration evidence; a passing report is only a provisional technical result.
+- CA-approved corpus evaluation, quality thresholds, cost/latency policy, and any broader onboarding use remain separate gates.
+
+## ADR-020 — Make full-metric and component-aggregation policy explicit in prompt contract v2
+
+**Status:** Superseded by ADR-021; retained as the historical v2 evaluation policy
+**Date:** 4 October 2026
+
+### Context
+
+The first APSEZ provisional OpenAI evaluation was structurally valid and reconciled, but the model
+mapped an interest-only row to full finance cost, abstained on other finance-cost components, and
+used an explicit tax total where the reviewed POC fixture expects component aggregation. The
+original trusted instructions did not state whether a component, a total, or a signed aggregation
+should be preferred.
+
+### Decision
+
+- Version the trusted prompt contract as `onboarding-model-input-v2`, while retaining v1 parsing compatibility for existing local packets.
+- State that a direct mapping must represent the full canonical metric and that one component must not stand in for the total.
+- Direct the provider to propose one signed aggregation when relevant components are available and explicitly exclude a duplicated subtotal or reported total.
+- Supply an initial general finance-cost interpretation for interest/bank charges, derivative losses, and foreign-exchange losses presented as statement expenses, while preserving abstention for contradicting or unresolved evidence.
+- Treat this as an evaluation policy to be measured on the corpus, not an automatic accounting rule or fact-approval path.
+
+### Consequences
+
+- Later evaluations identify the exact prompt-policy version that shaped a proposal.
+- The policy can improve complete evidence use without allowing the model to perform arithmetic or bypass deterministic validation.
+- The current APSEZ v1 fixture remains immutable; a change to its expected tax treatment would require a new reviewed fixture version.
+- The first provisional APSEZ v2 evaluation completed the full adapter path and matched the fixture's finance-cost amount, but deterministically failed because it also formed PBT and PAT aggregates from component rows and reused evidence. Numerical agreement did not establish the accounting scope independently. ADR-021 replaces this policy.
+
+## ADR-021 — Prefer supported reported totals and supply versioned metric context
+
+**Status:** Accepted for the POC
+**Date:** 4 October 2026
+
+### Context
+
+The v2 aggregation-first instruction encouraged needless PBT/PAT reconstruction. Its general
+FX/derivative finance-cost assumption was stronger than the supplied row context supported.
+The provider also received metric identifiers without the dictionary's definitions, and its wire
+schema offered derived targets that deterministic validation later rejected.
+
+### Decision
+
+- Build new input packets under `onboarding-model-input-v3`, including the checksummed
+  `onboarding-metric-catalog-v1` snapshot of eligible non-derived definitions and generic scope
+  guidance. Preserve legacy v1/v2 parsing without pretending to replay their instructions.
+- Prefer reported amounts only when their accounting scope fits; permit complete signed component
+  aggregations when needed, equivalent labels, explicit exclusions, and targeted abstentions.
+  Describe row roles relative to the target, not through a universal total/component classification.
+- Remove the blanket classification of statement FX/derivative losses as finance costs. Require
+  supporting evidence; preserve uncertainty when notes or scope definitions are unavailable.
+- Keep the existing single-disposition, one-target, deterministic arithmetic and human-review
+  contracts. Do not introduce partial approval, model certification, or automatic semantic checks
+  that claim to understand accounting merely from matching numbers.
+- Restrict both mapping and aggregation enums in `openai-onboarding-proposal-v2` to the same
+  catalog; reject out-of-catalog targets locally too. Bind the exact input and instruction hashes
+  to new model runs. Existing corpus requests, expected answers, and thresholds remain unchanged.
+- Explicitly set `max_retries=0` to implement ADR-018's intended no-retry boundary; relying on the
+  SDK default in the first adapter did not enforce that intent.
+- Test with synthetic fixtures and frozen provider responses. Do not make paid API calls or claim
+  improved live accuracy as part of this implementation slice.
+
+### Consequences
+
+- Source evidence and calculation rules remain immutable; prompt/catalog/schema changes have
+  explicit versions and exact content hashes for new calls.
+- Exact-route evaluation can still reject a legitimate alternative evidence route. Alternatives
+  require separately reviewed fixture/policy versioning, not lower thresholds or rewritten history.
+- Missing source-note context, fine-grained review, and real model effectiveness remain future
+  work. The catalog exposes eligible metrics, not a required list or CA-approved interpretations.
+
+## ADR-022 — Bind hybrid onboarding to caller scope and locator-bound context
+
+**Status:** Accepted for the POC
+**Date:** 4 October 2026
+
+### Context
+
+The APSEZ v3 run safely abstained on finance-cost components because the flat profit-and-loss rows
+did not establish their accounting scope. It also abstained on rows relevant only to metrics that
+were not part of the intended narrow review, because the packet exposed every catalog metric as a
+possible target. The frozen fixture separately rejected a directly reported tax total even though
+it matched the component aggregation numerically. Prompt wording alone cannot resolve missing
+source context or encode reviewed route alternatives safely.
+
+### Decision
+
+- Add an optional explicit `OnboardingTargetScope` to an onboarding request and proposal. It has a
+  stable ID, non-derived metric IDs, and caller-stated purpose; it is never copied from fixture
+  expectations.
+- In prompt contract `onboarding-model-input-v4`, resolve an explicit scope into the data packet.
+  Older requests remain readable through an explicit legacy all-eligible scope, not a fabricated
+  caller selection.
+- Restrict `openai-onboarding-proposal-v3` mapping and aggregation enums to the resolved scope,
+  and deterministically reject candidates outside an explicit request scope.
+- Add a `LocatorBoundContextBundle` that binds each small untrusted source excerpt to request ID,
+  source-document checksum, exact source locator, selected target metrics, and a content checksum.
+  It may be passed through local preparation and live-evaluation commands, but it never grants raw
+  PDF access, invokes a provider automatically, or becomes authoritative evidence by itself.
+- Preserve all existing single-disposition, arithmetic, reconciliation, provider, and human-review
+  controls. Do not change APSEZ fixtures, accept alternative tax routes, or make a paid call in
+  this slice.
+
+### Consequences
+
+- New model calls can concentrate on caller-selected metrics and receive narrowly attributable
+  finance-note context without hardcoding issuer labels or exposing golden answers.
+- A model is still only a semantic proposal source: Python validates source identity, target scope,
+  evidence use, calculations, and reconciliations; a reviewer still decides approval.
+- The context bundle is a provenance contract, not a PDF-note extractor. Deterministic extraction
+  of targeted context and reviewed alternative evidence-route policy are the next separate slices.
+
+## ADR-023 — Require explicit, verified PDF regions for note-context extraction
+
+**Status:** Accepted for the POC
+**Date:** 13 October 2026
+
+### Context
+
+The v4 context contract can bind small excerpts to an onboarding request, but asking a caller to
+hand-write the text weakens reproducibility and leaves no deterministic proof that it came from the
+verified PDF. Conversely, automatic semantic discovery of finance notes across arbitrary filing
+layouts would reintroduce unvalidated layout and accounting inference before a representative
+reviewed corpus exists.
+
+### Decision
+
+- Add `PdfNoteContextExtractor` and versioned `PdfNoteContextExtractionSpec` for explicitly
+  configured rectangular text regions only.
+- Require a checksum-valid PDF manifest and exact request/source document, checksum, source ID,
+  organization, and document-type identity before extraction. Require an explicit target scope and
+  reject a snippet whose metrics fall outside it.
+- Preserve each configured page/table/row/column locator, context text checksum, bundle identity,
+  extraction-profile version and checksum, and PDF-tool version. Normalize PDF layout whitespace only so the
+  bounded text can satisfy the prompt-input control-character contract.
+- Expose a local `extract-onboarding-note-context` command that writes a non-overwriting bundle and
+  never calls a provider. Do not alter existing real fixtures, mappings, approval records, or PDF
+  files, and do not make a live model call in this slice.
+- Do not add heading search, coordinate inference, OCR, accounting classification, automated
+  context approval, or raw-PDF transmission. Those need separate evaluation and review decisions.
+
+### Consequences
+
+- A reviewed profile can reproducibly supply narrow note context to the existing v4 model-input
+  boundary without making the context authoritative evidence.
+- Each unfamiliar company/report layout still needs a configured and reviewed region profile; this
+  is deliberate evidence control, not a claim of universal PDF parsing.
+- The next work is to prepare and review a finance-note profile for a permitted corpus case, then
+  separately consider LLM-assisted page discovery and alternative evidence-route policy.
+
+## ADR-024 — Bound page discovery to a verified local candidate index
+
+**Status:** Accepted for the POC
+**Date:** 14 October 2026
+
+### Context
+
+An LLM may reduce manual search effort for a new filing, but giving it a raw PDF or accepting an
+arbitrary page locator would weaken the source boundary established for note-context extraction.
+The APSEZ and Infosys trials also show that report layouts vary and candidate-page retrieval needs
+to remain inspectable before any rectangle/profile is created.
+
+### Decision
+
+- Add a local `prepare-onboarding-page-discovery-input` command. It re-verifies the immutable PDF
+  and request identity, derives generic lexical terms from the selected target scope and supplied
+  evidence labels, and produces a checksummed, bounded list of page excerpts.
+- Rank pages by distinct request-term coverage, not repeated word frequency. Select the local
+  excerpt with the densest matching terms and retain its page number and score.
+- The packet is untrusted provider input only. It contains no local path or raw PDF bytes, has
+  fixed page/excerpt limits, and does not decide a note, rectangle, profile, mapping, or fact.
+- A later provider contract may select only a page already present in the packet. It must be
+  independently validated and reviewed before a visual profile-builder creates coordinates.
+
+The initial strict proposal contract is now implemented. It binds a proposal to the exact input,
+request, document, source checksum, and candidate-page checksum, permits one to five unique page
+selections with rationale and confidence, and rejects every page not in the local candidate packet.
+Its static provider and deterministic tests prove this boundary without a model call.
+
+The optional `OpenAIPageDiscoveryProposalProvider` now implements the same contract. It makes one
+non-retrying Responses API call with `store=False`, a fixed developer instruction, the bounded
+untrusted packet as a separate user message, and a strict schema whose page-number field is limited
+to the packet's candidates. It never receives raw-PDF bytes or local paths. Candidate excerpts may
+include printed source values, but no separately extracted or approved financial values are sent.
+Python creates the identity binding and model-run provenance locally, then re-validates the output
+before persisting a review-only proposal. A controlled live comparison is still a separate,
+explicitly authorized evaluation.
+
+### Consequences
+
+- The provider-neutral boundary remains testable without a live model call; the optional OpenAI
+  adapter can only create a review-only page proposal within that boundary.
+- Lexical retrieval can miss a differently worded note or return extra candidates; that is why it
+  proposes a bounded review set rather than asserting that a page is correct.
+- Coordinate proposals, visual selection, profile approval, and model-quality evaluation remain
+  separate work.

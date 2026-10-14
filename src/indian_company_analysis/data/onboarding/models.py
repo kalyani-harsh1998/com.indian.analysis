@@ -8,16 +8,15 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from indian_company_analysis.data.normalization.models import (
-    MetricMappingSet,
-    SourceFactLocator,
-)
+from indian_company_analysis.data.locators import SourceFactLocator
+from indian_company_analysis.data.normalization.models import MetricMappingSet
 from indian_company_analysis.domain.enums import (
     ConfidenceLevel,
     DocumentType,
+    MetricNature,
     ReportingBasis,
 )
-from indian_company_analysis.domain.metrics import MetricId
+from indian_company_analysis.domain.metrics import METRIC_DEFINITIONS, MetricId
 from indian_company_analysis.domain.models import DomainModel, ReportingPeriod
 
 
@@ -28,6 +27,30 @@ class OnboardingEvidenceRow(DomainModel):
     source_locator: SourceFactLocator
     reported_label: str = Field(min_length=1)
     raw_value: str = Field(min_length=1)
+
+
+class OnboardingTargetScope(DomainModel):
+    """Caller-selected canonical metrics for one bounded onboarding request.
+
+    The scope is an input to semantic review, not a fixture answer or an approval decision.
+    It lets a caller ask for a small, useful subset without treating every statement row as an
+    attempted mapping for every metric in the application catalog.
+    """
+
+    scope_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
+    metric_ids: tuple[MetricId, ...] = Field(min_length=1)
+    purpose: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def targets_are_unique_and_reported(self) -> OnboardingTargetScope:
+        if len(self.metric_ids) != len(set(self.metric_ids)):
+            raise ValueError("onboarding target scope contains duplicate metric IDs")
+        if any(
+            METRIC_DEFINITIONS[metric_id].nature is MetricNature.DERIVED
+            for metric_id in self.metric_ids
+        ):
+            raise ValueError("onboarding target scope cannot contain derived metrics")
+        return self
 
 
 class DocumentOnboardingRequest(DomainModel):
@@ -46,6 +69,7 @@ class DocumentOnboardingRequest(DomainModel):
     period: ReportingPeriod
     reporting_basis: ReportingBasis
     evidence_rows: tuple[OnboardingEvidenceRow, ...] = Field(min_length=1)
+    target_scope: OnboardingTargetScope | None = None
 
     @model_validator(mode="after")
     def evidence_is_unique(self) -> DocumentOnboardingRequest:
@@ -80,6 +104,8 @@ class ModelRunProvenance(DomainModel):
     latency_milliseconds: int | None = Field(default=None, ge=0)
     estimated_cost: Decimal | None = Field(default=None, ge=0)
     cost_currency: str | None = Field(default=None, min_length=3, max_length=3)
+    input_checksum_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    instructions_checksum_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
 
     @model_validator(mode="after")
     def provenance_is_consistent(self) -> ModelRunProvenance:
@@ -172,6 +198,7 @@ class DocumentOnboardingProposal(DomainModel):
     period: ReportingPeriod
     reporting_basis: ReportingBasis
     model_run: ModelRunProvenance
+    target_scope: OnboardingTargetScope | None = None
     mappings: tuple[MappingCandidate, ...] = ()
     aggregations: tuple[MetricAggregationCandidate, ...] = ()
     exclusions: tuple[ExclusionCandidate, ...] = ()

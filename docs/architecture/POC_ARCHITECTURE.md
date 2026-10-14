@@ -84,11 +84,32 @@ The local review boundary records approvals and rejections separately from propo
 
 For a later filing, a deterministic reuse assessor compares the new evidence labels with each approved mapping, aggregation component, and exclusion. Its persisted assessment identifies reuse candidates, missing/ambiguous rows, incompatible context, and new rows. It is deliberately outside both approval and normalization: every target configuration still needs new validation and human approval.
 
-The live-model quality gate is likewise separate from normalization. A local evaluation-corpus entry binds a permitted real source manifest, reviewed PDF-to-CSV extraction link, exact onboarding request, complete golden fixture, and fixture checksum. A named internal reviewer may mark such a case `provisional_internal_review` to exercise the separately labelled internal evaluator, but that result cannot gate a live model. Only after a CA reviewer records policy, timestamp, and review notes may the entry be marked `approved_for_evaluation`. Candidate, provisional, rejected, and synthetic entries cannot serve as real-model benchmark cases.
+The live-model quality gate is likewise separate from normalization. A local evaluation-corpus entry binds a permitted real source manifest, reviewed PDF-to-CSV extraction link, exact onboarding request, complete golden fixture, and fixture checksum. A named internal reviewer may mark such a case `provisional_internal_review` to exercise the separately labelled internal evaluator and one clearly labelled technical OpenAI E2E run, but neither result can gate a live model. Only after a CA reviewer records policy, timestamp, and review notes may the entry be marked `approved_for_evaluation`. Candidate, provisional, rejected, and synthetic entries cannot serve as real-model benchmark cases.
 
 The proposal boundary also includes unit, period, and reporting basis. Synthetic adversarial cases prove that a changed label, duplicate evidence use, invented locator, incompatible statement context, incorrect aggregation sign, or instruction-like source text cannot silently become a trusted configuration or fact. Provider-side prompt isolation remains a separate future live-adapter requirement.
 
 ## Boundaries and dependency direction
+
+The optional adapter currently builds prompt contract v4 with a checksummed snapshot of the
+canonical non-derived metric definitions and company-independent interpretation notes. A
+caller-selected target scope is part of the request and narrows both the wire-schema enum and local
+proposal validation. An optional checksummed locator-bound context bundle may add small source
+excerpts for selected targets only; it must match the request and source checksum, remains in the
+untrusted data channel, and is not raw-PDF access or independent evidence. Source rows and context
+stay in the user data channel, never in developer instructions; the model run records exact
+input/instruction hashes. Reported-total preference, complete component aggregation, and explicit
+uncertainty are prompt guidance; deterministic validation cannot by itself establish semantic
+correctness. `PdfNoteContextExtractor` can now produce a context bundle only from explicit,
+versioned text-region coordinates after re-verifying the immutable PDF and matching request
+identity. It preserves source-document/profile/tool provenance, but it does not discover notes,
+call a provider, or make the excerpt authoritative. Automatic source-note discovery and alternative
+evidence-route evaluation are not implemented by this slice.
+
+The planned automation path keeps those controls intact: a model will propose pages only from a
+bounded, verified page index; a reviewer will select the exact rectangle in a visual tool; the tool
+will save a versioned profile; deterministic Python will re-extract and validate it; and a reviewer
+will approve or reject that profile. Neither a proposed page nor proposed coordinates can directly
+produce an approved fact.
 
 Dependencies point inward toward `domain` and deterministic functions:
 
@@ -126,7 +147,7 @@ All values use `Decimal`. Missing, zero-denominator, or incomparable cases produ
 
 ## Deliberate omissions
 
-Role-specific agent implementations, live NSE/BSE adapters, general PDF/HTML/OCR/XBRL extraction, automated profile selection, databases, runtime LLM integration, forecasts, valuation, recommendations, charts, PowerPoint, API, and web UI are deferred. The ruled and explicitly configured aligned profiles are not represented as general filing parsing. A future LLM may suggest document classes, profiles, semantic mappings, and aggregation rules, but deterministic extraction, normalization, reconciliation, provenance, and review gates remain authoritative. Adapter filenames are not created as empty promises. Banks, NBFCs, and insurers require separate future sector modules.
+Role-specific agent implementations, live NSE/BSE adapters, general PDF/HTML/OCR/XBRL extraction, automated profile selection, databases, forecasts, valuation, recommendations, charts, PowerPoint, API, and web UI are deferred. The optional OpenAI onboarding adapter is limited to corpus-gated technical and CA-approved quality evaluation, has no raw-PDF access, and cannot approve or normalize facts. The ruled, explicitly configured aligned, and explicitly configured note-text-region profiles are not represented as general filing parsing. A future LLM may suggest document classes, profiles, semantic mappings, and aggregation rules, but deterministic extraction, normalization, reconciliation, provenance, and review gates remain authoritative. Adapter filenames are not created as empty promises. Banks, NBFCs, and insurers require separate future sector modules.
 
 The research blueprint's possible IT-services-plus-cement MVP is broader than this assignment. This slice uses only fictional IT-services-shaped records; cement becomes useful after ingestion and financial-statement foundations are proven.
 
