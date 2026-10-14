@@ -568,7 +568,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             maximum_output_tokens=args.maximum_output_tokens,
         ).propose(discovery_input)
         validation = validate_page_discovery_proposal(discovery_input, page_discovery_proposal)
-        if not validation.ready_for_review:
+        if validation.issues:
             raise RuntimeError("OpenAI page-discovery proposal did not pass local validation")
         output = args.output or (
             settings.data_directory
@@ -582,10 +582,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         if output.exists() and output.read_text(encoding="utf-8") != serialized:
             raise ValueError(f"refusing to overwrite different page-discovery proposal: {output}")
         output.write_text(serialized, encoding="utf-8")
-        print(
-            f"Prepared a review-only OpenAI page-selection proposal at {output}; "
-            "no profile, coordinates, or facts were created."
+        outcome = (
+            "Recorded a review-only OpenAI page-discovery abstention"
+            if validation.abstention_requested
+            else "Prepared a review-only OpenAI page-selection proposal"
         )
+        print(f"{outcome} at {output}; no profile, coordinates, or facts were created.")
         return 0
     if args.command == "register-evaluation-corpus":
         entry = EvaluationCorpusEntry.model_validate_json(args.entry.read_text(encoding="utf-8"))

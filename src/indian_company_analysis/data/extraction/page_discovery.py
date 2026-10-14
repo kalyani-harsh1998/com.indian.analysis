@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 
 import pdfplumber
 from pdfplumber.pdf import PDF
@@ -18,8 +18,9 @@ from indian_company_analysis.data.onboarding.models import (
     DocumentOnboardingRequest,
     ModelRunProvenance,
 )
-from indian_company_analysis.domain.enums import ConfidenceLevel
-from indian_company_analysis.domain.models import DomainModel
+from indian_company_analysis.domain.enums import ConfidenceLevel, ReportingBasis
+from indian_company_analysis.domain.metrics import MetricId
+from indian_company_analysis.domain.models import DomainModel, ReportingPeriod
 
 
 class PageDiscoveryPolicy(DomainModel):
@@ -46,6 +47,36 @@ class PageDiscoveryProvenance(DomainModel):
     extraction_tool_version: str = Field(min_length=1)
 
 
+class PageDiscoveryEvidenceAnchor(DomainModel):
+    """A bounded existing statement-row anchor that supplies context, not evidence approval."""
+
+    evidence_id: str = Field(min_length=1)
+    page_number: int = Field(ge=1)
+    table_id: str = Field(min_length=1)
+    row_number: int = Field(ge=1)
+    column_name: str = Field(min_length=1)
+    reported_label: str = Field(min_length=1)
+
+
+class PageDiscoveryRequestContext(DomainModel):
+    """The exact basis, period, scope, and row anchors a page-selection proposal must respect."""
+
+    company_id: str = Field(min_length=1)
+    reporting_basis: ReportingBasis
+    period: ReportingPeriod
+    target_scope_id: str = Field(min_length=1)
+    target_metric_ids: tuple[MetricId, ...] = Field(min_length=1)
+    purpose: str = Field(min_length=1)
+    evidence_anchors: tuple[PageDiscoveryEvidenceAnchor, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def anchors_are_unique(self) -> PageDiscoveryRequestContext:
+        evidence_ids = [anchor.evidence_id for anchor in self.evidence_anchors]
+        if len(evidence_ids) != len(set(evidence_ids)):
+            raise ValueError("page-discovery request context contains duplicate evidence anchors")
+        return self
+
+
 class PageDiscoveryInput(DomainModel):
     """Checksummed, prompt-safe candidate-page packet for a discovery provider.
 
@@ -57,7 +88,8 @@ class PageDiscoveryInput(DomainModel):
     request_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
     document_id: str = Field(min_length=1)
     source_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
-    target_scope_id: str = Field(min_length=1)
+    request_context: PageDiscoveryRequestContext
+    request_context_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     candidate_pages: tuple[PageDiscoveryCandidate, ...] = Field(min_length=1)
     candidate_pages_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     provenance: PageDiscoveryProvenance
@@ -69,6 +101,10 @@ class PageDiscoveryInput(DomainModel):
             raise ValueError("page-discovery input contains duplicate candidate pages")
         if self.candidate_pages_checksum_sha256 != _candidate_checksum(self.candidate_pages):
             raise ValueError("page-discovery candidate checksum does not match candidate pages")
+        if self.request_context_checksum_sha256 != _request_context_checksum(self.request_context):
+            raise ValueError(
+                "page-discovery request-context checksum does not match request context"
+            )
         return self
 
     def provider_user_payload(self) -> str:
@@ -93,13 +129,33 @@ class PageDiscoveryProposal(DomainModel):
     request_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
     document_id: str = Field(min_length=1)
     source_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    request_context_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     candidate_pages_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     model_run: ModelRunProvenance
-    selections: tuple[PageDiscoverySelection, ...] = Field(min_length=1, max_length=5)
+    selection_status: Literal["selected", "abstain"]
+    selected_reporting_basis: ReportingBasis
+    selected_period_label: str = Field(min_length=1)
+    primary_selection: PageDiscoverySelection | None = None
+    supporting_selections: tuple[PageDiscoverySelection, ...] = Field(max_length=4)
+    abstention_reason: str | None = None
 
     @model_validator(mode="after")
-    def selected_pages_are_unique(self) -> PageDiscoveryProposal:
-        pages = [selection.page_number for selection in self.selections]
+    def selection_state_is_consistent(self) -> PageDiscoveryProposal:
+        if self.selection_status == "selected":
+            if self.primary_selection is None:
+                raise ValueError("selected page-discovery proposal requires a primary selection")
+            if self.abstention_reason is not None:
+                raise ValueError(
+                    "selected page-discovery proposal cannot contain an abstention reason"
+                )
+        elif self.primary_selection is not None or self.supporting_selections:
+            raise ValueError("abstained page-discovery proposal cannot select pages")
+        elif not self.abstention_reason:
+            raise ValueError("abstained page-discovery proposal requires an abstention reason")
+
+        pages = [selection.page_number for selection in self.supporting_selections]
+        if self.primary_selection is not None:
+            pages.append(self.primary_selection.page_number)
         if len(pages) != len(set(pages)):
             raise ValueError("page-discovery proposal contains duplicate selected pages")
         return self
@@ -114,14 +170,21 @@ class PageDiscoveryValidationIssue(DomainModel):
 class PageDiscoveryValidationResult(DomainModel):
     input_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
     proposal_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
-    validated_page_numbers: tuple[int, ...]
+    validated_primary_page_number: int | None = Field(default=None, ge=1)
+    validated_supporting_page_numbers: tuple[int, ...]
     issues: tuple[PageDiscoveryValidationIssue, ...]
+    abstention_requested: bool
     ready_for_review: bool
 
     @model_validator(mode="after")
     def readiness_matches_issues(self) -> PageDiscoveryValidationResult:
-        if self.ready_for_review != (not self.issues and bool(self.validated_page_numbers)):
-            raise ValueError("page-discovery readiness requires valid pages and no issues")
+        selected_and_valid = not self.abstention_requested and self.validated_primary_page_number
+        if self.ready_for_review != (not self.issues and bool(selected_and_valid)):
+            raise ValueError("page-discovery readiness requires a valid primary page and no issues")
+        if self.abstention_requested and (
+            self.validated_primary_page_number is not None or self.validated_supporting_page_numbers
+        ):
+            raise ValueError("page-discovery abstention cannot retain validated page selections")
         return self
 
 
@@ -145,6 +208,7 @@ def validate_page_discovery_proposal(
         "request_id",
         "document_id",
         "source_checksum_sha256",
+        "request_context_checksum_sha256",
         "candidate_pages_checksum_sha256",
     ):
         if getattr(discovery_input, field_name) != getattr(proposal, field_name):
@@ -155,11 +219,29 @@ def validate_page_discovery_proposal(
                 )
             )
 
+    if proposal.selected_reporting_basis != discovery_input.request_context.reporting_basis:
+        issues.append(
+            PageDiscoveryValidationIssue(
+                code="reporting_basis_mismatch",
+                message=(
+                    "proposal reporting basis does not match the page-discovery request context"
+                ),
+            )
+        )
+    if proposal.selected_period_label != discovery_input.request_context.period.label:
+        issues.append(
+            PageDiscoveryValidationIssue(
+                code="period_mismatch",
+                message="proposal period label does not match the page-discovery request context",
+            )
+        )
+
     candidates = {candidate.page_number for candidate in discovery_input.candidate_pages}
+    selections = (
+        () if proposal.primary_selection is None else (proposal.primary_selection,)
+    ) + proposal.supporting_selections
     invalid_pages = {
-        selection.page_number
-        for selection in proposal.selections
-        if selection.page_number not in candidates
+        selection.page_number for selection in selections if selection.page_number not in candidates
     }
     for page_number in sorted(invalid_pages):
         issues.append(
@@ -169,17 +251,35 @@ def validate_page_discovery_proposal(
                 page_number=page_number,
             )
         )
-    validated = tuple(
-        selection.page_number
-        for selection in proposal.selections
-        if selection.page_number not in invalid_pages
+    primary_page_number = (
+        proposal.primary_selection.page_number if proposal.primary_selection is not None else None
+    )
+    validated_primary = (
+        primary_page_number
+        if (
+            primary_page_number is not None
+            and primary_page_number not in invalid_pages
+            and not issues
+        )
+        else None
+    )
+    validated_supporting = (
+        tuple(
+            selection.page_number
+            for selection in proposal.supporting_selections
+            if selection.page_number not in invalid_pages
+        )
+        if not issues
+        else ()
     )
     return PageDiscoveryValidationResult(
         input_id=discovery_input.input_id,
         proposal_id=proposal.proposal_id,
-        validated_page_numbers=validated if not issues else (),
+        validated_primary_page_number=validated_primary,
+        validated_supporting_page_numbers=validated_supporting,
         issues=tuple(issues),
-        ready_for_review=not issues and bool(validated),
+        abstention_requested=proposal.selection_status == "abstain",
+        ready_for_review=not issues and proposal.selection_status == "selected",
     )
 
 
@@ -223,12 +323,14 @@ class PdfPageDiscoveryInputBuilder:
         if not candidates:
             raise ValueError("page discovery found no bounded textual candidates for the request")
 
+        request_context = _request_context(request)
         return PageDiscoveryInput(
             input_id=input_id,
             request_id=request.request_id,
             document_id=manifest.document_id,
             source_checksum_sha256=manifest.checksum_sha256,
-            target_scope_id=request.target_scope.scope_id,
+            request_context=request_context,
+            request_context_checksum_sha256=_request_context_checksum(request_context),
             candidate_pages=candidates,
             candidate_pages_checksum_sha256=_candidate_checksum(candidates),
             provenance=PageDiscoveryProvenance(
@@ -337,6 +439,35 @@ def _candidate_checksum(candidates: tuple[PageDiscoveryCandidate, ...]) -> str:
         sort_keys=True,
         separators=(",", ":"),
     )
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _request_context(request: DocumentOnboardingRequest) -> PageDiscoveryRequestContext:
+    if request.target_scope is None:
+        raise ValueError("page discovery requires an explicit onboarding target scope")
+    return PageDiscoveryRequestContext(
+        company_id=request.company_id,
+        reporting_basis=request.reporting_basis,
+        period=request.period,
+        target_scope_id=request.target_scope.scope_id,
+        target_metric_ids=request.target_scope.metric_ids,
+        purpose=request.target_scope.purpose,
+        evidence_anchors=tuple(
+            PageDiscoveryEvidenceAnchor(
+                evidence_id=row.evidence_id,
+                page_number=row.source_locator.page_number,
+                table_id=row.source_locator.table_id,
+                row_number=row.source_locator.row_number,
+                column_name=row.source_locator.column_name,
+                reported_label=row.reported_label,
+            )
+            for row in request.evidence_rows
+        ),
+    )
+
+
+def _request_context_checksum(context: PageDiscoveryRequestContext) -> str:
+    serialized = json.dumps(context.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 

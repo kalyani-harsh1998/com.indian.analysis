@@ -57,8 +57,24 @@ OpenAI page-discovery adapter now implements that exact selection contract with 
 non-stored structured request. It receives only the bounded untrusted packet (not raw-PDF bytes,
 local paths, or separately extracted/approved values), restricts its schema to the supplied page
 numbers, and creates a review-only proposal that Python validates again. Candidate excerpts may
-contain printed document values; they remain untrusted source text. No live page-discovery call or
-profile approval has occurred in this slice.
+contain printed document values; they remain untrusted source text. One separately labelled APSEZ
+v1 technical call selected the correct consolidated finance-cost note and an unnecessary standalone
+note; no profile approval followed. The v2 packet additionally checksum-binds the required
+reporting basis, exact annual period, target metrics, purpose, and existing statement-row anchors.
+The model must return one primary page or an explicit abstention; any supporting pages are separate
+and limited. Python rejects mismatched packet identity, basis, or period, but cannot prove a page's
+accounting basis from arbitrary PDF wording. A reviewer still makes that semantic judgement before
+a profile can exist.
+
+One explicitly authorized APSEZ v2 page-discovery call selected page 729 as the sole primary page
+for the consolidated FY2026 finance-cost request, with no supporting pages. It is encouraging
+bounded-integration evidence (5,604 input tokens, 230 output tokens, and 7,451 ms recorded
+locally), not an approved profile, mapping, fact, or model-quality benchmark.
+
+A separate explicitly authorized Infosys v2 call selected page 329 as the medium-confidence
+primary page for the consolidated FY2026 income-tax note and page 287 only as supporting
+statement-side evidence. Its rationale correctly noted that the candidate excerpt did not show
+the complete component table; it is a review-only observation, not an approval or quality claim.
 The
 planned guided profile workflow is model-proposed pages from a bounded verified page index, visual
 reviewer selection of a rectangle, versioned profile creation, deterministic re-extraction and

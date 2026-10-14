@@ -414,6 +414,10 @@ def test_page_discovery_input_is_source_verified_scoped_and_bounded(tmp_path: Pa
     assert "Tax expense" in discovery_input.candidate_pages[0].excerpt
     assert len(discovery_input.candidate_pages_checksum_sha256) == 64
     assert discovery_input.provenance.source_document_id == source.document_id
+    assert discovery_input.request_context.reporting_basis is ReportingBasis.CONSOLIDATED
+    assert discovery_input.request_context.period.label == "FY2025"
+    assert discovery_input.request_context.target_metric_ids == (MetricId.TAX_EXPENSE,)
+    assert discovery_input.request_context.evidence_anchors[0].table_id == "profit_and_loss"
 
 
 def test_page_discovery_proposal_rejects_pages_outside_the_bounded_packet(tmp_path: Path) -> None:
@@ -444,40 +448,42 @@ def test_page_discovery_proposal_rejects_pages_outside_the_bounded_packet(tmp_pa
         request_id=discovery_input.request_id,
         document_id=discovery_input.document_id,
         source_checksum_sha256=discovery_input.source_checksum_sha256,
+        request_context_checksum_sha256=discovery_input.request_context_checksum_sha256,
         candidate_pages_checksum_sha256=discovery_input.candidate_pages_checksum_sha256,
         model_run=ModelRunProvenance(
             provider="static-page-discovery",
             model_id="static",
             model_version="1",
-            prompt_version="page-discovery-v1",
-            schema_version="page-discovery-proposal-v1",
+            prompt_version="page-discovery-v2",
+            schema_version="page-discovery-proposal-v2",
             generated_at=_NOW,
         ),
-        selections=(
-            PageDiscoverySelection(
-                page_number=1,
-                confidence=ConfidenceLevel.HIGH,
-                rationale="The supplied excerpt contains the tax expense row.",
-            ),
+        selection_status="selected",
+        selected_reporting_basis=ReportingBasis.CONSOLIDATED,
+        selected_period_label="FY2025",
+        primary_selection=PageDiscoverySelection(
+            page_number=1,
+            confidence=ConfidenceLevel.HIGH,
+            rationale="The supplied excerpt contains the tax expense row.",
         ),
+        supporting_selections=(),
+        abstention_reason=None,
     )
 
     assert validate_page_discovery_proposal(discovery_input, proposal).ready_for_review is True
 
     invalid = proposal.model_copy(
         update={
-            "selections": (
-                PageDiscoverySelection(
-                    page_number=99,
-                    confidence=ConfidenceLevel.HIGH,
-                    rationale="Invented page for validation testing.",
-                ),
+            "primary_selection": PageDiscoverySelection(
+                page_number=99,
+                confidence=ConfidenceLevel.HIGH,
+                rationale="Invented page for validation testing.",
             )
         }
     )
     result = validate_page_discovery_proposal(discovery_input, invalid)
     assert result.ready_for_review is False
-    assert result.validated_page_numbers == ()
+    assert result.validated_primary_page_number is None
     assert result.issues[0].code == "page_not_in_candidates"
 
 

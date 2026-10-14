@@ -668,6 +668,25 @@ Python creates the identity binding and model-run provenance locally, then re-va
 before persisting a review-only proposal. A controlled live comparison is still a separate,
 explicitly authorized evaluation.
 
+The v2 packet additionally binds the request's reporting basis, full reporting period, selected
+canonical metrics, purpose, and existing statement-row anchors through a separate checksum. The
+v2 proposal must declare one primary page or an explicit abstention; it may list up to four
+supporting pages only when necessary. Its strict response schema fixes the declared basis and
+period to the locally supplied request context, while deterministic validation rejects a changed
+context checksum, basis, or period. This does not claim that arbitrary PDF text can be
+deterministically classified as consolidated or standalone: a page choice still requires reviewer
+inspection before it becomes a profile.
+
+One explicitly authorized APSEZ v2 technical evaluation selected page 729 as the sole primary page
+for the consolidated FY2026 finance-cost request, without the previously unnecessary standalone
+selection. This verifies the bounded adapter path for one case only; it does not establish general
+accuracy or approve a profile.
+
+A separate Infosys v2 technical evaluation selected page 329 as the medium-confidence primary
+candidate for the consolidated FY2026 income-tax note, plus page 287 as supporting statement
+evidence. The model identified that the full component table was absent from the excerpt, which
+must remain a reviewer check. This is a second integration observation, not general accuracy.
+
 ### Consequences
 
 - The provider-neutral boundary remains testable without a live model call; the optional OpenAI

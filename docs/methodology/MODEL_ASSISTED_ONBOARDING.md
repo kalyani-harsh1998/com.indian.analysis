@@ -89,6 +89,23 @@ review-only proposal. It cannot create coordinates, an extraction profile, mappi
 facts, or approval. Use it only for an explicitly authorized evaluation or reviewer-assistance
 workflow; a page selection is a suggestion, not evidence.
 
+The v2 packet also contains checksum-bound reporting-basis/period requirements, selected target
+metrics, purpose, and existing statement-row anchors. Its output has either one `primary_selection`
+with optional limited `supporting_selections`, or a visible abstention. Python rejects a changed
+context checksum or a declared basis/period mismatch. These are consistency controls, not a claim
+that Python can semantically prove a page is consolidated from arbitrary PDF prose; reviewer
+inspection remains required.
+
+In one explicitly authorized APSEZ v2 technical run, the provider selected the consolidated
+FY2026 finance-cost note on page 729 as its sole primary page and did not select the standalone
+note. This is a local review-only integration observation, not a fixture change, approved profile,
+or model-quality conclusion.
+
+A separate Infosys v2 technical run selected page 329 as the medium-confidence consolidated
+FY2026 income-tax-note candidate, with page 287 as supporting statement evidence. It explicitly
+asked for full-page review because the excerpt omitted the complete component table; no profile,
+fact, mapping, or approval resulted.
+
 ## Prompt-isolated model input
 
 `PromptIsolatedOnboardingInputBuilder` converts an onboarding request into the only packet that a future mapping provider should receive. It includes the request identity, company/period/unit/basis context, source checksum, and bounded evidence rows with their locators, labels, and raw values. It deliberately excludes local filesystem paths, raw PDF bytes, original filenames, and arbitrary document text.

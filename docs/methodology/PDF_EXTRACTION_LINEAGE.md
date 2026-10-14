@@ -100,6 +100,22 @@ candidate excerpt can contain printed source values, but it is not a determinist
 approved fact. The adapter cannot create coordinates, a profile, normalized facts, or approval.
 The proposal is independently validated before it is written, and a reviewer must still inspect it.
 
+The v2 packet carries a checksummed request context: required reporting basis, full fiscal period,
+target canonical metrics, purpose, and existing statement-row anchors. The model must produce one
+primary page or abstain; it may name limited supporting pages only where they are needed. Python
+rejects a changed context checksum and a declared basis/period mismatch. It does not infer the
+actual accounting basis of arbitrary PDF pages from text alone, so an apparent standalone versus
+consolidated distinction remains a reviewer check until a controlled profile exists.
+
+One explicitly authorized APSEZ v2 technical proposal selected page 729, the consolidated FY2026
+finance-cost note, as its only primary page. It created no profile, coordinates, extracted facts,
+or approval, and remains review-only integration evidence.
+
+A separate Infosys v2 technical proposal selected the consolidated FY2026 income-tax note on page
+329 as primary and the anchored consolidated statement on page 287 as supporting evidence. It
+flagged the primary choice for full-page review because the bounded excerpt did not contain the
+complete tax-component table. This likewise created no profile, coordinates, facts, or approval.
+
 ## Accuracy benchmark
 
 `benchmark_extraction` compares extracted label/value pairs at stable row numbers with a manually reviewed golden set. It records expected, actual, and matched row counts, an exact-match rate, required threshold, mismatches, benchmark version, and pass status.
