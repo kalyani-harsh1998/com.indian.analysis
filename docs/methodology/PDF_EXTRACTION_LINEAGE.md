@@ -85,6 +85,21 @@ the resulting checksummed candidate-page packet with policy and PDF-tool provena
 provider and cannot create coordinates, a profile, or a fact. A later provider may only choose from
 these listed pages, subject to deterministic validation and human review.
 
+`PageDiscoveryProposal` is the next completed contract: it records one to five unique page
+selections, rationale, confidence, and model-run provenance, all bound to the exact candidate-page
+packet. `validate_page_discovery_proposal` rejects mismatched identity/checksums and any page not
+present in that packet. The current static provider proves the contract without network access; a
+future live adapter must satisfy the same restriction.
+
+`OpenAIPageDiscoveryProposalProvider` is now the optional live adapter for that restricted role.
+`propose-openai-page-discovery` accepts one stored `PageDiscoveryInput`, sends its bounded packet
+in a separate untrusted user message, and asks for strict structured selections only from its page
+numbers. It makes one non-retrying, non-stored request and persists only a review-only proposal
+with local identity/model-run provenance. The provider receives no raw-PDF bytes or local path; a
+candidate excerpt can contain printed source values, but it is not a deterministic extraction or an
+approved fact. The adapter cannot create coordinates, a profile, normalized facts, or approval.
+The proposal is independently validated before it is written, and a reviewer must still inspect it.
+
 ## Accuracy benchmark
 
 `benchmark_extraction` compares extracted label/value pairs at stable row numbers with a manually reviewed golden set. It records expected, actual, and matched row counts, an exact-match rate, required threshold, mismatches, benchmark version, and pass status.

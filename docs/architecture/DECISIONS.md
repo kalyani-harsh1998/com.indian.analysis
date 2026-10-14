@@ -654,9 +654,24 @@ to remain inspectable before any rectangle/profile is created.
 - A later provider contract may select only a page already present in the packet. It must be
   independently validated and reviewed before a visual profile-builder creates coordinates.
 
+The initial strict proposal contract is now implemented. It binds a proposal to the exact input,
+request, document, source checksum, and candidate-page checksum, permits one to five unique page
+selections with rationale and confidence, and rejects every page not in the local candidate packet.
+Its static provider and deterministic tests prove this boundary without a model call.
+
+The optional `OpenAIPageDiscoveryProposalProvider` now implements the same contract. It makes one
+non-retrying Responses API call with `store=False`, a fixed developer instruction, the bounded
+untrusted packet as a separate user message, and a strict schema whose page-number field is limited
+to the packet's candidates. It never receives raw-PDF bytes or local paths. Candidate excerpts may
+include printed source values, but no separately extracted or approved financial values are sent.
+Python creates the identity binding and model-run provenance locally, then re-validates the output
+before persisting a review-only proposal. A controlled live comparison is still a separate,
+explicitly authorized evaluation.
+
 ### Consequences
 
-- The current slice makes page discovery testable and provider-neutral without a live model call.
+- The provider-neutral boundary remains testable without a live model call; the optional OpenAI
+  adapter can only create a review-only page proposal within that boundary.
 - Lexical retrieval can miss a differently worded note or return extra candidates; that is why it
   proposes a bounded review set rather than asserting that a page is correct.
 - Coordinate proposals, visual selection, profile approval, and model-quality evaluation remain

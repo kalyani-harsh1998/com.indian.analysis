@@ -19,11 +19,22 @@ from indian_company_analysis.data.extraction.models import (
     PdfTableExtractionSpec,
 )
 from indian_company_analysis.data.extraction.note_context import PdfNoteContextExtractor
+from indian_company_analysis.data.extraction.openai_page_discovery import (
+    OpenAIPageDiscoveryError,
+    OpenAIPageDiscoveryProposalProvider,
+)
 from indian_company_analysis.data.extraction.page_discovery import (
     PageDiscoveryCandidate,
     PageDiscoveryInput,
     PageDiscoveryPolicy,
+    PageDiscoveryProposal,
+    PageDiscoveryProposalProvider,
+    PageDiscoveryProvenance,
+    PageDiscoverySelection,
+    PageDiscoveryValidationResult,
     PdfPageDiscoveryInputBuilder,
+    StaticPageDiscoveryProposalProvider,
+    validate_page_discovery_proposal,
 )
 from indian_company_analysis.data.extraction.pdf_table import RuledPdfTableExtractor
 
@@ -42,10 +53,19 @@ __all__ = [
     "PageDiscoveryCandidate",
     "PageDiscoveryInput",
     "PageDiscoveryPolicy",
+    "PageDiscoveryProposal",
+    "PageDiscoveryProposalProvider",
+    "PageDiscoveryProvenance",
+    "PageDiscoverySelection",
+    "PageDiscoveryValidationResult",
+    "OpenAIPageDiscoveryError",
+    "OpenAIPageDiscoveryProposalProvider",
     "PdfPageDiscoveryInputBuilder",
+    "StaticPageDiscoveryProposalProvider",
     "PdfTableExtractionResult",
     "PdfTableExtractionSpec",
     "RuledPdfTableExtractor",
     "benchmark_extraction",
     "verify_extraction_link",
+    "validate_page_discovery_proposal",
 ]

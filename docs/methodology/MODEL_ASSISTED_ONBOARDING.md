@@ -74,6 +74,21 @@ provisional, rejected, and synthetic entries are rejected before this CA-quality
 Every persisted report remains an evaluation artifact, not an approved mapping or normalization
 input.
 
+## Optional bounded page-discovery adapter
+
+`OpenAIPageDiscoveryProposalProvider` is a separate, opt-in adapter for the earlier stage of
+finding a likely PDF page for human review. It accepts only a locally built, checksummed
+`PageDiscoveryInput`: a short bounded list of page numbers and untrusted excerpts from a verified
+PDF. It sends no raw-PDF bytes, local path, or separately extracted/approved values. An excerpt can
+contain printed document values, which remain untrusted source text.
+
+`propose-openai-page-discovery` makes one `store=False`, non-retrying structured request. Its JSON
+schema restricts the model's `page_number` answer to the candidate pages that Python supplied.
+Python then binds the response to the exact input/checksums, validates it again, and writes a
+review-only proposal. It cannot create coordinates, an extraction profile, mappings, normalized
+facts, or approval. Use it only for an explicitly authorized evaluation or reviewer-assistance
+workflow; a page selection is a suggestion, not evidence.
+
 ## Prompt-isolated model input
 
 `PromptIsolatedOnboardingInputBuilder` converts an onboarding request into the only packet that a future mapping provider should receive. It includes the request identity, company/period/unit/basis context, source checksum, and bounded evidence rows with their locators, labels, and raw values. It deliberately excludes local filesystem paths, raw PDF bytes, original filenames, and arbitrary document text.

@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 from pathlib import Path
+from typing import Protocol
 
 import pdfplumber
 from pdfplumber.pdf import PDF
@@ -13,7 +14,11 @@ from pydantic import Field, model_validator
 
 from indian_company_analysis.data.ingestion.models import RawDocumentManifest
 from indian_company_analysis.data.ingestion.verification import verify_raw_document
-from indian_company_analysis.data.onboarding.models import DocumentOnboardingRequest
+from indian_company_analysis.data.onboarding.models import (
+    DocumentOnboardingRequest,
+    ModelRunProvenance,
+)
+from indian_company_analysis.domain.enums import ConfidenceLevel
 from indian_company_analysis.domain.models import DomainModel
 
 
@@ -70,6 +75,124 @@ class PageDiscoveryInput(DomainModel):
         """Serialize only untrusted document data for a future provider user message."""
 
         return self.model_dump_json()
+
+
+class PageDiscoverySelection(DomainModel):
+    """One page chosen by a provider from the supplied candidate-page set."""
+
+    page_number: int = Field(ge=1)
+    confidence: ConfidenceLevel
+    rationale: str = Field(min_length=1)
+
+
+class PageDiscoveryProposal(DomainModel):
+    """A non-authoritative selection from one fixed page-discovery input packet."""
+
+    proposal_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
+    input_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
+    request_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
+    document_id: str = Field(min_length=1)
+    source_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    candidate_pages_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    model_run: ModelRunProvenance
+    selections: tuple[PageDiscoverySelection, ...] = Field(min_length=1, max_length=5)
+
+    @model_validator(mode="after")
+    def selected_pages_are_unique(self) -> PageDiscoveryProposal:
+        pages = [selection.page_number for selection in self.selections]
+        if len(pages) != len(set(pages)):
+            raise ValueError("page-discovery proposal contains duplicate selected pages")
+        return self
+
+
+class PageDiscoveryValidationIssue(DomainModel):
+    code: str = Field(min_length=1)
+    message: str = Field(min_length=1)
+    page_number: int | None = Field(default=None, ge=1)
+
+
+class PageDiscoveryValidationResult(DomainModel):
+    input_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
+    proposal_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
+    validated_page_numbers: tuple[int, ...]
+    issues: tuple[PageDiscoveryValidationIssue, ...]
+    ready_for_review: bool
+
+    @model_validator(mode="after")
+    def readiness_matches_issues(self) -> PageDiscoveryValidationResult:
+        if self.ready_for_review != (not self.issues and bool(self.validated_page_numbers)):
+            raise ValueError("page-discovery readiness requires valid pages and no issues")
+        return self
+
+
+class PageDiscoveryProposalProvider(Protocol):
+    """Select candidate pages, but never create coordinates or source facts."""
+
+    def propose(self, discovery_input: PageDiscoveryInput) -> PageDiscoveryProposal:
+        """Return a proposal constrained to the supplied candidate-page packet."""
+        ...
+
+
+def validate_page_discovery_proposal(
+    discovery_input: PageDiscoveryInput,
+    proposal: PageDiscoveryProposal,
+) -> PageDiscoveryValidationResult:
+    """Reject identity mismatches and page numbers not supplied in the local packet."""
+
+    issues: list[PageDiscoveryValidationIssue] = []
+    for field_name in (
+        "input_id",
+        "request_id",
+        "document_id",
+        "source_checksum_sha256",
+        "candidate_pages_checksum_sha256",
+    ):
+        if getattr(discovery_input, field_name) != getattr(proposal, field_name):
+            issues.append(
+                PageDiscoveryValidationIssue(
+                    code="identity_mismatch",
+                    message=f"proposal {field_name} does not match the page-discovery input",
+                )
+            )
+
+    candidates = {candidate.page_number for candidate in discovery_input.candidate_pages}
+    invalid_pages = {
+        selection.page_number
+        for selection in proposal.selections
+        if selection.page_number not in candidates
+    }
+    for page_number in sorted(invalid_pages):
+        issues.append(
+            PageDiscoveryValidationIssue(
+                code="page_not_in_candidates",
+                message="proposal selected a page that was not supplied in the candidate packet",
+                page_number=page_number,
+            )
+        )
+    validated = tuple(
+        selection.page_number
+        for selection in proposal.selections
+        if selection.page_number not in invalid_pages
+    )
+    return PageDiscoveryValidationResult(
+        input_id=discovery_input.input_id,
+        proposal_id=proposal.proposal_id,
+        validated_page_numbers=validated if not issues else (),
+        issues=tuple(issues),
+        ready_for_review=not issues and bool(validated),
+    )
+
+
+class StaticPageDiscoveryProposalProvider:
+    """Deterministic page-selection provider for tests; it never makes a model call."""
+
+    def __init__(self, proposal: PageDiscoveryProposal) -> None:
+        self._proposal = proposal
+
+    def propose(self, discovery_input: PageDiscoveryInput) -> PageDiscoveryProposal:
+        if discovery_input.input_id != self._proposal.input_id:
+            raise ValueError("static page-discovery proposal input ID does not match")
+        return self._proposal
 
 
 class PdfPageDiscoveryInputBuilder:

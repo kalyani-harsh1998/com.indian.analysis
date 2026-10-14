@@ -50,7 +50,15 @@ checksummed context bundle with extractor/profile provenance and a profile check
 discover notes, send a raw PDF, call a provider, or approve evidence. Automatic note discovery, reviewed alternative
 evidence routes, rounding-policy improvements, and finer-grained review remain future work. A local
 page-index builder can now produce a bounded, checksummed candidate-page packet from the verified
-PDF and selected evidence/scope, but it makes no model call and cannot select a page or profile.
+PDF and selected evidence/scope. A strict provider-neutral selection contract can choose only pages
+already in that packet and rejects invented pages or mismatched identity/checksums; the current
+static provider makes no model call and cannot create a profile or select a fact. The optional
+OpenAI page-discovery adapter now implements that exact selection contract with one non-retrying,
+non-stored structured request. It receives only the bounded untrusted packet (not raw-PDF bytes,
+local paths, or separately extracted/approved values), restricts its schema to the supplied page
+numbers, and creates a review-only proposal that Python validates again. Candidate excerpts may
+contain printed document values; they remain untrusted source text. No live page-discovery call or
+profile approval has occurred in this slice.
 The
 planned guided profile workflow is model-proposed pages from a bounded verified page index, visual
 reviewer selection of a rectangle, versioned profile creation, deterministic re-extraction and

@@ -33,7 +33,10 @@ from indian_company_analysis.data.extraction.models import (
 from indian_company_analysis.data.extraction.note_context import PdfNoteContextExtractor
 from indian_company_analysis.data.extraction.page_discovery import (
     PageDiscoveryPolicy,
+    PageDiscoveryProposal,
+    PageDiscoverySelection,
     PdfPageDiscoveryInputBuilder,
+    validate_page_discovery_proposal,
 )
 from indian_company_analysis.data.extraction.pdf_table import RuledPdfTableExtractor
 from indian_company_analysis.data.ingestion.local_intake import ImmutableRawDocumentStore
@@ -411,6 +414,71 @@ def test_page_discovery_input_is_source_verified_scoped_and_bounded(tmp_path: Pa
     assert "Tax expense" in discovery_input.candidate_pages[0].excerpt
     assert len(discovery_input.candidate_pages_checksum_sha256) == 64
     assert discovery_input.provenance.source_document_id == source.document_id
+
+
+def test_page_discovery_proposal_rejects_pages_outside_the_bounded_packet(tmp_path: Path) -> None:
+    source, _, extraction_result, _, _, raw_root = _linked_artifacts(tmp_path)
+    request = build_onboarding_request(
+        extraction_result,
+        request_id="fictionalco-fy25-tax-page-proposal-v1",
+        company_id=source.company_id,
+        source_reference_id=source.source_reference.source_id,
+        source_organization=source.source_reference.source_organization,
+        document_type=source.document_type,
+        target_scope=OnboardingTargetScope(
+            scope_id="fictionalco-fy25-tax-page-proposal-v1",
+            metric_ids=(MetricId.TAX_EXPENSE,),
+            purpose="Find a source page relevant to tax expense review.",
+        ),
+    )
+    discovery_input = PdfPageDiscoveryInputBuilder().build(
+        source,
+        raw_root,
+        request,
+        input_id="fictionalco-fy25-tax-page-proposal-input-v1",
+        policy=PageDiscoveryPolicy(policy_version="synthetic-page-discovery-v1"),
+    )
+    proposal = PageDiscoveryProposal(
+        proposal_id="fictionalco-fy25-tax-page-proposal-v1",
+        input_id=discovery_input.input_id,
+        request_id=discovery_input.request_id,
+        document_id=discovery_input.document_id,
+        source_checksum_sha256=discovery_input.source_checksum_sha256,
+        candidate_pages_checksum_sha256=discovery_input.candidate_pages_checksum_sha256,
+        model_run=ModelRunProvenance(
+            provider="static-page-discovery",
+            model_id="static",
+            model_version="1",
+            prompt_version="page-discovery-v1",
+            schema_version="page-discovery-proposal-v1",
+            generated_at=_NOW,
+        ),
+        selections=(
+            PageDiscoverySelection(
+                page_number=1,
+                confidence=ConfidenceLevel.HIGH,
+                rationale="The supplied excerpt contains the tax expense row.",
+            ),
+        ),
+    )
+
+    assert validate_page_discovery_proposal(discovery_input, proposal).ready_for_review is True
+
+    invalid = proposal.model_copy(
+        update={
+            "selections": (
+                PageDiscoverySelection(
+                    page_number=99,
+                    confidence=ConfidenceLevel.HIGH,
+                    rationale="Invented page for validation testing.",
+                ),
+            )
+        }
+    )
+    result = validate_page_discovery_proposal(discovery_input, invalid)
+    assert result.ready_for_review is False
+    assert result.validated_page_numbers == ()
+    assert result.issues[0].code == "page_not_in_candidates"
 
 
 def test_note_context_command_persists_a_checksummed_bundle(

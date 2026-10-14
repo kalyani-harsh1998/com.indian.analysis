@@ -13,9 +13,14 @@ from indian_company_analysis.data.extraction.models import (
     PdfNoteContextExtractionSpec,
 )
 from indian_company_analysis.data.extraction.note_context import PdfNoteContextExtractor
+from indian_company_analysis.data.extraction.openai_page_discovery import (
+    OpenAIPageDiscoveryProposalProvider,
+)
 from indian_company_analysis.data.extraction.page_discovery import (
+    PageDiscoveryInput,
     PageDiscoveryPolicy,
     PdfPageDiscoveryInputBuilder,
+    validate_page_discovery_proposal,
 )
 from indian_company_analysis.data.ingestion.local_intake import ImmutableRawDocumentStore
 from indian_company_analysis.data.ingestion.manifest_catalog import LocalManifestCatalog
@@ -159,6 +164,19 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     page_discovery.add_argument("--maximum-candidates", type=int, default=12)
     page_discovery.add_argument("--maximum-excerpt-characters", type=int, default=1_500)
     page_discovery.add_argument("--output", type=Path)
+    openai_page_discovery = subparsers.add_parser(
+        "propose-openai-page-discovery",
+        help="request one bounded, review-only OpenAI page-selection proposal",
+    )
+    openai_page_discovery.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="checksummed page-discovery input produced locally from a verified PDF",
+    )
+    openai_page_discovery.add_argument("--model", required=True)
+    openai_page_discovery.add_argument("--maximum-output-tokens", type=int, default=1_000)
+    openai_page_discovery.add_argument("--output", type=Path)
     approve = subparsers.add_parser(
         "approve-onboarding",
         help="record human approval and register its reviewed onboarding configuration",
@@ -539,6 +557,34 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             f"Prepared {len(discovery_input.candidate_pages)} bounded candidate pages to {output}; "
             "no provider was called."
+        )
+        return 0
+    if args.command == "propose-openai-page-discovery":
+        discovery_input = PageDiscoveryInput.model_validate_json(
+            args.input.read_text(encoding="utf-8")
+        )
+        page_discovery_proposal = OpenAIPageDiscoveryProposalProvider(
+            model_id=args.model,
+            maximum_output_tokens=args.maximum_output_tokens,
+        ).propose(discovery_input)
+        validation = validate_page_discovery_proposal(discovery_input, page_discovery_proposal)
+        if not validation.ready_for_review:
+            raise RuntimeError("OpenAI page-discovery proposal did not pass local validation")
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "page-discovery-proposals"
+            / discovery_input.input_id
+            / f"{page_discovery_proposal.proposal_id}.json"
+        )
+        output.parent.mkdir(parents=True, exist_ok=True)
+        serialized = page_discovery_proposal.model_dump_json(indent=2) + "\n"
+        if output.exists() and output.read_text(encoding="utf-8") != serialized:
+            raise ValueError(f"refusing to overwrite different page-discovery proposal: {output}")
+        output.write_text(serialized, encoding="utf-8")
+        print(
+            f"Prepared a review-only OpenAI page-selection proposal at {output}; "
+            "no profile, coordinates, or facts were created."
         )
         return 0
     if args.command == "register-evaluation-corpus":
