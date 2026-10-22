@@ -6,7 +6,7 @@ import hashlib
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field, model_validator
 
@@ -25,6 +25,7 @@ CorpusReviewStatus = Literal[
     "approved_for_evaluation",
     "rejected",
 ]
+FixtureChecksumVersion = Literal["fixture-canonical-v1", "fixture-canonical-v2"]
 
 
 class EvaluationCorpusEntry(DomainModel):
@@ -42,11 +43,37 @@ class EvaluationCorpusEntry(DomainModel):
     onboarding_request: DocumentOnboardingRequest
     fixture: OnboardingEvaluationFixture | None = None
     fixture_checksum_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    fixture_checksum_version: FixtureChecksumVersion = "fixture-canonical-v2"
     review_status: CorpusReviewStatus
     reviewed_by: str | None = None
     reviewed_at: datetime | None = None
     review_policy_version: str | None = None
     review_notes: tuple[str, ...] = ()
+
+    @model_validator(mode="before")
+    @classmethod
+    def identify_legacy_checksum_format(cls, data: Any) -> Any:
+        """Recognize only the known unversioned pre-target-scope fixture format.
+
+        Once serialized with an explicit version, that version is authoritative. Never
+        retry a different format for a declared version or drop an actual target scope.
+        """
+
+        if not isinstance(data, dict) or "fixture_checksum_version" in data:
+            return data
+        fixture_data = data.get("fixture")
+        if not isinstance(fixture_data, dict):
+            return data
+        request_data = fixture_data.get("request")
+        if not isinstance(request_data, dict) or "target_scope" in request_data:
+            return data
+        fixture = OnboardingEvaluationFixture.model_validate(fixture_data)
+        saved_checksum = data.get("fixture_checksum_sha256")
+        if saved_checksum == _fixture_checksum(fixture):
+            return data
+        if saved_checksum == _fixture_checksum(fixture, version="fixture-canonical-v1"):
+            return {**data, "fixture_checksum_version": "fixture-canonical-v1"}
+        return data  # The normal checksum validator rejects unmatched or tampered records.
 
     @model_validator(mode="after")
     def lineage_and_review_state_are_consistent(self) -> EvaluationCorpusEntry:
@@ -101,7 +128,9 @@ class EvaluationCorpusEntry(DomainModel):
                 raise ValueError(
                     "evaluation fixture request must match the corpus onboarding request"
                 )
-            expected_checksum = _fixture_checksum(self.fixture)
+            expected_checksum = _fixture_checksum(
+                self.fixture, version=self.fixture_checksum_version
+            )
             if self.fixture_checksum_sha256 != expected_checksum:
                 raise ValueError("fixture checksum must match the canonical fixture contents")
         elif self.fixture_checksum_sha256 is not None:
@@ -158,11 +187,24 @@ class EvaluationCorpusEntry(DomainModel):
         return self.review_status == "provisional_internal_review"
 
 
-def _fixture_checksum(fixture: OnboardingEvaluationFixture) -> str:
-    """Return a reproducible digest of the complete golden fixture, including values."""
+def _fixture_checksum(
+    fixture: OnboardingEvaluationFixture,
+    *,
+    version: FixtureChecksumVersion = "fixture-canonical-v2",
+) -> str:
+    """Hash a declared canonical format, retaining all financial decisions and values.
 
+    V1 predates request target scopes; V2 includes that field even when null. Any future
+    schema/default change affecting canonical serialization requires a new checksum version.
+    """
+
+    payload = fixture.model_dump(mode="json")
+    if version == "fixture-canonical-v1":
+        if fixture.request.target_scope is not None:
+            raise ValueError("fixture-canonical-v1 cannot represent a target scope")
+        del payload["request"]["target_scope"]
     serialized = json.dumps(
-        fixture.model_dump(mode="json"),
+        payload,
         sort_keys=True,
         separators=(",", ":"),
     )
@@ -210,7 +252,8 @@ class LocalEvaluationCorpusCatalog:
             with path.open("x", encoding="utf-8") as catalog_file:
                 catalog_file.write(serialized)
         except FileExistsError:
-            if path.read_text(encoding="utf-8") != serialized:
+            persisted = EvaluationCorpusEntry.model_validate_json(path.read_text(encoding="utf-8"))
+            if persisted != entry:
                 raise ValueError(f"catalog already contains a different record at {path}") from None
             return False
         return True

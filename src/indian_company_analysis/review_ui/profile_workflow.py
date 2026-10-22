@@ -7,6 +7,7 @@ does not make browser rectangles executable, call a provider, or create financia
 from __future__ import annotations
 
 import hashlib
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -16,7 +17,14 @@ from indian_company_analysis.data.extraction.models import (
 )
 from indian_company_analysis.data.extraction.note_context import PdfNoteContextExtractor
 from indian_company_analysis.data.locators import SourceFactLocator
-from indian_company_analysis.data.onboarding.model_input import LocatorBoundContextBundle
+from indian_company_analysis.data.onboarding.model_input import (
+    ContextAttachmentProvenance,
+    LocatorBoundContextBundle,
+    OnboardingModelInputPolicy,
+    PromptIsolatedOnboardingInputBuilder,
+    onboarding_request_checksum,
+)
+from indian_company_analysis.data.onboarding.models import DocumentOnboardingRequest
 from indian_company_analysis.review_ui.models import (
     ProfileCandidateSubmission,
     ReviewerProfileCandidate,
@@ -182,6 +190,68 @@ class ReviewerProfileWorkflow:
         if context != decision.candidate.extracted_context:
             raise ValueError("approved profile context changed during re-extraction")
         return context
+
+    def attach_approved_context(
+        self,
+        decision: ReviewerProfileReviewDecision,
+        target_request: DocumentOnboardingRequest,
+        *,
+        bundle_id: str,
+        attached_by: str,
+        attached_at: datetime,
+        rationale: str,
+    ) -> LocatorBoundContextBundle:
+        """Attach unchanged, reverified context to another compatible onboarding task.
+
+        The original approval remains scoped to its region/metrics. This attachment is neither
+        a mapping approval nor permission to apply the excerpt to other target metrics.
+        """
+
+        source_context = self.extract_approved_context(decision)
+        source_request = self._session.onboarding_request
+        for field in (
+            "company_id",
+            "document_id",
+            "source_checksum_sha256",
+            "source_reference_id",
+            "source_organization",
+            "document_type",
+            "unit",
+            "period",
+            "reporting_basis",
+        ):
+            if getattr(source_request, field) != getattr(target_request, field):
+                raise ValueError(f"context attachment incompatible target {field}")
+        decision_json = json.dumps(
+            decision.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+        )
+        attached = LocatorBoundContextBundle.for_request(
+            target_request,
+            bundle_id=bundle_id,
+            snippets=source_context.snippets,
+            extraction_provenance=source_context.extraction_provenance,
+            attachment_provenance=ContextAttachmentProvenance(
+                source_request_id=source_request.request_id,
+                source_request_checksum_sha256=onboarding_request_checksum(source_request),
+                target_request_checksum_sha256=onboarding_request_checksum(target_request),
+                source_bundle_id=source_context.bundle_id,
+                source_context_checksum_sha256=source_context.context_checksum_sha256,
+                profile_decision_id=decision.decision_id,
+                profile_decision_checksum_sha256=_sha256(decision_json.encode("utf-8")),
+                attached_by=attached_by,
+                attached_at=attached_at,
+                rationale=rationale,
+            ),
+        )
+        # Use the same scope/size/injection boundaries as preparation and live evaluation.
+        # Legacy full-statement requests retain their existing all-eligible metric scope.
+        PromptIsolatedOnboardingInputBuilder().build(
+            target_request,
+            input_id=bundle_id,
+            policy=OnboardingModelInputPolicy(policy_version="approved-profile-attachment-v1"),
+            context_bundle=attached,
+        )
+        return attached
 
     def _revalidate_candidate(
         self,

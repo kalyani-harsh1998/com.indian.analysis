@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 
 import pytest
 
+from indian_company_analysis.__main__ import main
 from indian_company_analysis.data.extraction.page_discovery import (
     PageDiscoveryCandidate,
     PageDiscoveryEvidenceAnchor,
@@ -22,6 +25,12 @@ from indian_company_analysis.data.extraction.page_discovery import (
 from indian_company_analysis.data.ingestion.local_intake import ImmutableRawDocumentStore
 from indian_company_analysis.data.ingestion.models import LocalDocumentIntakeRequest
 from indian_company_analysis.data.locators import SourceFactLocator
+from indian_company_analysis.data.onboarding.model_input import (
+    LocatorBoundContextBundle,
+    OnboardingModelInputPolicy,
+    PromptIsolatedOnboardingInputBuilder,
+    onboarding_request_checksum,
+)
 from indian_company_analysis.data.onboarding.models import (
     DocumentOnboardingRequest,
     ModelRunProvenance,
@@ -40,6 +49,7 @@ from indian_company_analysis.domain.models import ReportingPeriod
 from indian_company_analysis.review_ui.models import (
     ProfileCandidateSubmission,
     RegionDraftSubmission,
+    ReviewerProfileReviewDecision,
 )
 from indian_company_analysis.review_ui.profile_workflow import (
     LocalReviewerProfileDecisionCatalog,
@@ -382,3 +392,246 @@ def test_profile_approval_rejects_a_draft_that_changed_after_candidate_creation(
             approval_policy_version="synthetic-profile-review-v1",
             review_rationale="This must not approve a changed draft.",
         )
+
+
+def _approved_profile(
+    session: ProfileReviewSession,
+) -> tuple[ReviewerProfileWorkflow, ReviewerProfileReviewDecision]:
+    page = session.metadata().pages[0]
+    draft, _ = session.create_draft(
+        RegionDraftSubmission(
+            draft_id="attachment-region-v1",
+            profile_version="synthetic-v1",
+            reviewer_name="Synthetic reviewer",
+            review_notes="Synthetic region for attachment testing.",
+            page_number=1,
+            x0=Decimal(0),
+            top=Decimal(0),
+            x1=page.width,
+            bottom=page.height,
+        )
+    )
+    workflow = ReviewerProfileWorkflow(session)
+    candidate = workflow.prepare_candidate(
+        draft,
+        draft_file_checksum_sha256="a" * 64,
+        submission=ProfileCandidateSubmission(
+            candidate_id="attachment-candidate-v1",
+            bundle_id="source-context-v1",
+            profile_version="synthetic-v1",
+            context_id="revenue-note",
+            table_id="synthetic_revenue_note",
+            row_number=1,
+            column_name="text",
+            prepared_by="Synthetic preparer",
+            prepared_at=_NOW,
+        ),
+    )
+    decision = workflow.approve_candidate(
+        candidate,
+        draft=draft,
+        draft_file_checksum_sha256="a" * 64,
+        decision_id="attachment-approval-v1",
+        reviewed_by="Synthetic reviewer",
+        reviewed_at=_NOW,
+        approval_policy_version="test-v1",
+        review_rationale="Synthetic region checked for its assigned metric only.",
+    )
+    return workflow, decision
+
+
+def _attach(
+    workflow: ReviewerProfileWorkflow,
+    decision: ReviewerProfileReviewDecision,
+    target: DocumentOnboardingRequest,
+) -> LocatorBoundContextBundle:
+    return workflow.attach_approved_context(
+        decision,
+        target,
+        bundle_id="attached-revenue-context-v1",
+        attached_by="Synthetic operator",
+        attached_at=_NOW,
+        rationale="Use reviewed revenue context in the broader statement task.",
+    )
+
+
+@pytest.mark.parametrize("explicit_scope", [False, True])
+def test_scoped_context_attaches_to_full_statement_with_original_lineage(
+    tmp_path: Path, explicit_scope: bool
+) -> None:
+    session = _session(tmp_path)
+    workflow, decision = _approved_profile(session)
+    source = session.onboarding_request
+    target = source.model_copy(
+        update={
+            "request_id": "fictional-full-statement",
+            "target_scope": (
+                OnboardingTargetScope(
+                    scope_id="full-statement-v1",
+                    metric_ids=(MetricId.REVENUE, MetricId.FINANCE_COST),
+                    purpose="Synthetic statement scope.",
+                )
+                if explicit_scope
+                else None
+            ),
+        }
+    )
+    original_decision = decision.model_dump_json()
+    with pytest.raises(ValueError, match="request ID does not match"):
+        PromptIsolatedOnboardingInputBuilder().build(
+            target,
+            input_id="unattached",
+            policy=OnboardingModelInputPolicy(policy_version="test-v1"),
+            context_bundle=decision.candidate.extracted_context,
+        )
+    attached = _attach(workflow, decision, target)
+    assert attached.request_id == target.request_id
+    assert attached.snippets == decision.candidate.extracted_context.snippets
+    assert attached.snippets[0].metric_ids == (MetricId.REVENUE,)
+    assert (
+        attached.extraction_provenance == decision.candidate.extracted_context.extraction_provenance
+    )
+    provenance = attached.attachment_provenance
+    assert provenance is not None
+    assert provenance.source_request_id == source.request_id
+    assert provenance.source_request_checksum_sha256 == onboarding_request_checksum(source)
+    assert provenance.target_request_checksum_sha256 == onboarding_request_checksum(target)
+    assert provenance.profile_decision_id == decision.decision_id
+    assert decision.model_dump_json() == original_decision
+    # New optional metadata cannot change the checksums of already saved approvals.
+    legacy_candidate = decision.candidate.model_dump(mode="json")
+    legacy_candidate["extracted_context"].pop("attachment_provenance")
+    legacy_digest = hashlib.sha256(
+        json.dumps(legacy_candidate, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    assert legacy_digest == decision.candidate_checksum_sha256
+
+    changed_row = target.evidence_rows[0].model_copy(update={"raw_value": "999"})
+    changed_target = target.model_copy(update={"evidence_rows": (changed_row,)})
+    with pytest.raises(ValueError, match="target request checksum"):
+        PromptIsolatedOnboardingInputBuilder().build(
+            changed_target,
+            input_id="changed-target",
+            policy=OnboardingModelInputPolicy(policy_version="test-v1"),
+            context_bundle=attached,
+        )
+    tampered = attached.model_dump(mode="json")
+    tampered["attachment_provenance"]["source_context_checksum_sha256"] = "b" * 64
+    with pytest.raises(ValueError, match="original excerpt checksum"):
+        LocatorBoundContextBundle.model_validate(tampered)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("company_id", "otherco"),
+        ("document_id", "revised-document"),
+        ("source_checksum_sha256", "b" * 64),
+        ("source_reference_id", "different-source"),
+        ("source_organization", "different-publisher"),
+        ("document_type", DocumentType.OTHER),
+        ("unit", "INR million"),
+        (
+            "period",
+            ReportingPeriod(
+                label="FY2024",
+                period_type=PeriodType.ANNUAL,
+                start_date=date(2023, 4, 1),
+                end_date=date(2024, 3, 31),
+            ),
+        ),
+        ("reporting_basis", ReportingBasis.STANDALONE),
+    ],
+)
+def test_attachment_rejects_incompatible_accounting_identity(
+    tmp_path: Path, field: str, value: object
+) -> None:
+    session = _session(tmp_path)
+    workflow, decision = _approved_profile(session)
+    target = session.onboarding_request.model_copy(
+        update={"request_id": "other-task", field: value}
+    )
+    with pytest.raises(ValueError, match=f"incompatible target {field}"):
+        _attach(workflow, decision, target)
+
+
+def test_attachment_rejects_excluded_metric_rejection_and_changed_source(tmp_path: Path) -> None:
+    session = _session(tmp_path)
+    workflow, decision = _approved_profile(session)
+    target = session.onboarding_request.model_copy(
+        update={
+            "request_id": "finance-only-task",
+            "target_scope": OnboardingTargetScope(
+                scope_id="finance-only",
+                metric_ids=(MetricId.FINANCE_COST,),
+                purpose="Exclude revenue from the synthetic target.",
+            ),
+        }
+    )
+    with pytest.raises(ValueError, match="outside the target metric scope"):
+        _attach(workflow, decision, target)
+    rejected = decision.model_copy(
+        update={"outcome": "rejected", "approved_profile": None, "rejection_reasons": ("test",)}
+    )
+    with pytest.raises(ValueError, match="only an approved"):
+        _attach(workflow, rejected, session.onboarding_request)
+    source_path = session.raw_root / session.source_manifest.stored_relative_path
+    source_path.chmod(0o600)
+    source_path.write_bytes(b"Changed synthetic source for failure testing")
+    with pytest.raises(ValueError, match="verification failed"):
+        _attach(workflow, decision, session.onboarding_request)
+
+
+def test_attachment_cli_persists_reusable_context_without_overwriting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _session(tmp_path)
+    _, decision = _approved_profile(session)
+    target = session.onboarding_request.model_copy(
+        update={"request_id": "full-statement-task", "target_scope": None}
+    )
+    artifacts = {
+        "source-manifest": session.source_manifest,
+        "request": session.onboarding_request,
+        "page-discovery-input": session._page_discovery_input,
+        "page-discovery-proposal": session._page_discovery_proposal,
+        "decision": decision,
+        "target-request": target,
+    }
+    args = ["attach-approved-reviewer-profile-context"]
+    for name, artifact in artifacts.items():
+        path = tmp_path / f"{name}.json"
+        path.write_text(artifact.model_dump_json(indent=2), encoding="utf-8")
+        args.extend([f"--{name}", str(path)])
+    output = tmp_path / "attached-context.json"
+    args.extend(
+        [
+            "--bundle-id",
+            "attached-cli-v1",
+            "--attached-by",
+            "Synthetic operator",
+            "--attached-at",
+            _NOW.isoformat(),
+            "--rationale",
+            "Reviewed context for full P&L.",
+            "--output",
+            str(output),
+        ]
+    )
+    monkeypatch.setenv("ICA_DATA_DIRECTORY", str(tmp_path))
+    assert main(args) == 0
+    assert main(args) == 0
+    attached = LocatorBoundContextBundle.model_validate_json(output.read_text())
+    packet = PromptIsolatedOnboardingInputBuilder().build(
+        target,
+        input_id="full-statement-packet",
+        policy=OnboardingModelInputPolicy(policy_version="test-v1"),
+        context_bundle=attached,
+    )
+    assert packet.locator_bound_context == attached
+    assert packet.untrusted_evidence_rows[0].raw_value == "100"
+    assert attached.attachment_provenance is not None
+    assert attached.attachment_provenance.source_request_id == session.onboarding_request.request_id
+    args[args.index("--rationale") + 1] = "A different attachment record."
+    with pytest.raises(ValueError, match="refusing to overwrite"):
+        main(args)

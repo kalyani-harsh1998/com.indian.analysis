@@ -88,6 +88,13 @@ The live-model quality gate is likewise separate from normalization. A local eva
 
 The proposal boundary also includes unit, period, and reporting basis. Synthetic adversarial cases prove that a changed label, duplicate evidence use, invented locator, incompatible statement context, incorrect aggregation sign, or instruction-like source text cannot silently become a trusted configuration or fact. Provider-side prompt isolation remains a separate future live-adapter requirement.
 
+The corpus registry now declares `fixture_checksum_version`: V1 reproduces fixtures predating
+request target scopes, while V2 includes that field. A narrow loader recognizes unversioned V1
+only when the field was absent and the saved digest verifies; a declared version never falls back.
+Validated legacy replay preserves the original checksum, review state, and stored file. No fixture
+contents or approval gates are migrated. See ADR-028 and the
+[checksum contract](../methodology/EVALUATION_CORPUS_REGISTRY.md#fixture-checksum-versions).
+
 ## Boundaries and dependency direction
 
 The optional adapter currently builds prompt contract v4 with a checksummed snapshot of the
@@ -111,6 +118,15 @@ append-only draft; a preparer supplies a stable locator and creates a re-extract
 reviewer approves or rejects it after an independent re-extraction. Only an approved decision can
 produce the existing locator-bound context bundle. Neither a proposed page, coordinates, candidate,
 or context excerpt can directly produce an approved fact.
+
+The controlled attachment path reuses a reviewed region across tasks within the same document.
+`ReviewerProfileWorkflow.attach_approved_context` re-extracts the source approval, verifies the
+source/target accounting identity, and runs the existing bounded-input builder to enforce target
+scope and size limits. It returns a new target-bound bundle with original snippet applicability
+and `ContextAttachmentProvenance`; it does not rename an existing bundle in place. Both request
+checksums and the approval checksum are retained, and preparation/evaluation verifies the exact
+target request again. The POC attaches one approved profile per bundle; automatic collection of
+several note regions and an iterative missing-evidence workflow are deferred. See ADR-027.
 
 Dependencies point inward toward `domain` and deterministic functions:
 

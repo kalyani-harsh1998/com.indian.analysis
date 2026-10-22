@@ -92,6 +92,31 @@ second re-extraction. An approved decision can produce the existing bounded, unt
 bundle; it still cannot map a row, normalize a fact, or bypass review. FastAPI/Uvicorn and PDFium
 are local POC dependencies; the server binds to loopback by default and makes no provider call.
 
+An explicit `attach-approved-reviewer-profile-context` step now connects an approved region to a
+compatible broader onboarding task. It repeats the approved-profile extraction and checks company,
+document/checksum, source identity, document type, exact period, reporting basis, and unit. The new
+bundle preserves the original snippets and their metric restrictions, extraction provenance,
+approval-decision checksum, source-request checksum, and exact target-request checksum. The
+existing input builder still rejects unrelated request IDs; it also rejects a changed attachment
+target even when its ID stays the same. Existing legacy full-statement requests keep their
+all-eligible metric scope. This is local context integration, not approval of mappings or facts.
+The broader automated workflow remains future work: propose mappings for a complete statement,
+identify unresolved metrics, retrieve bounded supporting notes, review uncertain regions, and
+update the same statement proposal with deterministic validation. A limited Phase 3 pilot depends
+on reviewed, comparable inputs for its chosen companies/metrics rather than universal PDF support.
+
+Local APSEZ integration now reproduces the approved v2 rectangle and prepares the unchanged
+21-row full-P&L request with one finance-cost-only excerpt. No provider call or mapping approval
+occurred during this integration. The pre-existing registry compatibility issue is now resolved
+by explicit fixture checksum versions. `fixture-canonical-v1` preserves the historical format
+before request `target_scope` existed; `fixture-canonical-v2` includes it, including null. A narrow
+reader recognizes unversioned legacy records only when the field was absent and the historical
+digest verifies. Declared versions never fall back, and V1 cannot represent a real target scope.
+Loading/replaying a record preserves its checksum and review status without rewriting its file.
+The original APSEZ provisional entry now loads through the catalog and builds the 21-row packet
+with the approved finance-cost attachment. No provider call occurred during this compatibility
+check. Changed financial data, expected decisions, thresholds, or actual scopes still fail checks.
+
 One explicitly authorized APSEZ v3 technical run completed on 4 October 2026. It accounted for
 21/21 rows without duplicated or invented evidence, mapped reported PBT/PAT directly, matched
 five of six expected values, and reconciled PBT/tax/PAT. Full acceptance still failed: finance cost

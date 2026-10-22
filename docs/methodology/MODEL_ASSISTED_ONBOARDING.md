@@ -314,9 +314,19 @@ may exercise the technical route but cannot satisfy the CA-approved quality gate
 
 ## Deferred work
 
+The current controlled integration supports an approved note excerpt within a broader compatible
+statement task through `attach-approved-reviewer-profile-context`. It preserves the originating
+approval and binds the attachment to the exact target request; snippet metric scope stays narrow.
+See [the attachment contract](PDF_EXTRACTION_LINEAGE.md#attach-approved-context-to-a-compatible-task).
+
+- a reusable report-level missing-evidence workflow: propose statement mappings, identify unresolved
+  metrics, find bounded note candidates, review uncertain regions, attach compatible excerpts, and
+  update the same proposal; use representative company/layout tests rather than bespoke operating
+  workflows for every metric;
 - explicitly reviewed alternative evidence routes in evaluation; exact-decision scoring still
   rejects an otherwise equivalent tax total if the frozen fixture specifies components;
-- targeted, locator-bound statement/note context and explicit requested-metric scope;
+- automatic collection of multiple reviewed context profiles; targeted locator-bound note context
+  and caller-selected metric scopes are implemented;
 - precision-aware rounding policies and finer-grained review outcomes without bypassing approval;
 - additional explicitly authorized, bounded v3 real-case comparisons; the single APSEZ technical
   result does not establish CA-approved model quality;

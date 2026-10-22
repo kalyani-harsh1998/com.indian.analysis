@@ -37,6 +37,23 @@ an append-only decision. Only an approved decision may be passed to
 later onboarding evaluation. None of these commands creates a mapping, normalized fact, or provider
 call.
 
+`attach-approved-reviewer-profile-context` connects an approved region to another compatible
+onboarding request, such as a finance-cost note used in a full P&L evaluation. It re-extracts the
+original approved profile, checks company/document/checksum/period/basis/unit compatibility, and
+retains the original approval plus source/target request checksums in an append-only bundle.
+Each excerpt keeps its original metric applicability. Supply the original session inputs through
+`--request` and the other profile-session flags, then `--decision`, `--target-request`, `--bundle-id`,
+`--attached-by`, `--attached-at`, and `--rationale`. Its output can be supplied as `--context-bundle`
+to existing packet-preparation and corpus-evaluation commands; their review gates still apply.
+Automatic requests for missing notes and repeated discovery across different report layouts remain
+future work.
+
+Evaluation-corpus checksums now declare a canonical format version. A narrow compatibility reader
+verifies older records created before `target_scope` existed against their original checksum;
+new records include that field in the digest. Loading or replaying an older record preserves the
+saved checksum, review status, and original file. See
+[checksum compatibility](docs/methodology/EVALUATION_CORPUS_REGISTRY.md#fixture-checksum-versions).
+
 ## Architecture
 
 The package separates typed domain objects, replaceable source adapters, deterministic financial calculations, framework-neutral contracts, controlled workflows, and outputs. Numerical truth belongs in deterministic code; future agents may select and explain capabilities but must not become the source of financial calculations.
@@ -73,6 +90,7 @@ The local PDF reviewer additionally runs with:
 uv run python -m indian_company_analysis review-page-discovery-profile --help
 uv run python -m indian_company_analysis prepare-reviewer-profile-candidate --help
 uv run python -m indian_company_analysis approve-reviewer-profile --help
+uv run python -m indian_company_analysis attach-approved-reviewer-profile-context --help
 ```
 
 Optional OpenAI onboarding evaluation is intentionally separate from the normal local install:

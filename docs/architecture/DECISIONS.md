@@ -760,3 +760,74 @@ allow an accidental or semantically incomplete selection to flow directly into l
   without trusting the browser or creating a parallel extraction mechanism.
 - Real APSEZ/Infosys artifacts remain local technical evidence until independently reviewed under
   the relevant policy; this decision does not approve either company profile or any financial fact.
+
+## ADR-027 — Explicitly attach approved context across compatible onboarding requests
+
+**Status:** Accepted for the POC
+**Date:** 23 October 2026
+
+### Context
+
+A reviewed finance-cost region was created for a narrow request while the existing APSEZ
+evaluation uses a separate full-statement request. The model-input contract already permits a
+snippet's metrics to be a subset of the target scope, but request-ID equality correctly prevents
+implicit reuse. Creating a bespoke evaluation case for every metric would leave this integration
+gap unresolved.
+
+### Decision
+
+- Add an explicit local attachment step that repeats the approved-profile extraction using the
+  original verified review session. Require compatible company, document/checksum, source identity,
+  document type, full period, unit, and reporting basis.
+- Preserve the excerpt, locators, metric applicability, profile/tool provenance, and original
+  approval. Create a new target-bound bundle with source/target request checksums, originating
+  approval-decision checksum, named operator, timestamp, rationale, and policy version.
+- Use the existing bounded-input builder to enforce target metric containment and size limits.
+  Preserve legacy all-eligible scope semantics and request-ID equality. Validate the exact target
+  request checksum again at preparation/evaluation, including its evidence rows and scope.
+- Keep candidate checksums backward compatible when the new optional attachment field is absent.
+  Persist attachments without overwriting earlier artifacts. Existing golden fixtures and mapping,
+  normalization, and provider gates remain in force.
+
+### Consequences
+
+- A scoped excerpt can assist a full-statement evaluation without treating it as support for every
+  metric or as a new numerical evidence row. A local attachment itself calls no provider.
+- One approved profile is attached per bundle in this slice. Multiple-profile composition and a
+  bounded iterative LLM workflow that requests missing notes are explicit future work.
+- Semantic suitability remains a review responsibility; local checksum provenance is not a
+  multi-user authentication system. This integration does not establish model quality or complete
+  the Phase 2D gate.
+
+## ADR-028 — Version fixture checksums and verify the exact legacy format
+
+**Status:** Accepted for the POC
+**Date:** 23 October 2026
+
+### Context
+
+The saved APSEZ evaluation fixture predates the optional request `target_scope` field. Current
+model serialization inserts `target_scope: null`, changing the digest even though the reviewed
+financial contents are unchanged. Replacing the stored checksum or stripping arbitrary defaults
+would obscure which contents were actually reviewed.
+
+### Decision
+
+- Add an explicit fixture checksum version, defaulting to `fixture-canonical-v2` for new entries.
+  V2 includes the request target scope even when null; V1 reproduces the previous format by
+  omitting only that field and refuses any actual target scope.
+- Recognize unversioned legacy JSON only when the fixture request lacks the field and its digest
+  exactly matches V1. Accept existing unversioned current digests as V2. Never fall back for an
+  explicitly declared version or ignore a changed value, decision, threshold, or scope.
+- Preserve the saved digest and review state. In-memory/serialized records identify the recognized
+  version, while idempotent catalog replay compares validated records and never rewrites the
+  original file. A new internal-review version of a legacy candidate retains its fixture format.
+- Pin both formats with synthetic regression vectors and adversarial tests. Further schema changes
+  affecting canonical output require a new version rather than silently redefining V1/V2.
+
+### Consequences
+
+- The original APSEZ provisional case can again be read through the catalog and combined with its
+  approved finance-cost attachment without changing the frozen benchmark.
+- Compatibility verification does not call a provider, approve a mapping, or upgrade provisional
+  review to CA approval. General fixture migrations remain separately governed work.

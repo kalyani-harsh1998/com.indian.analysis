@@ -196,8 +196,13 @@ class ReviewerProfileReviewDecision(DomainModel):
 def profile_candidate_checksum(candidate: ReviewerProfileCandidate) -> str:
     """Return a stable checksum for one exact reviewer profile candidate."""
 
+    payload = candidate.model_dump(mode="json")
+    # Preserve checksums of pre-attachment approvals: a newly added optional null field must
+    # not invalidate the immutable candidate that the reviewer actually approved.
+    if candidate.extracted_context.attachment_provenance is None:
+        payload["extracted_context"].pop("attachment_provenance", None)
     serialized = json.dumps(
-        candidate.model_dump(mode="json"),
+        payload,
         sort_keys=True,
         separators=(",", ":"),
     )

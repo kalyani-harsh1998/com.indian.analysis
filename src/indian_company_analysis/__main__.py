@@ -259,6 +259,20 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     _add_profile_session_inputs(approved_profile_context)
     approved_profile_context.add_argument("--decision", type=Path, required=True)
     approved_profile_context.add_argument("--output", type=Path)
+    attached_profile_context = subparsers.add_parser(
+        "attach-approved-reviewer-profile-context",
+        help="attach re-extracted approved context to a compatible onboarding request",
+    )
+    _add_profile_session_inputs(attached_profile_context)
+    attached_profile_context.add_argument("--decision", type=Path, required=True)
+    attached_profile_context.add_argument("--target-request", type=Path, required=True)
+    attached_profile_context.add_argument("--bundle-id", required=True)
+    attached_profile_context.add_argument("--attached-by", required=True)
+    attached_profile_context.add_argument(
+        "--attached-at", type=datetime.fromisoformat, required=True
+    )
+    attached_profile_context.add_argument("--rationale", required=True)
+    attached_profile_context.add_argument("--output", type=Path)
     approve = subparsers.add_parser(
         "approve-onboarding",
         help="record human approval and register its reviewed onboarding configuration",
@@ -801,7 +815,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             "no mappings or facts were created."
         )
         return 0
-    if args.command == "extract-approved-reviewer-profile-context":
+    if args.command in {
+        "extract-approved-reviewer-profile-context",
+        "attach-approved-reviewer-profile-context",
+    }:
         session = load_profile_review_session(
             source_manifest_path=args.source_manifest,
             request_path=args.request,
@@ -813,7 +830,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         profile_decision = ReviewerProfileReviewDecision.model_validate_json(
             args.decision.read_text(encoding="utf-8")
         )
-        context_bundle = ReviewerProfileWorkflow(session).extract_approved_context(profile_decision)
+        profile_workflow = ReviewerProfileWorkflow(session)
+        if args.command == "attach-approved-reviewer-profile-context":
+            target_request = DocumentOnboardingRequest.model_validate_json(
+                args.target_request.read_text(encoding="utf-8")
+            )
+            context_bundle = profile_workflow.attach_approved_context(
+                profile_decision,
+                target_request,
+                bundle_id=args.bundle_id,
+                attached_by=args.attached_by,
+                attached_at=args.attached_at,
+                rationale=args.rationale,
+            )
+        else:
+            context_bundle = profile_workflow.extract_approved_context(profile_decision)
         output = args.output or (
             settings.data_directory
             / "interim"
@@ -826,7 +857,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             context_bundle.model_dump_json(indent=2) + "\n",
             artifact_name="approved reviewer-profile context bundle",
         )
-        action = "Extracted" if created else "Reused"
+        action = "Reused"
+        if created:
+            action = "Extracted"
+            if args.command == "attach-approved-reviewer-profile-context":
+                action = "Attached"
         print(
             f"{action} approved-profile context at {output}; "
             "it remains untrusted context, not a mapping or fact."

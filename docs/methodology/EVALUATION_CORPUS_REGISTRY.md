@@ -12,6 +12,28 @@ One `EvaluationCorpusEntry` carries the immutable source-document manifest, a be
 
 The registry validates that document ID, company, document type, source-reference ID, source organization, source checksum, extraction ID, and extraction profile agree across the artefacts. It records a SHA-256 digest of the complete fixture so an approved reviewer record cannot be separated from the values and decisions reviewed.
 
+## Fixture checksum versions
+
+`fixture_checksum_version` explicitly identifies the canonical JSON format used for a fixture's
+SHA-256 digest. New entries default to `fixture-canonical-v2`, which includes the request's
+`target_scope` even when null. `fixture-canonical-v1` reproduces the format used before that field
+existed: it omits only that field, and is valid only when there is no actual target scope. Both
+versions retain all expected decisions, values, source rows, reconciliations, and thresholds.
+
+For an older unversioned JSON record, loading first checks the current checksum. Only if the
+fixture request originally lacks `target_scope` may the loader recognize an exact V1 checksum.
+An explicitly declared version never falls back to another format. Unknown versions, real scopes
+under V1, and mismatched digests are rejected. This is a specific schema compatibility rule, not
+generic null stripping, raw-file hashing, or permission to ignore changed financial contents.
+
+Loading records the recognized version in memory, preserves the original saved digest and review
+status, and does not rewrite the source file. Serialization of that model includes the explicit
+version so it can be validated again; idempotent catalog registration compares validated records
+and leaves the original bytes intact. New provisional versions derived from legacy candidates
+retain the legacy fixture checksum/version. Changes to the fixture still require a new corpus
+version and review. Future schema/default changes affecting canonical serialization require a new
+checksum version; fixed synthetic checksum vectors guard against accidental format drift.
+
 ## Review states
 
 | State | Meaning | Can gate a live model? |
@@ -47,7 +69,7 @@ uv run python -m indian_company_analysis register-evaluation-corpus \
   --entry /path/to/local-corpus-entry.json
 ```
 
-The default catalog is `data/interim/evaluation-corpus/`. It is append-only: replaying identical JSON is harmless, while attempting to write different content at the same entry ID and corpus version fails. A custom local catalog location may be supplied with `--catalog-root`.
+The default catalog is `data/interim/evaluation-corpus/`. It is append-only: replaying the same validated record is harmless (including recognized legacy serialization), while attempting to write different content at the same entry ID and corpus version fails. Existing bytes are never replaced. A custom local catalog location may be supplied with `--catalog-root`.
 
 To record a new provisional internal-review version from a candidate entry without modifying that candidate:
 

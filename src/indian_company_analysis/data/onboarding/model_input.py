@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
@@ -131,6 +132,28 @@ class LocatorBoundContextProvenance(DomainModel):
     extraction_tool_version: str = Field(min_length=1)
 
 
+class ContextAttachmentProvenance(DomainModel):
+    """Explicit reuse of an approved excerpt for a compatible target request."""
+
+    policy_version: Literal["approved-profile-attachment-v1"] = "approved-profile-attachment-v1"
+    source_request_id: str = Field(min_length=1)
+    source_request_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    target_request_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    source_bundle_id: str = Field(min_length=1)
+    source_context_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    profile_decision_id: str = Field(min_length=1)
+    profile_decision_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    attached_by: str = Field(min_length=1, max_length=200)
+    attached_at: datetime
+    rationale: str = Field(min_length=1, max_length=2_000)
+
+    @model_validator(mode="after")
+    def attachment_time_is_timezone_aware(self) -> ContextAttachmentProvenance:
+        if self.attached_at.tzinfo is None or self.attached_at.utcoffset() is None:
+            raise ValueError("context attachment time must include a timezone")
+        return self
+
+
 class LocatorBoundContextBundle(DomainModel):
     """Checksummed optional context for one source-bound onboarding request."""
 
@@ -140,6 +163,7 @@ class LocatorBoundContextBundle(DomainModel):
     snippets: tuple[LocatorBoundContextSnippet, ...] = ()
     context_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     extraction_provenance: LocatorBoundContextProvenance | None = None
+    attachment_provenance: ContextAttachmentProvenance | None = None
 
     @model_validator(mode="after")
     def snippets_are_unique_and_checksummed(self) -> LocatorBoundContextBundle:
@@ -148,6 +172,14 @@ class LocatorBoundContextBundle(DomainModel):
             raise ValueError("context bundle contains duplicate context IDs")
         if self.context_checksum_sha256 != _context_checksum(self.snippets):
             raise ValueError("context checksum must match the exact context snippets")
+        if self.attachment_provenance is not None:
+            if self.extraction_provenance is None:
+                raise ValueError("attached context requires extraction provenance")
+            if (
+                self.attachment_provenance.source_context_checksum_sha256
+                != self.context_checksum_sha256
+            ):
+                raise ValueError("attached context must preserve the original excerpt checksum")
         return self
 
     @classmethod
@@ -158,6 +190,7 @@ class LocatorBoundContextBundle(DomainModel):
         bundle_id: str,
         snippets: tuple[LocatorBoundContextSnippet, ...] = (),
         extraction_provenance: LocatorBoundContextProvenance | None = None,
+        attachment_provenance: ContextAttachmentProvenance | None = None,
     ) -> LocatorBoundContextBundle:
         return cls(
             bundle_id=bundle_id,
@@ -166,6 +199,7 @@ class LocatorBoundContextBundle(DomainModel):
             snippets=snippets,
             context_checksum_sha256=_context_checksum(snippets),
             extraction_provenance=extraction_provenance,
+            attachment_provenance=attachment_provenance,
         )
 
     @classmethod
@@ -360,6 +394,12 @@ class PromptIsolatedOnboardingInputBuilder:
             raise ValueError("context bundle request ID does not match onboarding request")
         if context.source_checksum_sha256 != request.source_checksum_sha256:
             raise ValueError("context bundle source checksum does not match onboarding request")
+        if (
+            context.attachment_provenance is not None
+            and context.attachment_provenance.target_request_checksum_sha256
+            != onboarding_request_checksum(request)
+        ):
+            raise ValueError("attached context target request checksum does not match")
         if len(context.snippets) > policy.maximum_context_snippets:
             raise ValueError("onboarding context exceeds the context-snippet policy limit")
         total_characters = sum(len(snippet.text) for snippet in context.snippets)
@@ -381,6 +421,13 @@ def _evidence_checksum(rows: tuple[PromptIsolatedEvidenceRow, ...]) -> str:
         sort_keys=True,
         separators=(",", ":"),
     )
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def onboarding_request_checksum(request: DocumentOnboardingRequest) -> str:
+    """Bind an attachment to the entire request, including scope and evidence rows."""
+
+    serialized = json.dumps(request.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 

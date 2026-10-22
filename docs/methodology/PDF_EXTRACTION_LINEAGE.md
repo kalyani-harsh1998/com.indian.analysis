@@ -142,10 +142,33 @@ excerpt. A candidate is still not approved evidence or a financial fact.
 `approve-reviewer-profile` and `reject-reviewer-profile` both re-load the fixed source/request/page
 proposal, verify the saved draft belongs to that session, re-extract the profile, and require the
 new bundle to exactly match the candidate before an append-only decision is written. Approval embeds
-the exact profile; rejection requires explicit reasons. Only
-`extract-approved-reviewer-profile-context` can re-extract an approved profile into the existing
+the exact profile; rejection requires explicit reasons.
+`extract-approved-reviewer-profile-context` re-extracts an approved profile into the existing
 locator-bound context-bundle format. That bundle remains untrusted provider context and cannot
 create a mapping, calculated value, normalized fact, or automatic approval.
+
+### Attach approved context to a compatible task
+
+An excerpt's metric scope may be a subset of a broader statement request. Different request IDs
+still require an explicit connection: `attach-approved-reviewer-profile-context` takes the original
+verified session and approval decision plus `--target-request`. It re-extracts the approved region,
+requires identical company, document, source checksum/reference/organization, document type, unit,
+full period, and reporting basis, then checks that every excerpt metric belongs to the target's
+scope. Legacy requests without an explicit scope retain the existing all-eligible catalog scope.
+
+The output is a new append-only target-bound context bundle. `attachment_provenance` preserves the
+original request ID/checksum, bundle ID/context checksum, full approval-decision checksum and ID,
+exact target-request checksum, operator, timestamp, rationale, and attachment policy version. The
+original snippets, locators, profile/tool provenance, and approvals are unchanged. The model-input
+builder rejects a changed target request even when it retains the same ID. Historical candidate
+checksums remain valid when optional attachment metadata is absent. Local checksums establish
+integrity within this workflow; they do not authenticate a reviewer against malicious local edits.
+
+Pass this bundle to existing `prepare-onboarding-model-input` or corpus evaluation commands via
+`--context-bundle`. Context stays untrusted supporting text for its assigned metrics; a note total
+does not become a new mapping evidence row. Evaluation still uses the frozen fixture and existing
+review gates. Further discovery, multiple reviewed profiles in one bundle, and an automatic
+missing-evidence loop remain future work.
 
 ## Accuracy benchmark
 

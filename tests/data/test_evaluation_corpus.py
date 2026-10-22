@@ -6,7 +6,7 @@ import hashlib
 import json
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import pytest
 
@@ -29,6 +29,9 @@ from indian_company_analysis.data.onboarding import (
     ProvisionalCorpusEvaluationPolicy,
     ProvisionalCorpusEvaluator,
     provisionally_review_entry,
+)
+from indian_company_analysis.data.onboarding.corpus import (
+    _fixture_checksum as versioned_fixture_checksum,
 )
 from indian_company_analysis.domain.enums import (
     ConfidenceLevel,
@@ -356,6 +359,188 @@ def test_registry_rejects_changed_fixture_contents_or_unreviewed_extraction() ->
     )
     with pytest.raises(ValueError, match="reviewed extraction"):
         EvaluationCorpusEntry.model_validate(unreviewed_link)
+
+
+def _legacy_payload(
+    status: Literal[
+        "ready_for_ca_review", "provisional_internal_review", "approved_for_evaluation"
+    ] = "provisional_internal_review",
+) -> dict[str, Any]:
+    """Reproduce the historical canonical format independently of the production hasher."""
+
+    payload = _entry(status=status).model_dump(mode="json")
+    del payload["fixture_checksum_version"]
+    del payload["fixture"]["request"]["target_scope"]
+    del payload["onboarding_request"]["target_scope"]
+    serialized = json.dumps(payload["fixture"], sort_keys=True, separators=(",", ":"))
+    payload["fixture_checksum_sha256"] = hashlib.sha256(serialized.encode()).hexdigest()
+    return payload
+
+
+@pytest.mark.parametrize(
+    "status", ["ready_for_ca_review", "provisional_internal_review", "approved_for_evaluation"]
+)
+def test_legacy_checksum_loads_and_round_trips_without_changing_review_or_digest(
+    status: Literal[
+        "ready_for_ca_review", "provisional_internal_review", "approved_for_evaluation"
+    ],
+) -> None:
+    payload = _legacy_payload(status)
+    original = json.dumps(payload, sort_keys=True)
+    entry = EvaluationCorpusEntry.model_validate(payload)
+    assert entry.fixture_checksum_version == "fixture-canonical-v1"
+    assert entry.fixture_checksum_sha256 == payload["fixture_checksum_sha256"]
+    assert entry.review_status == status
+    assert entry.onboarding_request.target_scope is None
+    assert json.dumps(payload, sort_keys=True) == original
+    restored = EvaluationCorpusEntry.model_validate_json(entry.model_dump_json())
+    assert restored == entry
+
+
+def test_new_and_unversioned_current_checksums_keep_target_scope_in_the_digest() -> None:
+    entry = _entry(status="provisional_internal_review")
+    assert entry.fixture is not None
+    assert entry.fixture_checksum_version == "fixture-canonical-v2"
+    assert entry.fixture_checksum_sha256 == versioned_fixture_checksum(entry.fixture)
+    payload = entry.model_dump(mode="json")
+    del payload["fixture_checksum_version"]
+    # An omitted optional field alone is insufficient to classify the checksum as legacy.
+    del payload["fixture"]["request"]["target_scope"]
+    del payload["onboarding_request"]["target_scope"]
+    assert EvaluationCorpusEntry.model_validate(payload).fixture_checksum_version == (
+        "fixture-canonical-v2"
+    )
+
+
+def test_canonical_checksum_versions_have_fixed_synthetic_regression_vectors() -> None:
+    fixture = _fixture()
+    # A future schema default must not silently redefine an existing checksum version.
+    assert versioned_fixture_checksum(fixture, version="fixture-canonical-v1") == (
+        "5f6e598852a11fc916e80db1027bc084677499b3ac6d26b7bd5bdf0c68136178"
+    )
+    assert versioned_fixture_checksum(fixture) == (
+        "87a714b2771c0d59a0d106e0ede1c23401a2fc1aff4b56641566e2194c2a0974"
+    )
+
+
+def test_v2_scope_is_included_in_checksum_and_cannot_be_changed_after_review() -> None:
+    payload = _entry(status="provisional_internal_review").model_dump(mode="json")
+    for request in (payload["fixture"]["request"], payload["onboarding_request"]):
+        request["target_scope"] = {
+            "scope_id": "synthetic-scope-v1",
+            "metric_ids": ["revenue", "profit_before_tax", "tax_expense", "profit_after_tax"],
+            "purpose": "Synthetic statement evaluation scope.",
+        }
+    serialized = json.dumps(payload["fixture"], sort_keys=True, separators=(",", ":"))
+    payload["fixture_checksum_sha256"] = hashlib.sha256(serialized.encode()).hexdigest()
+    entry = EvaluationCorpusEntry.model_validate(payload)
+    assert entry.fixture_checksum_version == "fixture-canonical-v2"
+    assert entry.onboarding_request.target_scope is not None
+    for request in (payload["fixture"]["request"], payload["onboarding_request"]):
+        request["target_scope"]["metric_ids"] = ["revenue"]
+    with pytest.raises(ValueError, match="fixture checksum"):
+        EvaluationCorpusEntry.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "changed_field",
+    ["value", "mapping", "component_sign", "threshold", "reconciliation", "row", "scope"],
+)
+def test_legacy_compatibility_does_not_accept_changed_financial_contents(
+    changed_field: str,
+) -> None:
+    payload = _legacy_payload()
+    fixture = payload["fixture"]
+    if changed_field == "value":
+        fixture["expected_metric_values"][0]["value"] = "178651"
+    elif changed_field == "mapping":
+        fixture["expected_mappings"][0]["metric_id"] = "cost_of_revenue"
+    elif changed_field == "component_sign":
+        fixture["expected_aggregations"][0]["components"][0]["coefficient"] = "-1"
+    elif changed_field == "threshold":
+        fixture["thresholds"]["minimum_mapping_precision"] = "0.5"
+    elif changed_field == "reconciliation":
+        fixture["reconciliation_expectations"][0]["tolerance"] = "1"
+    elif changed_field == "row":
+        for request in (fixture["request"], payload["onboarding_request"]):
+            request["evidence_rows"][0]["raw_value"] = "178651"
+    else:
+        for request in (fixture["request"], payload["onboarding_request"]):
+            request["target_scope"] = {
+                "scope_id": "changed-scope",
+                "metric_ids": ["revenue"],
+                "purpose": "A real scope must never be discarded by legacy verification.",
+            }
+    with pytest.raises(ValueError, match="fixture checksum"):
+        EvaluationCorpusEntry.model_validate(payload)
+
+
+def test_declared_checksum_version_never_falls_back_or_discards_a_real_scope() -> None:
+    legacy = _legacy_payload()
+    legacy["fixture_checksum_version"] = "fixture-canonical-v2"
+    with pytest.raises(ValueError, match="fixture checksum"):
+        EvaluationCorpusEntry.model_validate(legacy)
+    legacy["fixture_checksum_version"] = "fixture-canonical-v99"
+    with pytest.raises(ValueError, match="fixture_checksum_version"):
+        EvaluationCorpusEntry.model_validate(legacy)
+    legacy["fixture_checksum_version"] = "fixture-canonical-v1"
+    for request in (legacy["fixture"]["request"], legacy["onboarding_request"]):
+        request["target_scope"] = {
+            "scope_id": "explicit",
+            "metric_ids": ["revenue"],
+            "purpose": "Scope test.",
+        }
+    with pytest.raises(ValueError, match="v1 cannot represent a target scope"):
+        EvaluationCorpusEntry.model_validate(legacy)
+
+
+def test_unversioned_legacy_detection_requires_the_original_absent_field() -> None:
+    legacy = _legacy_payload()
+    legacy["fixture"]["request"]["target_scope"] = None
+    with pytest.raises(ValueError, match="fixture checksum"):
+        EvaluationCorpusEntry.model_validate(legacy)
+    legacy = _legacy_payload()
+    del legacy["fixture"]["expected_abstentions"]
+    # Do not introduce a generic hash-of-whatever-was-in-the-file fallback.
+    raw_json = json.dumps(legacy["fixture"], sort_keys=True, separators=(",", ":"))
+    legacy["fixture_checksum_sha256"] = hashlib.sha256(raw_json.encode()).hexdigest()
+    with pytest.raises(ValueError, match="fixture checksum"):
+        EvaluationCorpusEntry.model_validate(legacy)
+
+
+def test_legacy_catalog_replay_keeps_original_bytes_and_ca_gate(tmp_path: Path) -> None:
+    payload = _legacy_payload()
+    catalog = LocalEvaluationCorpusCatalog(tmp_path / "legacy-catalog")
+    path = tmp_path / "legacy-catalog" / payload["entry_id"] / "v1.json"
+    path.parent.mkdir(parents=True)
+    original = json.dumps(payload, indent=2) + "\n"
+    path.write_text(original, encoding="utf-8")
+    entry = catalog.get_provisionally_reviewed_for_internal_evaluation(
+        entry_id=payload["entry_id"], corpus_version="v1"
+    )
+    assert catalog.register(entry) is False
+    assert path.read_text(encoding="utf-8") == original
+    with pytest.raises(ValueError, match="has not received CA approval"):
+        catalog.get_approved(entry_id=entry.entry_id, corpus_version="v1")
+    changed = entry.model_copy(update={"review_notes": ("Different review record.",)})
+    with pytest.raises(ValueError, match="already contains a different record"):
+        catalog.register(changed)
+    assert path.read_text(encoding="utf-8") == original
+
+
+def test_legacy_candidate_can_create_a_new_provisional_version_with_original_checksum() -> None:
+    candidate = EvaluationCorpusEntry.model_validate(_legacy_payload("ready_for_ca_review"))
+    reviewed = provisionally_review_entry(
+        candidate,
+        corpus_version="legacy-provisional-v1",
+        reviewed_by="synthetic-reviewer@example.test",
+        reviewed_at=_REVIEWED_AT,
+        review_policy_version="synthetic-review-v1",
+        review_notes=("Synthetic legacy replay test.",),
+    )
+    assert reviewed.fixture_checksum_version == "fixture-canonical-v1"
+    assert reviewed.fixture_checksum_sha256 == candidate.fixture_checksum_sha256
+    assert candidate.review_status == "ready_for_ca_review"
 
 
 def test_registry_cli_persists_an_append_only_local_case(tmp_path: Path) -> None:
