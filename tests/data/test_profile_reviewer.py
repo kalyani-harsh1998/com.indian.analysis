@@ -37,8 +37,19 @@ from indian_company_analysis.domain.enums import (
 )
 from indian_company_analysis.domain.metrics import MetricId
 from indian_company_analysis.domain.models import ReportingPeriod
-from indian_company_analysis.review_ui.models import RegionDraftSubmission
+from indian_company_analysis.review_ui.models import (
+    ProfileCandidateSubmission,
+    RegionDraftSubmission,
+)
+from indian_company_analysis.review_ui.profile_workflow import (
+    LocalReviewerProfileDecisionCatalog,
+    ReviewerProfileWorkflow,
+    candidate_checksum,
+    read_draft,
+)
 from indian_company_analysis.review_ui.service import ProfileReviewSession
+
+_NOW = datetime(2026, 10, 15, tzinfo=UTC)
 
 
 def _session(tmp_path: Path) -> ProfileReviewSession:
@@ -239,4 +250,135 @@ def test_profile_reviewer_rejects_unselected_page_and_out_of_bounds_region(tmp_p
                 x1=metadata.pages[0].width + Decimal("1"),
                 bottom=metadata.pages[0].height,
             )
+        )
+
+
+def test_draft_becomes_reextracted_candidate_then_explicitly_approved(tmp_path: Path) -> None:
+    session = _session(tmp_path)
+    metadata = session.metadata()
+    draft, _ = session.create_draft(
+        RegionDraftSubmission(
+            draft_id="fictionalco-page-one-region-v2",
+            profile_version="reviewer-region-v1",
+            reviewer_name="Synthetic region reviewer",
+            review_notes="Whole-page selection for controlled profile conversion.",
+            page_number=1,
+            x0=Decimal("0"),
+            top=Decimal("0"),
+            x1=metadata.pages[0].width,
+            bottom=metadata.pages[0].height,
+        )
+    )
+    draft_path = tmp_path / "reviewed-draft.json"
+    draft_path.write_text(draft.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    saved_draft, saved_checksum = read_draft(draft_path)
+
+    workflow = ReviewerProfileWorkflow(session)
+    candidate = workflow.prepare_candidate(
+        saved_draft,
+        draft_file_checksum_sha256=saved_checksum,
+        submission=ProfileCandidateSubmission(
+            candidate_id="fictionalco-page-one-profile-candidate-v1",
+            bundle_id="fictionalco-fy25-revenue-context-v2",
+            profile_version="synthetic-reviewed-context-v1",
+            context_id="revenue-note-context",
+            table_id="synthetic_revenue_context",
+            row_number=1,
+            column_name="text",
+            prepared_by="Synthetic profile preparer",
+            prepared_at=_NOW,
+        ),
+    )
+
+    assert candidate.status == "candidate"
+    assert candidate.profile_spec.snippets[0].x0 == draft.x0
+    assert candidate.extracted_context.snippets[0].text.startswith("Fictional Co")
+    assert len(candidate_checksum(candidate)) == 64
+
+    decision = workflow.approve_candidate(
+        candidate,
+        draft=saved_draft,
+        draft_file_checksum_sha256=saved_checksum,
+        decision_id="fictionalco-page-one-profile-approval-v1",
+        reviewed_by="Synthetic profile approver",
+        reviewed_at=_NOW,
+        approval_policy_version="synthetic-profile-review-v1",
+        review_rationale="Re-extracted synthetic region matches the intended context.",
+    )
+
+    assert decision.outcome == "approved"
+    assert decision.approved_profile == candidate.profile_spec
+    context = workflow.extract_approved_context(decision)
+    assert context == candidate.extracted_context
+    catalog = LocalReviewerProfileDecisionCatalog(tmp_path / "profile-decisions")
+    assert catalog.register(decision) is True
+    assert catalog.register(decision) is False
+
+    rejection = workflow.reject_candidate(
+        candidate,
+        draft=saved_draft,
+        draft_file_checksum_sha256=saved_checksum,
+        decision_id="fictionalco-page-one-profile-rejection-v1",
+        reviewed_by="Synthetic profile approver",
+        reviewed_at=_NOW,
+        approval_policy_version="synthetic-profile-review-v1",
+        review_rationale="Reject the otherwise valid candidate for a documented semantic reason.",
+        rejection_reasons=("Synthetic rejection-path coverage.",),
+    )
+    assert rejection.outcome == "rejected"
+    assert rejection.approved_profile is None
+
+
+def test_profile_approval_rejects_a_draft_that_changed_after_candidate_creation(
+    tmp_path: Path,
+) -> None:
+    session = _session(tmp_path)
+    metadata = session.metadata()
+    draft, _ = session.create_draft(
+        RegionDraftSubmission(
+            draft_id="fictionalco-page-one-region-v3",
+            profile_version="reviewer-region-v1",
+            reviewer_name="Synthetic region reviewer",
+            review_notes="Selection used to test post-candidate tampering.",
+            page_number=1,
+            x0=Decimal("0"),
+            top=Decimal("0"),
+            x1=metadata.pages[0].width,
+            bottom=metadata.pages[0].height,
+        )
+    )
+    draft_path = tmp_path / "draft-before-tampering.json"
+    draft_path.write_text(draft.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    saved_draft, saved_checksum = read_draft(draft_path)
+    workflow = ReviewerProfileWorkflow(session)
+    candidate = workflow.prepare_candidate(
+        saved_draft,
+        draft_file_checksum_sha256=saved_checksum,
+        submission=ProfileCandidateSubmission(
+            candidate_id="fictionalco-page-one-profile-candidate-v2",
+            bundle_id="fictionalco-fy25-revenue-context-v3",
+            profile_version="synthetic-reviewed-context-v1",
+            context_id="revenue-note-context-v2",
+            table_id="synthetic_revenue_context",
+            row_number=1,
+            column_name="text",
+            prepared_by="Synthetic profile preparer",
+            prepared_at=_NOW,
+        ),
+    )
+    changed_draft = saved_draft.model_copy(update={"review_notes": "Changed after conversion."})
+    changed_path = tmp_path / "draft-after-tampering.json"
+    changed_path.write_text(changed_draft.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    changed_saved_draft, changed_checksum = read_draft(changed_path)
+
+    with pytest.raises(ValueError, match="profile candidate draft does not match"):
+        workflow.approve_candidate(
+            candidate,
+            draft=changed_saved_draft,
+            draft_file_checksum_sha256=changed_checksum,
+            decision_id="fictionalco-page-one-profile-approval-v2",
+            reviewed_by="Synthetic profile approver",
+            reviewed_at=_NOW,
+            approval_policy_version="synthetic-profile-review-v1",
+            review_rationale="This must not approve a changed draft.",
         )

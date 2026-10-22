@@ -725,5 +725,38 @@ coordinates, while preserving the existing raw-PDF, identity, and approval contr
 - The reviewer can inspect a real page and produce repeatable coordinates without exposing the raw
   PDF to a provider or public endpoint.
 - A saved rectangle cannot silently become a profile, mapping, fact, or approval.
-- Multi-user operations, authentication, multi-region selection, profile conversion, and approval
-  workflow remain future work.
+- Multi-user operations, authentication, and multi-region selection remain future work.
+
+## ADR-026 — Re-extract and approve reviewer profiles separately from visual drafts
+
+**Status:** Accepted for the POC
+**Date:** 23 October 2026
+
+### Context
+
+The visual reviewer can safely record a bounded rectangle, but a browser action has neither a stable
+note/table locator nor a durable approval outcome. Letting a saved rectangle become executable would
+allow an accidental or semantically incomplete selection to flow directly into later model input.
+
+### Decision
+
+- Require a named preparer to supply stable locator metadata before creating a
+  `ReviewerProfileCandidate` from one immutable region draft.
+- Record the checksum of the exact draft file and embed the source-bound
+  `PdfNoteContextExtractionSpec` plus its deterministic extracted context in that candidate.
+- Use the existing `PdfNoteContextExtractor` for candidate creation and repeat the extraction when
+  approving or rejecting the candidate. Require the re-extracted bundle to exactly match the
+  candidate artifact.
+- Store append-only approved/rejected decisions. An approval embeds the exact executable profile;
+  a rejection carries explicit reasons.
+- Permit only an approved decision to reproduce a locator-bound untrusted context bundle. No step
+  maps rows, parses financial values, normalizes facts, or calls a provider.
+
+### Consequences
+
+- A visual selection is convenient, but every executable profile has a second deterministic check
+  and distinct preparer/reviewer records.
+- Future workflows can consume the approved context bundle through the existing bounded-input path
+  without trusting the browser or creating a parallel extraction mechanism.
+- Real APSEZ/Infosys artifacts remain local technical evidence until independently reviewed under
+  the relevant policy; this decision does not approve either company profile or any financial fact.

@@ -29,6 +29,14 @@ append-only **draft** rectangle. A draft is not an approved extraction profile, 
 fact, or reviewer approval. Start it with `review-page-discovery-profile` and the source manifest,
 scoped onboarding request, page-discovery input, and proposal paths; it binds only to `127.0.0.1`.
 
+`prepare-reviewer-profile-candidate` then requires a reviewer to supply a stable table/text locator
+for that draft, re-extracts the rectangle from the verified PDF, and writes a versioned candidate.
+`approve-reviewer-profile` or `reject-reviewer-profile` independently re-extracts it before storing
+an append-only decision. Only an approved decision may be passed to
+`extract-approved-reviewer-profile-context`, which creates bounded **untrusted** context for a
+later onboarding evaluation. None of these commands creates a mapping, normalized fact, or provider
+call.
+
 ## Architecture
 
 The package separates typed domain objects, replaceable source adapters, deterministic financial calculations, framework-neutral contracts, controlled workflows, and outputs. Numerical truth belongs in deterministic code; future agents may select and explain capabilities but must not become the source of financial calculations.
@@ -63,6 +71,8 @@ The local PDF reviewer additionally runs with:
 
 ```bash
 uv run python -m indian_company_analysis review-page-discovery-profile --help
+uv run python -m indian_company_analysis prepare-reviewer-profile-candidate --help
+uv run python -m indian_company_analysis approve-reviewer-profile --help
 ```
 
 Optional OpenAI onboarding evaluation is intentionally separate from the normal local install:

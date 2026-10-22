@@ -82,6 +82,24 @@ class ProfileReviewSession:
         )
 
     @property
+    def source_manifest(self) -> RawDocumentManifest:
+        """Expose the already identity-validated manifest to controlled local workflows."""
+
+        return self._source_manifest
+
+    @property
+    def onboarding_request(self) -> DocumentOnboardingRequest:
+        """Expose the already identity-validated request to controlled local workflows."""
+
+        return self._onboarding_request
+
+    @property
+    def raw_root(self) -> Path:
+        """Return the local immutable store root used for re-verification."""
+
+        return self._raw_root
+
+    @property
     def primary_page_number(self) -> int:
         selection = self._page_discovery_proposal.primary_selection
         if selection is None:  # guarded by _validate_session
@@ -136,6 +154,48 @@ class ProfileReviewSession:
         preview_text = self._extract_preview_text(draft)
         self._persist_draft(draft)
         return draft, preview_text
+
+    def validate_saved_draft(self, draft: ReviewerRegionDraft) -> None:
+        """Ensure a loaded append-only draft belongs to this exact verified review session."""
+
+        self._validate_session()
+        expected = (
+            self._page_discovery_proposal.proposal_id,
+            self._page_discovery_input.input_id,
+            self._onboarding_request.request_id,
+            self._source_manifest.document_id,
+            self._source_manifest.checksum_sha256,
+            self._page_discovery_input.request_context_checksum_sha256,
+            self._page_discovery_input.request_context.target_metric_ids,
+        )
+        actual = (
+            draft.proposal_id,
+            draft.page_discovery_input_id,
+            draft.request_id,
+            draft.document_id,
+            draft.source_checksum_sha256,
+            draft.request_context_checksum_sha256,
+            draft.metric_ids,
+        )
+        if actual != expected:
+            raise ValueError("saved reviewer draft does not match the verified review session")
+        self._assert_selected_page(draft.page_number)
+        width, height = self._page_dimensions(draft.page_number)
+        self._validate_bounds(
+            RegionDraftSubmission(
+                draft_id=draft.draft_id,
+                profile_version=draft.profile_version,
+                reviewer_name=draft.reviewer_name,
+                review_notes=draft.review_notes,
+                page_number=draft.page_number,
+                x0=draft.x0,
+                top=draft.top,
+                x1=draft.x1,
+                bottom=draft.bottom,
+            ),
+            width=width,
+            height=height,
+        )
 
     def _validate_session(self) -> None:
         verification = verify_raw_document(self._source_manifest, self._raw_root)

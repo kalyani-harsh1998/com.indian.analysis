@@ -105,11 +105,12 @@ identity. It preserves source-document/profile/tool provenance, but it does not 
 call a provider, or make the excerpt authoritative. Automatic source-note discovery and alternative
 evidence-route evaluation are not implemented by this slice.
 
-The planned automation path keeps those controls intact: a model will propose pages only from a
-bounded, verified page index; a reviewer will select the exact rectangle in a visual tool; the tool
-will save a versioned profile; deterministic Python will re-extract and validate it; and a reviewer
-will approve or reject that profile. Neither a proposed page nor proposed coordinates can directly
-produce an approved fact.
+The guided profile path keeps those controls intact: a model proposes pages only from a bounded,
+verified page index; a reviewer selects the exact rectangle in a local visual tool; Python writes an
+append-only draft; a preparer supplies a stable locator and creates a re-extracted candidate; then a
+reviewer approves or rejects it after an independent re-extraction. Only an approved decision can
+produce the existing locator-bound context bundle. Neither a proposed page, coordinates, candidate,
+or context excerpt can directly produce an approved fact.
 
 Dependencies point inward toward `domain` and deterministic functions:
 

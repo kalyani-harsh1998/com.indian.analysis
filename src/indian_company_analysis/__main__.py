@@ -68,7 +68,21 @@ from indian_company_analysis.data.onboarding.review import approve_proposal, rej
 from indian_company_analysis.data.onboarding.static_provider import StaticProposalProvider
 from indian_company_analysis.data.sources.local_files import LocalFixtureDataSource
 from indian_company_analysis.domain.enums import DocumentType, LicenceCategory, SourceKind
-from indian_company_analysis.review_ui.runner import run_profile_reviewer
+from indian_company_analysis.review_ui.models import (
+    ProfileCandidateSubmission,
+    ReviewerProfileCandidate,
+    ReviewerProfileReviewDecision,
+)
+from indian_company_analysis.review_ui.profile_workflow import (
+    LocalReviewerProfileDecisionCatalog,
+    ReviewerProfileWorkflow,
+    read_draft,
+    write_once_json,
+)
+from indian_company_analysis.review_ui.runner import (
+    load_profile_review_session,
+    run_profile_reviewer,
+)
 from indian_company_analysis.workflows.company_analysis import CompanyAnalysisWorkflow
 
 
@@ -192,6 +206,59 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     profile_reviewer.add_argument("--draft-root", type=Path)
     profile_reviewer.add_argument("--host", default="127.0.0.1")
     profile_reviewer.add_argument("--port", type=int, default=8000)
+    profile_candidate = subparsers.add_parser(
+        "prepare-reviewer-profile-candidate",
+        help=(
+            "convert one saved reviewer draft into a re-extracted, review-only context-profile "
+            "candidate; it cannot approve facts or mappings"
+        ),
+    )
+    _add_profile_session_inputs(profile_candidate)
+    profile_candidate.add_argument("--draft", type=Path, required=True)
+    profile_candidate.add_argument("--candidate-id", required=True)
+    profile_candidate.add_argument("--bundle-id", required=True)
+    profile_candidate.add_argument("--profile-version", required=True)
+    profile_candidate.add_argument("--context-id", required=True)
+    profile_candidate.add_argument("--table-id", required=True)
+    profile_candidate.add_argument("--row-number", type=int, required=True)
+    profile_candidate.add_argument("--column-name", required=True)
+    profile_candidate.add_argument("--prepared-by", required=True)
+    profile_candidate.add_argument("--prepared-at", type=datetime.fromisoformat, required=True)
+    profile_candidate.add_argument("--x-tolerance", default="3")
+    profile_candidate.add_argument("--y-tolerance", default="3")
+    profile_candidate.add_argument("--maximum-characters", type=int, default=2_000)
+    profile_candidate.add_argument("--output", type=Path)
+    approve_profile = subparsers.add_parser(
+        "approve-reviewer-profile",
+        help=(
+            "independently re-extract and record approval of one reviewer profile candidate; "
+            "it does not create mappings or facts"
+        ),
+    )
+    _add_profile_session_inputs(approve_profile)
+    _add_profile_candidate_review_inputs(approve_profile)
+    reject_profile = subparsers.add_parser(
+        "reject-reviewer-profile",
+        help="independently re-extract and record rejection of one reviewer profile candidate",
+    )
+    _add_profile_session_inputs(reject_profile)
+    _add_profile_candidate_review_inputs(reject_profile)
+    reject_profile.add_argument(
+        "--rejection-reason",
+        action="append",
+        required=True,
+        help="repeat for each reviewer rejection reason",
+    )
+    approved_profile_context = subparsers.add_parser(
+        "extract-approved-reviewer-profile-context",
+        help=(
+            "re-extract bounded untrusted context from an approved reviewer profile; "
+            "it cannot create mappings or facts"
+        ),
+    )
+    _add_profile_session_inputs(approved_profile_context)
+    approved_profile_context.add_argument("--decision", type=Path, required=True)
+    approved_profile_context.add_argument("--output", type=Path)
     approve = subparsers.add_parser(
         "approve-onboarding",
         help="record human approval and register its reviewed onboarding configuration",
@@ -347,6 +414,24 @@ def _add_review_inputs(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--reviewed-at", type=datetime.fromisoformat, required=True)
     parser.add_argument("--approval-policy-version", required=True)
     parser.add_argument("--review-rationale", required=True)
+
+
+def _add_profile_session_inputs(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--source-manifest", type=Path, required=True)
+    parser.add_argument("--request", type=Path, required=True)
+    parser.add_argument("--page-discovery-input", type=Path, required=True)
+    parser.add_argument("--page-discovery-proposal", type=Path, required=True)
+
+
+def _add_profile_candidate_review_inputs(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--draft", type=Path, required=True)
+    parser.add_argument("--candidate", type=Path, required=True)
+    parser.add_argument("--decision-id", required=True)
+    parser.add_argument("--reviewed-by", required=True)
+    parser.add_argument("--reviewed-at", type=datetime.fromisoformat, required=True)
+    parser.add_argument("--approval-policy-version", required=True)
+    parser.add_argument("--review-rationale", required=True)
+    parser.add_argument("--catalog-root", type=Path)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -620,6 +705,131 @@ def main(argv: Sequence[str] | None = None) -> int:
             draft_root=draft_root,
             host=args.host,
             port=args.port,
+        )
+        return 0
+    if args.command == "prepare-reviewer-profile-candidate":
+        session = load_profile_review_session(
+            source_manifest_path=args.source_manifest,
+            request_path=args.request,
+            page_discovery_input_path=args.page_discovery_input,
+            page_discovery_proposal_path=args.page_discovery_proposal,
+            raw_root=settings.data_directory / "raw",
+            draft_root=settings.data_directory / "interim" / "profile-region-drafts",
+        )
+        draft, draft_checksum = read_draft(args.draft)
+        reviewer_candidate = ReviewerProfileWorkflow(session).prepare_candidate(
+            draft,
+            draft_file_checksum_sha256=draft_checksum,
+            submission=ProfileCandidateSubmission(
+                candidate_id=args.candidate_id,
+                bundle_id=args.bundle_id,
+                profile_version=args.profile_version,
+                context_id=args.context_id,
+                table_id=args.table_id,
+                row_number=args.row_number,
+                column_name=args.column_name,
+                prepared_by=args.prepared_by,
+                prepared_at=args.prepared_at,
+                x_tolerance=args.x_tolerance,
+                y_tolerance=args.y_tolerance,
+                maximum_characters=args.maximum_characters,
+            ),
+        )
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "reviewer-profile-candidates"
+            / reviewer_candidate.draft.request_id
+            / f"{reviewer_candidate.candidate_id}.json"
+        )
+        created = write_once_json(
+            output,
+            reviewer_candidate.model_dump_json(indent=2) + "\n",
+            artifact_name="reviewer profile candidate",
+        )
+        action = "Prepared" if created else "Reused"
+        print(
+            f"{action} re-extracted reviewer profile candidate at {output}; "
+            "it remains unapproved and cannot create facts or mappings."
+        )
+        return 0
+    if args.command in {"approve-reviewer-profile", "reject-reviewer-profile"}:
+        session = load_profile_review_session(
+            source_manifest_path=args.source_manifest,
+            request_path=args.request,
+            page_discovery_input_path=args.page_discovery_input,
+            page_discovery_proposal_path=args.page_discovery_proposal,
+            raw_root=settings.data_directory / "raw",
+            draft_root=settings.data_directory / "interim" / "profile-region-drafts",
+        )
+        draft, draft_checksum = read_draft(args.draft)
+        reviewer_candidate = ReviewerProfileCandidate.model_validate_json(
+            args.candidate.read_text(encoding="utf-8")
+        )
+        profile_workflow = ReviewerProfileWorkflow(session)
+        if args.command == "approve-reviewer-profile":
+            profile_decision = profile_workflow.approve_candidate(
+                reviewer_candidate,
+                draft=draft,
+                draft_file_checksum_sha256=draft_checksum,
+                decision_id=args.decision_id,
+                reviewed_by=args.reviewed_by,
+                reviewed_at=args.reviewed_at,
+                approval_policy_version=args.approval_policy_version,
+                review_rationale=args.review_rationale,
+            )
+        else:
+            profile_decision = profile_workflow.reject_candidate(
+                reviewer_candidate,
+                draft=draft,
+                draft_file_checksum_sha256=draft_checksum,
+                decision_id=args.decision_id,
+                reviewed_by=args.reviewed_by,
+                reviewed_at=args.reviewed_at,
+                approval_policy_version=args.approval_policy_version,
+                review_rationale=args.review_rationale,
+                rejection_reasons=tuple(args.rejection_reason),
+            )
+        profile_decision_catalog = LocalReviewerProfileDecisionCatalog(
+            args.catalog_root or settings.data_directory / "interim" / "reviewer-profile-decisions"
+        )
+        registered = profile_decision_catalog.register(profile_decision)
+        action = "Recorded" if registered else "Reused"
+        print(
+            f"{action} {profile_decision.outcome} reviewer profile decision "
+            f"{profile_decision.decision_id}; "
+            "no mappings or facts were created."
+        )
+        return 0
+    if args.command == "extract-approved-reviewer-profile-context":
+        session = load_profile_review_session(
+            source_manifest_path=args.source_manifest,
+            request_path=args.request,
+            page_discovery_input_path=args.page_discovery_input,
+            page_discovery_proposal_path=args.page_discovery_proposal,
+            raw_root=settings.data_directory / "raw",
+            draft_root=settings.data_directory / "interim" / "profile-region-drafts",
+        )
+        profile_decision = ReviewerProfileReviewDecision.model_validate_json(
+            args.decision.read_text(encoding="utf-8")
+        )
+        context_bundle = ReviewerProfileWorkflow(session).extract_approved_context(profile_decision)
+        output = args.output or (
+            settings.data_directory
+            / "interim"
+            / "onboarding-context"
+            / context_bundle.request_id
+            / f"{context_bundle.bundle_id}.json"
+        )
+        created = write_once_json(
+            output,
+            context_bundle.model_dump_json(indent=2) + "\n",
+            artifact_name="approved reviewer-profile context bundle",
+        )
+        action = "Extracted" if created else "Reused"
+        print(
+            f"{action} approved-profile context at {output}; "
+            "it remains untrusted context, not a mapping or fact."
         )
         return 0
     if args.command == "register-evaluation-corpus":

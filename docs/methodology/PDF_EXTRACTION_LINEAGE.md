@@ -127,9 +127,25 @@ identity. It then extracts a deterministic text preview and persists an append-o
 `ReviewerRegionDraft` containing reviewer notes and full proposal/request/checksum lineage.
 
 A region draft is deliberately not a `PdfNoteContextExtractionSpec`: it cannot be sent to a
-provider, used in normalization, treated as a source fact, or approved by merely saving it. A later
-controlled conversion must add stable note/table metadata, re-run extraction validation, and carry
-an explicit reviewer approval.
+provider, used in normalization, treated as a source fact, or approved by merely saving it.
+
+### Controlled draft-to-profile workflow
+
+`prepare-reviewer-profile-candidate` reads the exact draft bytes and records their checksum. The
+preparer must supply a stable `table_id`, row number, column name, context ID, bundle ID, profile
+version, and timezone-aware identity. Python builds one `PdfNoteContextExtractionSpec` from the
+draft coordinates and supplied locator, then uses `PdfNoteContextExtractor` to re-verify the
+immutable PDF and extract the rectangle again. The resulting `ReviewerProfileCandidate` retains
+the draft, draft-file checksum, executable profile specification, and checksummed untrusted context
+excerpt. A candidate is still not approved evidence or a financial fact.
+
+`approve-reviewer-profile` and `reject-reviewer-profile` both re-load the fixed source/request/page
+proposal, verify the saved draft belongs to that session, re-extract the profile, and require the
+new bundle to exactly match the candidate before an append-only decision is written. Approval embeds
+the exact profile; rejection requires explicit reasons. Only
+`extract-approved-reviewer-profile-context` can re-extract an approved profile into the existing
+locator-bound context-bundle format. That bundle remains untrusted provider context and cannot
+create a mapping, calculated value, normalized fact, or automatic approval.
 
 ## Accuracy benchmark
 
@@ -173,8 +189,6 @@ Every model-assisted proposal must retain the source-document checksum, input lo
 
 ## Deferred work
 
-- controlled conversion of a reviewer region draft into a versioned executable profile and its
-  subsequent approval/rejection workflow;
 - review of multi-region, continuation-page, and table-header selections;
 - representative reviewed evaluation corpus for proposal accuracy, abstention, reconciliation, cost, and latency;
 - automatic coordinate/profile discovery and multiple periods in one extraction run;

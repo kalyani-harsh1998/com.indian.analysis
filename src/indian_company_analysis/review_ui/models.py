@@ -1,4 +1,4 @@
-"""Typed records for a reviewer-selected PDF region.
+"""Typed records for reviewer-selected PDF regions and controlled profile review.
 
 These records are intentionally drafts. A saved draft is not an extraction profile, an approved
 mapping, a normalized fact, or a reviewer approval.
@@ -6,11 +6,16 @@ mapping, a normalized fact, or a reviewer approval.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import Field, model_validator
 
+from indian_company_analysis.data.extraction.models import PdfNoteContextExtractionSpec
+from indian_company_analysis.data.onboarding.model_input import LocatorBoundContextBundle
 from indian_company_analysis.domain.metrics import MetricId
 from indian_company_analysis.domain.models import DomainModel
 
@@ -66,6 +71,137 @@ class ReviewerRegionDraft(DomainModel):
         if self.created_at.tzinfo is None or self.created_at.utcoffset() is None:
             raise ValueError("draft creation time must include a timezone")
         return self
+
+
+class ProfileCandidateSubmission(DomainModel):
+    """Human-supplied metadata required to turn one saved draft into a candidate profile.
+
+    The browser does not supply this metadata.  In particular, a stable source locator remains a
+    reviewer decision rather than an inference from pixels or an LLM suggestion.
+    """
+
+    candidate_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
+    bundle_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
+    profile_version: str = Field(min_length=1)
+    context_id: str = Field(pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._:-]*$")
+    table_id: str = Field(min_length=1)
+    row_number: int = Field(ge=1)
+    column_name: str = Field(min_length=1)
+    prepared_by: str = Field(min_length=1, max_length=200)
+    prepared_at: datetime
+    x_tolerance: Decimal = Field(default=Decimal("3"), gt=0, le=10)
+    y_tolerance: Decimal = Field(default=Decimal("3"), gt=0, le=10)
+    maximum_characters: int = Field(default=2_000, ge=1, le=12_000)
+
+    @model_validator(mode="after")
+    def preparation_time_is_timezone_aware(self) -> ProfileCandidateSubmission:
+        if self.prepared_at.tzinfo is None or self.prepared_at.utcoffset() is None:
+            raise ValueError("profile candidate preparation time must include a timezone")
+        return self
+
+
+class ReviewerProfileCandidate(DomainModel):
+    """A deterministic, re-extracted profile candidate derived from an immutable draft.
+
+    It remains review-only.  Its embedded excerpt is untrusted source text, not a financial fact.
+    """
+
+    candidate_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
+    draft_file_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    draft: ReviewerRegionDraft
+    profile_spec: PdfNoteContextExtractionSpec
+    extracted_context: LocatorBoundContextBundle
+    prepared_by: str = Field(min_length=1, max_length=200)
+    prepared_at: datetime
+    status: Literal["candidate"] = "candidate"
+
+    @model_validator(mode="after")
+    def candidate_is_bound_to_its_draft_and_extraction(self) -> ReviewerProfileCandidate:
+        if len(self.profile_spec.snippets) != 1:
+            raise ValueError(
+                "reviewer profile candidate must contain exactly one draft-derived region"
+            )
+        snippet = self.profile_spec.snippets[0]
+        if (
+            snippet.source_locator.page_number != self.draft.page_number
+            or snippet.metric_ids != self.draft.metric_ids
+            or snippet.x0 != self.draft.x0
+            or snippet.top != self.draft.top
+            or snippet.x1 != self.draft.x1
+            or snippet.bottom != self.draft.bottom
+        ):
+            raise ValueError("profile candidate snippet must exactly match its saved draft region")
+        if (
+            self.extracted_context.bundle_id != self.profile_spec.bundle_id
+            or self.extracted_context.request_id != self.draft.request_id
+            or self.extracted_context.source_checksum_sha256 != self.draft.source_checksum_sha256
+        ):
+            raise ValueError("profile candidate context does not match its draft identity")
+        if len(self.extracted_context.snippets) != 1:
+            raise ValueError("reviewer profile candidate must retain one extracted context snippet")
+        context = self.extracted_context.snippets[0]
+        if (
+            context.context_id != snippet.context_id
+            or context.source_locator != snippet.source_locator
+            or context.metric_ids != snippet.metric_ids
+        ):
+            raise ValueError("profile candidate extracted context does not match its profile spec")
+        if self.prepared_at.tzinfo is None or self.prepared_at.utcoffset() is None:
+            raise ValueError("profile candidate preparation time must include a timezone")
+        return self
+
+
+class ReviewerProfileReviewDecision(DomainModel):
+    """Append-only approval or rejection of one independently revalidated candidate profile."""
+
+    decision_id: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]*$")
+    outcome: Literal["approved", "rejected"]
+    candidate: ReviewerProfileCandidate
+    candidate_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    reviewed_by: str = Field(min_length=1, max_length=200)
+    reviewed_at: datetime
+    approval_policy_version: str = Field(min_length=1)
+    review_rationale: str = Field(min_length=1, max_length=2_000)
+    revalidated_context_checksum_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    approved_profile: PdfNoteContextExtractionSpec | None = None
+    rejection_reasons: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def outcome_is_explicit_and_consistent(self) -> ReviewerProfileReviewDecision:
+        if self.reviewed_at.tzinfo is None or self.reviewed_at.utcoffset() is None:
+            raise ValueError("profile review time must include a timezone")
+        if self.candidate_checksum_sha256 != profile_candidate_checksum(self.candidate):
+            raise ValueError("review decision candidate checksum does not match the candidate")
+        if (
+            self.revalidated_context_checksum_sha256
+            != self.candidate.extracted_context.context_checksum_sha256
+        ):
+            raise ValueError(
+                "review decision must retain the revalidated candidate context checksum"
+            )
+        if self.outcome == "approved":
+            if self.approved_profile != self.candidate.profile_spec:
+                raise ValueError("approval must embed the exact candidate profile specification")
+            if self.rejection_reasons:
+                raise ValueError("approved profile decisions cannot carry rejection reasons")
+        elif self.approved_profile is not None:
+            raise ValueError("rejected profile decisions cannot contain an approved profile")
+        elif not self.rejection_reasons or any(
+            not reason.strip() for reason in self.rejection_reasons
+        ):
+            raise ValueError("rejected profile decisions require nonblank rejection reasons")
+        return self
+
+
+def profile_candidate_checksum(candidate: ReviewerProfileCandidate) -> str:
+    """Return a stable checksum for one exact reviewer profile candidate."""
+
+    serialized = json.dumps(
+        candidate.model_dump(mode="json"),
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
 class ReviewerPage(DomainModel):
