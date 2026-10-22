@@ -116,6 +116,21 @@ A separate Infosys v2 technical proposal selected the consolidated FY2026 income
 flagged the primary choice for full-page review because the bounded excerpt did not contain the
 complete tax-component table. This likewise created no profile, coordinates, facts, or approval.
 
+### Local reviewer draft tool
+
+`review-page-discovery-profile` is the first local visual step in the guided workflow. It receives
+one manifest, scoped onboarding request, page-discovery input, and locally validated proposal when
+the server starts; the browser cannot substitute arbitrary paths or pages. The loopback-only UI
+renders only the selected primary or supporting pages, converts one SVG rectangle to PDF-point
+coordinates, and asks Python to re-verify the raw PDF, bounds, page selection, and request/source
+identity. It then extracts a deterministic text preview and persists an append-only
+`ReviewerRegionDraft` containing reviewer notes and full proposal/request/checksum lineage.
+
+A region draft is deliberately not a `PdfNoteContextExtractionSpec`: it cannot be sent to a
+provider, used in normalization, treated as a source fact, or approved by merely saving it. A later
+controlled conversion must add stable note/table metadata, re-run extraction validation, and carry
+an explicit reviewer approval.
+
 ## Accuracy benchmark
 
 `benchmark_extraction` compares extracted label/value pairs at stable row numbers with a manually reviewed golden set. It records expected, actual, and matched row counts, an exact-match rate, required threshold, mismatches, benchmark version, and pass status.
@@ -158,8 +173,9 @@ Every model-assisted proposal must retain the source-document checksum, input lo
 
 ## Deferred work
 
-- PDF-to-CSV command-line workflow and review UI;
-- bounded LLM-assisted page-discovery and guided visual profile-builder workflow;
+- controlled conversion of a reviewer region draft into a versioned executable profile and its
+  subsequent approval/rejection workflow;
+- review of multi-region, continuation-page, and table-header selections;
 - representative reviewed evaluation corpus for proposal accuracy, abstention, reconciliation, cost, and latency;
 - automatic coordinate/profile discovery and multiple periods in one extraction run;
 - prompt-injection isolation, evidence minimization, privacy policy, and provider selection;

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF Profile Reviewer</title>
+    <link rel="stylesheet" href="/static/reviewer.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <p class="eyebrow">Local-only review tool</p>
+        <h1>PDF profile reviewer</h1>
+        <p id="context">Loading verified review session…</p>
+      </div>
+      <p class="warning">A saved rectangle is a draft, not an approval or financial fact.</p>
+    </header>
+    <main>
+      <section class="document-panel" aria-label="Verified PDF page">
+        <div id="page-tabs" class="page-tabs"></div>
+        <div id="viewer" class="viewer">
+          <img id="page-image" alt="Selected PDF page" />
+          <svg id="overlay" aria-label="Draw a rectangle over the relevant table" role="img">
+            <rect id="selection" class="selection" visibility="hidden" />
+          </svg>
+        </div>
+        <p class="hint">Drag on the page to select a table or text region. The selection uses PDF coordinates.</p>
+      </section>
+      <aside class="review-panel">
+        <h2>Save a region draft</h2>
+        <form id="draft-form">
+          <label>Draft ID <input id="draft-id" required pattern="[a-z0-9][a-z0-9._-]*" /></label>
+          <label>Profile version <input id="profile-version" value="reviewer-region-v1" required /></label>
+          <label>Reviewer name <input id="reviewer-name" required /></label>
+          <label>Review note <textarea id="review-notes" required rows="4" placeholder="What table or note did you select?"></textarea></label>
+          <dl id="coordinates" class="coordinates"></dl>
+          <button type="submit">Validate and save draft</button>
+        </form>
+        <section id="result" class="result" hidden>
+          <h2>Deterministic preview</h2>
+          <p id="saved-message"></p>
+          <pre id="preview-text"></pre>
+        </section>
+      </aside>
+    </main>
+    <script src="/static/reviewer.js"></script>
+  </body>
+</html>

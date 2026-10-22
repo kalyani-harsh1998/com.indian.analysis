@@ -695,3 +695,35 @@ must remain a reviewer check. This is a second integration observation, not gene
   proposes a bounded review set rather than asserting that a page is correct.
 - Coordinate proposals, visual selection, profile approval, and model-quality evaluation remain
   separate work.
+
+## ADR-025 — Use a local draft-only reviewer UI before profile approval
+
+**Status:** Accepted for the POC
+**Date:** 15 October 2026
+
+### Context
+
+A valid page-discovery proposal reduces search work but does not identify the exact table/text
+region. Reviewers need a practical way to mark a rectangle without manually copying PDF-point
+coordinates, while preserving the existing raw-PDF, identity, and approval controls.
+
+### Decision
+
+- Add a local-only FastAPI/Uvicorn reviewer command bound to `127.0.0.1` by default.
+- Start each session from fixed local paths for the manifest, scoped onboarding request, bounded
+  page-discovery input, and valid non-abstaining proposal; never accept arbitrary browser-supplied
+  file paths or pages.
+- Render selected pages locally with PDFium and use an SVG overlay to translate a reviewer-drawn
+  rectangle back into PDF coordinates.
+- Re-verify source bytes and coordinate bounds server-side, extract a local text preview, and save
+  an append-only `ReviewerRegionDraft` with reviewer notes and complete identity lineage.
+- Treat the result as a draft only. Converting it into an executable extraction spec, validating it
+  against a table, and approving it remain separate controlled steps.
+
+### Consequences
+
+- The reviewer can inspect a real page and produce repeatable coordinates without exposing the raw
+  PDF to a provider or public endpoint.
+- A saved rectangle cannot silently become a profile, mapping, fact, or approval.
+- Multi-user operations, authentication, multi-region selection, profile conversion, and approval
+  workflow remain future work.

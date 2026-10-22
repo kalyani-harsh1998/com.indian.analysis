@@ -68,6 +68,7 @@ from indian_company_analysis.data.onboarding.review import approve_proposal, rej
 from indian_company_analysis.data.onboarding.static_provider import StaticProposalProvider
 from indian_company_analysis.data.sources.local_files import LocalFixtureDataSource
 from indian_company_analysis.domain.enums import DocumentType, LicenceCategory, SourceKind
+from indian_company_analysis.review_ui.runner import run_profile_reviewer
 from indian_company_analysis.workflows.company_analysis import CompanyAnalysisWorkflow
 
 
@@ -177,6 +178,20 @@ def build_parser(settings: Settings) -> argparse.ArgumentParser:
     openai_page_discovery.add_argument("--model", required=True)
     openai_page_discovery.add_argument("--maximum-output-tokens", type=int, default=1_000)
     openai_page_discovery.add_argument("--output", type=Path)
+    profile_reviewer = subparsers.add_parser(
+        "review-page-discovery-profile",
+        help=(
+            "run the local-only visual reviewer for one validated page-discovery proposal; "
+            "it can save draft rectangles but cannot approve profiles or facts"
+        ),
+    )
+    profile_reviewer.add_argument("--source-manifest", type=Path, required=True)
+    profile_reviewer.add_argument("--request", type=Path, required=True)
+    profile_reviewer.add_argument("--page-discovery-input", type=Path, required=True)
+    profile_reviewer.add_argument("--page-discovery-proposal", type=Path, required=True)
+    profile_reviewer.add_argument("--draft-root", type=Path)
+    profile_reviewer.add_argument("--host", default="127.0.0.1")
+    profile_reviewer.add_argument("--port", type=int, default=8000)
     approve = subparsers.add_parser(
         "approve-onboarding",
         help="record human approval and register its reviewed onboarding configuration",
@@ -588,6 +603,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             else "Prepared a review-only OpenAI page-selection proposal"
         )
         print(f"{outcome} at {output}; no profile, coordinates, or facts were created.")
+        return 0
+    if args.command == "review-page-discovery-profile":
+        draft_root = args.draft_root or (
+            settings.data_directory
+            / "interim"
+            / "profile-region-drafts"
+            / args.page_discovery_input.stem
+        )
+        run_profile_reviewer(
+            source_manifest_path=args.source_manifest,
+            request_path=args.request,
+            page_discovery_input_path=args.page_discovery_input,
+            page_discovery_proposal_path=args.page_discovery_proposal,
+            raw_root=settings.data_directory / "raw",
+            draft_root=draft_root,
+            host=args.host,
+            port=args.port,
+        )
         return 0
     if args.command == "register-evaluation-corpus":
         entry = EvaluationCorpusEntry.model_validate_json(args.entry.read_text(encoding="utf-8"))

@@ -81,6 +81,14 @@ reviewer selection of a rectangle, versioned profile creation, deterministic re-
 validation, then explicit reviewer approval; a model suggestion never becomes evidence by itself. See
 ADR-023.
 
+The first local-only reviewer UI slice now implements the bounded visual-selection stage. It opens
+only pages from a locally validated, non-abstaining page-discovery proposal, renders the verified
+raw PDF locally, translates an SVG selection into PDF coordinates, produces a deterministic text
+preview, and persists an append-only region **draft** with proposal/request/document/checksum
+identity. It cannot create an executable note-context specification, approve a profile, map a row,
+normalize a fact, or bypass review. FastAPI/Uvicorn and PDFium are local POC dependencies; the
+server binds to loopback by default and makes no provider call.
+
 One explicitly authorized APSEZ v3 technical run completed on 4 October 2026. It accounted for
 21/21 rows without duplicated or invented evidence, mapped reported PBT/PAT directly, matched
 five of six expected values, and reconciled PBT/tax/PAT. Full acceptance still failed: finance cost
